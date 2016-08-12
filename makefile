@@ -1,6 +1,6 @@
 ptrace-test: ptrace-test.c
 build:
-	gcc -o ptrace-test ptrace-test.c -I.
+	gcc -o bin/ptrace-test ptrace-test.c -I.
 run:
-	./ptrace-test
+	./bin/ptrace-test
 

@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
   if (argc < 2) {
     printf("argc: %d", argc);
   }
-  printf("aaaa\n");
+  printf("aaaaaaaaaaaaaaa\n");
   child = fork();
   if (child == 0) {
     child_do();
