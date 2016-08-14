@@ -9,6 +9,11 @@
 #include <string.h>
 
 
+// ptrace prototype/signature:
+// #include <sys/ptrace.h>
+// long int ptrace(enum __ptrace_request request, pid_t pid,
+//                 void *addr, void *data)
+
 int child_do(int argc, char **argv);
 int tracer_do(void);
 
@@ -37,6 +42,7 @@ int child_do(int argc, char **argv) {
   args[argc] = NULL;  // and here we place the NULL
   memcpy(args, argv, argc * sizeof(char*));
   ptrace(PTRACE_TRACEME, 0, NULL, NULL);
+  kill(getpid(), SIGSTOP);
   return execvp(args[0], args);
 }
 
@@ -44,6 +50,16 @@ int tracer_do(void) {
   int status;
   printf("Parent called: %d\n", getpid());
   waitpid(child, &status, 0); // waiting for the child to finish
+  // TODO: PEEKDATA reads from the tracee's memory, PEEKUSER reads from the tracee's "user" data
+  // PEEKUSER: read memory from offset, offset is typically word alligned
+  int x = ptrace(PTRACE_PEEKUSER, child, 0);
+  int y = ptrace(PTRACE_PEEKUSER, child, 1);
+  int z = ptrace(PTRACE_PEEKUSER, child, 2);
+  int w = ptrace(PTRACE_PEEKUSER, child, 3);
+
+  // GETREGS reads from, usually, general purpose registers (SET..) sets them
+  printf("  peek: %d %d %d %d\n", x, y ,z, w);
+
   printf("Child termination status: %d\n", status);
   printf("Child return val:%d\n", WEXITSTATUS(status));
   

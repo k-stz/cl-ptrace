@@ -1,0 +1,46 @@
+# Notes while reading http://tldp.org/LDP/LGNET/81/sandeep.html
+
+* =ptrace()= protoype:
+  #+BEGIN_SRC c
+    #include <sys/ptrace.h>
+    long  int ptrace(enum __ptrace_request request, pid_t pid,
+                     void * addr, void * data)
+  #+END_SRC
+
+  *request* decides what to be done
+  *Pid* - Pid of the _traced_ process
+  *Addr* offset in the _user space_
+  *data* will be written to, if instructed to do so (depending on request)
+
+* =fork()= =PTRACE_TRACEME=
+  This is what we're using: A parent fork()'s and the resulting child calls
+  =ptrace(PTRACE_TRACEME, ..)= to initiate being traced by the parent.
+
+* How does =ptrace()= work
+  whenever ptrace is called it _first locks the kernel_ (TODO: why), just before
+  returning it unlocks the kernel. Depending on the request different things happen
+  in between the locks. What follows is an overview of the requests behaviour
+
+** =PTRACE_TRACEME=
+   Any signals (except SIGKILL) either delived from outside or from *exec* calls made by
+   the process, causes it to stop and lets the parent decide how to proceed.
+   This request only sets a flag that grants permission to trace the process.
+   *Important insight*: _All the parameters other than *request* are ignored_!
+
+** =PTRACE_ATTACH=
+   This is pretty handy, you can make the current process the tracer of the target
+   process, "become the parent of that process by attach yourself to it". But =getpid()=
+   will return the child's real parent!
+   - Note: the *init* process is a big deal - nobody is allowed to trace or control it!  A
+     process is also not allowed to trace itself.
+   What actually happens:
+   - In the background all the cases are handled (1) is it the init (2) current (3)
+     already traced process, before permission to attach is granted.
+   - "the child is removed from the task quere and its parent process field is changed
+     (...). It is put to the quere again in such a position that *init* comes next to it*
+   - (!)Interesting: _finally a =SIGSTOP= signal is delivered to it._ This could be useful
+     to attach to the process in the moment when inspecting the process memory is of
+     interest!
+
+   
+
