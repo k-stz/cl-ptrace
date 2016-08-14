@@ -34,13 +34,13 @@
    - Note: the *init* process is a big deal - nobody is allowed to trace or control it!  A
      process is also not allowed to trace itself.
    What actually happens:
-   - In the background all the cases are handled (1) is it the init (2) current (3)
-     already traced process, before permission to attach is granted.
-   - "the child is removed from the task quere and its parent process field is changed
-     (...). It is put to the quere again in such a position that *init* comes next to it*
-   - (!)Interesting: _finally a =SIGSTOP= signal is delivered to it._ This could be useful
-     to attach to the process in the moment when inspecting the process memory is of
-     interest!
+   1. In the background all the cases are handled (1) is it the init (2) current (3)
+      already traced process, before permission to attach is granted.
+   2. "the child is removed from the task queue and its parent process field is changed
+      (...). It is put to the queue again in such a position that *init* comes next to it"
+   3. (!)Interesting: _finally a =SIGSTOP= signal is delivered to it._ This could be useful
+      to attach to the process in the moment when inspecting the process memory is of
+      interest!
 
    
 
