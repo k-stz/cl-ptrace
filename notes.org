@@ -61,7 +61,10 @@
 
 ** =PTRACE_SINGLESTEP=
    like =PTRACE_SYSCALL= except we stop here on every instruction!
-
+   
+** =PTRACE_GETREGS=
+   fetches registers of the process such as: general purpose, floating point.
+   *data* will store these, furthermore it expects a =struct user_regs_struct= variable!
 
 * system call numbers
   Can be found in /usr/include/asm-generic/unistd.h !
