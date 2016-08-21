@@ -42,9 +42,25 @@
       to attach to the process in the moment when inspecting the process memory is of
       interest!
 
-** =PTRACE-CONT=
-   to continue child execution
+** =PTRACE_DETACH=
+   The inverse of =Ptrace_Attach=: (1) reset the Ptrace flag, (2) move child to original
+   position of the task queue (note task=process in kernel lingo) and finally (3) the pid
+   of the real parent is written in the parent field. "The single-step bit which might
+   have been set is reset".
+   *addr* is ignored
+   *data* arg the parent can send an exit code for the child
    
+
+   
+** =PTRACE_CONT=
+   to continue child execution
+
+** =PTRACE_SYSCALL=
+   will also continue execution of the child, but will stop every syscall invokation the
+   child issues. This can be used to implement "strace".
+
+** =PTRACE_SINGLESTEP=
+   like =PTRACE_SYSCALL= except we stop here on every instruction!
 
 
 * system call numbers
