@@ -21,8 +21,11 @@ pid_t target_process;
 int main(int argc, char **argv) {
   if (argc < 2) {
     printf("Usage: ./attach-to.c <pid-of-target-process>\n");
-  }
-  printf("WERKS\n");
+  } else {
+    target_process = atoi(argv[1]);
+    printf("REACHED pid:%d \n", target_process);
+    ptrace(PTRACE_ATTACH, target_process, NULL, NULL);
+  };
 
 }
 

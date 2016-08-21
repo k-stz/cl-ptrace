@@ -42,5 +42,25 @@
       to attach to the process in the moment when inspecting the process memory is of
       interest!
 
+** =PTRACE-CONT=
+   to continue child execution
    
 
+
+* system call numbers
+  Can be found in /usr/include/asm-generic/unistd.h !
+
+
+  PTRACE-CONT to continue child execution
+
+
+* The Process
+
+** contains
+   - program counter
+   - all the CPU's registers
+   - process stack (containing temporary data) such as:
+     - routine parameters
+     - return addresses
+     - saved variables
+  
