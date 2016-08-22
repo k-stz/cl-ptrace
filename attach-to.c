@@ -50,6 +50,9 @@ char input_char;
 // It could vary on your machine use gcc -H -fsyntax-only <program.c> to get
 // a list of the header sources included in given program
 
+// weird, note how we need to put "struct" before the in as in the signatures formal
+// parameters or else the compiler complains..
+void print_user_regs_struct(struct user_regs_struct regs);
 
 struct user_regs_struct regs;
 
@@ -84,8 +87,10 @@ int main(int argc, char **argv) {
 
       ptrace(PTRACE_SINGLESTEP, target_process, NULL, NULL);
       waitpid(target_process, &status, 0);
-      printf("status: %d\n", status);
-      printf("rip: %d\n", /* (unsigned long int) */ regs.rip);
+      /* printf("status: %d\n", status); */
+      /* printf("rax: %x\n", regs.rax); */
+      print_user_regs_struct (regs);
+
       input_char = getchar();
     }
     printf("singlestepping aborted.\n");
@@ -95,4 +100,34 @@ int main(int argc, char **argv) {
 
 }
 
-
+// only works on x86_64 architecture, as the fields differ of the struct!
+void print_user_regs_struct(struct user_regs_struct regs) {
+  // %x is hex representation with lowercase letters - easier to read
+  printf ("r15:     %16llx %30s\n", regs.r15, "general purpose registers");
+  printf ("r14:     %16llx\n", regs.r14);
+  printf ("r13:     %16llx\n", regs.r13);
+  printf ("r12:     %16llx\n", regs.r12);
+  printf ("rbp:     %16llx\n", regs.rbp);
+  printf ("rbx:     %16llx\n", regs.rbx);
+  printf ("r11:     %16llx\n", regs.r11);
+  printf ("r10:     %16llx\n", regs.r10);
+  printf ("r9:      %16llx\n", regs.r9);
+  printf ("r8:      %16llx\n", regs.r8);
+  printf ("rax:     %16llx\n", regs.rax);
+  printf ("rcx:     %16llx   %s\n", regs.rcx, "4.");
+  printf ("rdx:     %16llx   %s\n", regs.rdx, "3.");
+  printf ("rsi:     %16llx   %s\n", regs.rsi, "2.");
+  printf ("rdi:     %16llx %30s\n", regs.rdi, "1. function/syscall argument");
+  printf ("orig_rax:%16llx\n", regs.orig_rax);
+  printf ("rip:     %16llx %30s\n", regs.rip, "instruction pointer");
+  printf ("cs:      %16llx\n", regs.cs);
+  printf ("eflags:  %16llx\n", regs.eflags);
+  printf ("rsp:     %16llx %30s\n", regs.rsp, "  Stack Pointer (current location in stack)");
+  printf ("ss:      %16llx\n", regs.ss);
+  printf ("fs_base: %16llx\n", regs.fs_base);
+  printf ("gs_base: %16llx\n", regs.gs_base);
+  printf ("ds:      %16llx\n", regs.ds);
+  printf ("es:      %16llx\n", regs.es);
+  printf ("fs:      %16llx\n", regs.fs);
+  printf ("gs:      %16llx\n", regs.gs);
+}
