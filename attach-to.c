@@ -103,6 +103,8 @@ int main(int argc, char **argv) {
 // only works on x86_64 architecture, as the fields differ of the struct!
 void print_user_regs_struct(struct user_regs_struct regs) {
   // %x is hex representation with lowercase letters - easier to read
+  // (!) the description on the right is the for the System V (e.g. Linux) x86_64 calling
+  // convention ! (!)
   printf ("r15:     %16llx %30s\n", regs.r15, "general purpose registers");
   printf ("r14:     %16llx\n", regs.r14);
   printf ("r13:     %16llx\n", regs.r13);
@@ -111,13 +113,13 @@ void print_user_regs_struct(struct user_regs_struct regs) {
   printf ("rbx:     %16llx\n", regs.rbx);
   printf ("r11:     %16llx\n", regs.r11);
   printf ("r10:     %16llx\n", regs.r10);
-  printf ("r9:      %16llx\n", regs.r9);
-  printf ("r8:      %16llx\n", regs.r8);
+  printf ("r9:      %16llx   %s\n", regs.r9, "6.");
+  printf ("r8:      %16llx   %s\n", regs.r8, "5.");
   printf ("rax:     %16llx\n", regs.rax);
   printf ("rcx:     %16llx   %s\n", regs.rcx, "4.");
   printf ("rdx:     %16llx   %s\n", regs.rdx, "3.");
   printf ("rsi:     %16llx   %s\n", regs.rsi, "2.");
-  printf ("rdi:     %16llx %30s\n", regs.rdi, "1. function/syscall argument");
+  printf ("rdi:     %16llx %30s\n", regs.rdi, "1. function/syscall argument"); // aka "parameter registers"
   printf ("orig_rax:%16llx\n", regs.orig_rax);
   printf ("rip:     %16llx %30s\n", regs.rip, "instruction pointer");
   printf ("cs:      %16llx\n", regs.cs);
