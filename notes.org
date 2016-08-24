@@ -68,6 +68,11 @@
    *data* will store these, furthermore it expects a =struct user_regs_struct= variable!
 
 
+** PTRACE_PEEK*
+   - if PTRACE_PEEK* calls are unsuccessful they return zero!
+   - "On error, all request return -1, and _errno_ is set appropriately (...)"
+   
+
 * A process issues a system calls
   When a process wants to invoke a system call, it puts the arguments to system calls in
   registers =rdi rsi rdx rcx r8 r9= -in that order- and calls the soft interrupt[fn:1] 0x80 (TODO:

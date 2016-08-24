@@ -54,6 +54,34 @@ char input_char;
 // parameters or else the compiler complains..
 void print_user_regs_struct(struct user_regs_struct regs);
 
+
+// TODO: the following is used to test if the user area only compromises of the 
+//       user_regs struct, and if peek_user is a pinpoint version of get_regs
+/**
+ * This assumes that the target_process is already traced!
+ * Interactively queries what reagion of the USER area of the
+ * process to print.
+ */
+void print_peek_user_interactively(target_process) {
+  int input;
+  printf("Enter which from which byte to read: ");
+  scanf("%d", &input);
+  printf("pressed %d\n", input);
+  // the layout of user_regs and how we PEEK into it must not necessarily align, according
+  // to the documentation. But it seems to work on x86_64+linux
+
+  // NOTE: if PTRACE_PEEK* calls are unsuccessful they return zero!
+
+  // on offset word alignment:
+  // PEEKUSER will return a "word" on 64bit architecture Linux it is 64bit (long int)
+  // A word is then compromised of 8 bytes (byte = 8 bit, 64 / 8 = 8). This is important
+  // to know because the addr* argument given to ptrace() in this case is the offset,
+  // well and offsets deal in bytes. So to read meaningful words we must pass it an offset
+  // that is correctly aligned. That's why we multiply the input by the magic number 8
+  printf("ORIG_RAX:%d\n", ORIG_RAX);
+  printf("PEEKUSER: %lx\n", ptrace(PTRACE_PEEKUSER, target_process, 8 * input, NULL));
+}
+
 struct user_regs_struct regs;
 
 int status;
@@ -70,26 +98,20 @@ int main(int argc, char **argv) {
     // stopped:
     waitpid(target_process, &status, 0);
     printf("PTRACE_ATTACH waitpid status: %d \n", status);
-    /* printf("Press Enter to continue the process.."); */
-    /* getchar(); */
-    // continue process
-    /* ptrace(PTRACE_CONT, target_process, NULL, NULL); */
-    // kill(SIGCONT, target_process); <- won't work
 
     printf("now lets step through the child\n");
     printf("Press ENTER to step or q and then ENTER to quit\n");
-    // TODO: doesn't work
     while( input_char != 'q') {
       printf("while() entered\n");
       ptrace(PTRACE_GETREGS, target_process, NULL, &regs);
-      // TODO: rip is the 64bit instruction pointer?
-      // TODO: seems to be wrong.. construct a simpler test
+      
 
       ptrace(PTRACE_SINGLESTEP, target_process, NULL, NULL);
       waitpid(target_process, &status, 0);
-      /* printf("status: %d\n", status); */
-      /* printf("rax: %x\n", regs.rax); */
+      // thanks to waitpid the code here now definetly deals with a stopped child at its
+      // next instruction:
       print_user_regs_struct (regs);
+      print_peek_user_interactively(target_process);
 
       input_char = getchar();
     }
