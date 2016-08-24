@@ -55,6 +55,10 @@ char input_char;
 void print_user_regs_struct(struct user_regs_struct regs);
 
 
+void print_peek_user(target_process, word_offset) {
+  printf("PEEKUSER: %lx\n", ptrace(PTRACE_PEEKUSER, target_process, 8 * word_offset, NULL));
+}
+
 // TODO: the following is used to test if the user area only compromises of the 
 //       user_regs struct, and if peek_user is a pinpoint version of get_regs
 /**
@@ -64,9 +68,8 @@ void print_user_regs_struct(struct user_regs_struct regs);
  */
 void print_peek_user_interactively(target_process) {
   int input;
-  printf("Enter which from which byte to read: ");
+  printf("Enter from which word offset to read: ");
   scanf("%d", &input);
-  printf("pressed %d\n", input);
   // the layout of user_regs and how we PEEK into it must not necessarily align, according
   // to the documentation. But it seems to work on x86_64+linux
 
@@ -78,8 +81,7 @@ void print_peek_user_interactively(target_process) {
   // to know because the addr* argument given to ptrace() in this case is the offset,
   // well and offsets deal in bytes. So to read meaningful words we must pass it an offset
   // that is correctly aligned. That's why we multiply the input by the magic number 8
-  printf("ORIG_RAX:%d\n", ORIG_RAX);
-  printf("PEEKUSER: %lx\n", ptrace(PTRACE_PEEKUSER, target_process, 8 * input, NULL));
+  print_peek_user(target_process, input);
 }
 
 struct user_regs_struct regs;

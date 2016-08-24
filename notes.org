@@ -1,5 +1,6 @@
 # Notes while reading http://tldp.org/LDP/LGNET/81/sandeep.html
 #                     http://www.linuxjournal.com/article/6210
+#                     http://www.hep.wisc.edu/~pinghc/Process_Memory.htm
 
 * =ptrace()= protoype:
   #+BEGIN_SRC c
@@ -92,6 +93,17 @@
      - routine parameters
      - return addresses
      - saved variables
+
+  
+** User Area + Contents
+   is a reagion of the process' memory that contains information about:
+   - open files
+   - current directory
+   - signal action
+   - "accounting information"
+
+   
+  
 
 * Footnotes
 
