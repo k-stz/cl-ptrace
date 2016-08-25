@@ -68,8 +68,27 @@
    fetches registers of the process such as: general purpose, floating point.
    *data* will store these, furthermore it expects a =struct user_regs_struct= variable!
 
+** =PTRACE_PEEKTEXT PETRACE_PEEKDATA=
+   Read a word from the process' memory.
+   apparently they're identical on linux because "Linux does not have separate text and
+   data address spaces". 
+   *addr* is the byte offset from which to read the word[fn:3]
+   *data* is ignored
 
-** PTRACE_PEEK*
+** =PTRACE_PEEKUSER=
+   Read a word from the tracee's USER area (register + open files, etc. see below)
+   *addr* is the byte offset from which to read the word
+   *data* is ignored
+
+** =PTRACE_GETREGS=
+   Reads all the registers of the tracee's USER area and puts it in the given struct of
+   type =user_regs_struct=
+   *data* expects a pointer to =user_regs_struct=, so pass by reference, and fills it with
+          the registers of the tracee
+   *addr* is ignored
+   
+   
+*** PTRACE_PEEK*
    - if PTRACE_PEEK* calls are unsuccessful they return zero!
    - "On error, all request return -1, and _errno_ is set appropriately (...)"
    
@@ -121,5 +140,7 @@ Examples - software interrupt:
 2. Exception system is handled through software interrupts! Such as division-by-zero 
 
 [fn:2] on i386 this is the =eax= register - a 32bit register
+
+[fn:3] the size of a word is architecture and OS dependent: on x86_64 Linux it is 64bit
 
   

@@ -24,10 +24,6 @@
 //                 void *addr, void *data)
 
 
-// TODO: test:
-//       struct user_regs_struct regs;
-//       ptrace(PTRACE_GETREGS, target_process, NULL, &regs); !
-
 pid_t target_process;
 
 char input_char;
@@ -50,8 +46,8 @@ char input_char;
 // It could vary on your machine use gcc -H -fsyntax-only <program.c> to get
 // a list of the header sources included in given program
 
-// weird, note how we need to put "struct" before the in as in the signatures formal
-// parameters or else the compiler complains..
+// weird, note how we need to put "struct" before the signatures formal parameters or else
+// the compiler complains..
 void print_user_regs_struct(struct user_regs_struct regs);
 
 
