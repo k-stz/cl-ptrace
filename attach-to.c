@@ -50,12 +50,25 @@ char input_char;
 // the compiler complains..
 void print_user_regs_struct(struct user_regs_struct regs);
 
-/* void poke_user(pid_t target_process, int word_offset, long long int word) {  */
-/*   ptrace(PTRACE_POKEUSER, target_process, word, 8 * word_offset); */
-/* } */
+void poke_user(pid_t target_process, int word_offset, long long int word) {
+  // Copy the word _data_ to offset _addr_
+  printf("    inside poke_user, word_offset: %d, word %llu\n", word_offset, word);
+  //                                          *addr       *data
+  ptrace(PTRACE_POKEUSER, target_process, 8 * word_offset, word);
+}
 
-void print_peek_user(pid_t target_process, long long word_offset) {
-  printf("PEEKUSER: %lx\n", ptrace(PTRACE_PEEKUSER, target_process, 8 * word_offset, NULL));
+void poke_user_interactively(pid_t target_process) {
+  int word_offset;
+  long long int word;
+  printf("write to user word index: ");
+  scanf("%d", &word_offset);
+  printf("hex: ");
+  scanf("%llx", &word);
+  poke_user(target_process, word_offset, word);
+}
+
+void print_peek_user(pid_t target_process, int word_offset) {
+  printf("PEEKUSER: %llx\n", ptrace(PTRACE_PEEKUSER, target_process, 8 * word_offset, NULL));
 }
 
 // TODO: the following is used to test if the user area only compromises of the 
@@ -67,7 +80,7 @@ void print_peek_user(pid_t target_process, long long word_offset) {
  */
 void print_peek_user_interactively(pid_t target_process) {
   int input;
-  printf("Enter from which word offset to read: ");
+  printf("read from user word index: ");
   scanf("%d", &input);
   // the layout of user_regs and how we PEEK into it must not necessarily align, according
   // to the documentation. But it seems to work on x86_64+linux
@@ -109,8 +122,9 @@ int main(int argc, char **argv) {
 
       ptrace(PTRACE_SINGLESTEP, target_process, NULL, NULL);
       waitpid(target_process, &status, 0);
-      // thanks to waitpid the code here now definetly deals with a stopped child at its
+      // thanks to waitpid the code here now definitely deals with a stopped child at its
       // next instruction:
+      poke_user_interactively(target_process);
       print_user_regs_struct (regs);
       print_peek_user_interactively(target_process);
 
