@@ -50,8 +50,11 @@ char input_char;
 // the compiler complains..
 void print_user_regs_struct(struct user_regs_struct regs);
 
+/* void poke_user(pid_t target_process, int word_offset, long long int word) {  */
+/*   ptrace(PTRACE_POKEUSER, target_process, word, 8 * word_offset); */
+/* } */
 
-void print_peek_user(target_process, word_offset) {
+void print_peek_user(pid_t target_process, long long word_offset) {
   printf("PEEKUSER: %lx\n", ptrace(PTRACE_PEEKUSER, target_process, 8 * word_offset, NULL));
 }
 
@@ -62,7 +65,7 @@ void print_peek_user(target_process, word_offset) {
  * Interactively queries what reagion of the USER area of the
  * process to print.
  */
-void print_peek_user_interactively(target_process) {
+void print_peek_user_interactively(pid_t target_process) {
   int input;
   printf("Enter from which word offset to read: ");
   scanf("%d", &input);
