@@ -156,3 +156,10 @@ Examples - software interrupt:
 * TODO Inspect instructions of the memory
   - is the instruction pointer used to read from the process memory part, using PTRACE_PEEKDATA?
   - If so, inspect if the commands match the executable e.g. ./bin/spam  !
+
+* TODO Registers reserved for global variables
+  Some CPUs implement a register window scheme to deal with local variables of procedure
+  calls efficiently. Along with this scheme there are some Registers that are reserved for
+  global variable - accessed by all procedures as they call deeper and deeper. On the
+  SPARC-Architecture those are R0 to R7.
+  - Try to figure out if x86-64 also has those
