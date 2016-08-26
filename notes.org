@@ -151,3 +151,8 @@ Examples - software interrupt:
 [fn:3] the size of a word is architecture and OS dependent: on x86_64 Linux it is 64bit
 
   
+
+
+* TODO Inspect instructions of the memory
+  - is the instruction pointer used to read from the process memory part, using PTRACE_PEEKDATA?
+  - If so, inspect if the commands match the executable e.g. ./bin/spam  !

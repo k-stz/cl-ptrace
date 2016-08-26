@@ -48,6 +48,7 @@ char input_char;
 
 // weird, note how we need to put "struct" before the signatures formal parameters or else
 // the compiler complains..
+// TODO: this prototype is wrong? foo(int, int); instead of foo(int x, int y); ?
 void print_user_regs_struct(struct user_regs_struct regs);
 
 void poke_user(pid_t target_process, int word_offset, long long int word) {
