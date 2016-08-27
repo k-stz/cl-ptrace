@@ -1,3 +1,7 @@
+# because util.c is included in attach-to.c it will be compiled and linked just by
+# compiling attack-to.c
+
+
 ptrace-test: ptrace-test.c
 build:
 	gcc -o bin/ptrace-test ptrace-test.c
@@ -16,3 +20,4 @@ run-attach-to:
 
 run-spam:
 	./bin/spam
+
