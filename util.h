@@ -21,19 +21,24 @@
 // They're used so that files  might need other headers don't have to load their definitions again
 // if they're already known by the overall program.
 
-
-
-void poke_user(pid_t tracee_pid, int word_offset, long long int word);
-
 void print_user_regs_struct(struct user_regs_struct);
 
-void poke_user_interactively(pid_t tracee_pid);
-
+// User area operation
 void print_peek_user(pid_t tracee_pid, int word_offset);
 
 void print_peek_user_interactively(pid_t tracee_pid);
 
+void poke_user(pid_t tracee_pid, int word_offset, long long int word);
 
+void poke_user_interactively(pid_t tracee_pid);
+
+// Data area operation
+
+// will read from the byte_offset'th byte.. if that makes sense
+// this way we can use the instruction pointer value directly (regs.rip)!
+void print_peek_user(pid_t tracee_pid, int byte_offset);
+
+void print_peek_user_interactively(pid_t tracee_pid);
 
 
 

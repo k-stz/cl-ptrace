@@ -48,10 +48,27 @@ void poke_user_interactively(pid_t tracee_pid) {
   poke_user(tracee_pid, word_offset, word);
 }
 
-void print_peek_user(pid_t tracee_pid, int word_offset) {
-  printf("PEEKUSER: %llx\n", ptrace(PTRACE_PEEKUSER, tracee_pid, 8 * word_offset, NULL));
+
+void print_peek_data(pid_t tracee_pid, int byte_offset) {
+  long long int peek_output;
+  peek_output = ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL);
+  // if ptrace() is unsuccessful it returns -1 and "errno" is set. "errno" is a global
+  // variable (errno.h) that is set whenever a syscall causes a mistake. Finally strerror()
+  // makes that errno error-number readable
+  if (peek_output = -1) {
+    printf("errno: %s\n", strerror(errno));
+  }
+  printf("PEEKDATA: %llx\n", ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL));
+
+
 }
 
+void print_peek_data_interactively(pid_t tracee_pid) {
+  int input;
+  printf("read data hexaddr: ");
+  scanf("%x", &input);
+  print_peek_data(tracee_pid, input);
+}
 
 /**
  * This assumes that the tracee_pid referenced process is already traced!
@@ -75,6 +92,11 @@ void print_peek_user_interactively(pid_t tracee_pid) {
   // that is correctly aligned. That's why we multiply the input by the magic number 8
   print_peek_user(tracee_pid, input);
 }
+
+void print_peek_user(pid_t tracee_pid, int word_offset) {
+  printf("PEEKUSER: %llx\n", ptrace(PTRACE_PEEKUSER, tracee_pid, 8 * word_offset, NULL));
+}
+
 
 
 // only works on x86_64 architecture, as the fields differ of the struct!

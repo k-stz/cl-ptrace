@@ -34,10 +34,6 @@ struct user_regs_struct regs;
 
 int status;
 
-/* void print_peek_data(pid_t tracee_pid, int word_offset) { */
-/*   printf("PEEKDATA: %llx\n", ptrace(PTRACE_PEEKDATA, tracee_pid, 8 * word_offset, NULL)); */
-/* } */
-
 int main(int argc, char **argv) {
   if (argc < 2) {
     printf("Usage: ./attach-to.c <pid-of-target-process>\n");
@@ -62,9 +58,10 @@ int main(int argc, char **argv) {
       waitpid(tracee_pid, &status, 0);
       // thanks to waitpid the code here now definitely deals with a stopped child at its
       // next instruction:
-      poke_user_interactively(tracee_pid);
+      /* poke_user_interactively(tracee_pid); */
+      print_peek_data_interactively(tracee_pid);
       print_user_regs_struct (regs);
-      print_peek_user_interactively(tracee_pid);
+      /* print_peek_user_interactively(tracee_pid); */
 
       input_char = getchar();
     }
