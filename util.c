@@ -58,16 +58,20 @@ void print_peek_data(pid_t tracee_pid, int byte_offset) {
   if (peek_output = -1) {
     printf("errno: %s\n", strerror(errno));
   }
-  printf("PEEKDATA: %llx\n", ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL));
+  printf("PEEKDATA: %lx\n", ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL));
 
 
 }
 
 void print_peek_data_interactively(pid_t tracee_pid) {
   int input;
-  printf("read data hexaddr: ");
+  printf("peekdata hexaddr: ");
   scanf("%x", &input);
   print_peek_data(tracee_pid, input);
+}
+
+void print_peek_data_at_rip(pid_t tracee_pid) {
+  
 }
 
 /**
@@ -94,7 +98,7 @@ void print_peek_user_interactively(pid_t tracee_pid) {
 }
 
 void print_peek_user(pid_t tracee_pid, int word_offset) {
-  printf("PEEKUSER: %llx\n", ptrace(PTRACE_PEEKUSER, tracee_pid, 8 * word_offset, NULL));
+  printf("PEEKUSER: %lx\n", ptrace(PTRACE_PEEKUSER, tracee_pid, 8 * word_offset, NULL));
 }
 
 

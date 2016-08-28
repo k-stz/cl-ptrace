@@ -36,9 +36,12 @@ void poke_user_interactively(pid_t tracee_pid);
 
 // will read from the byte_offset'th byte.. if that makes sense
 // this way we can use the instruction pointer value directly (regs.rip)!
-void print_peek_user(pid_t tracee_pid, int byte_offset);
+void print_peek_data(pid_t tracee_pid, int byte_offset);
 
-void print_peek_user_interactively(pid_t tracee_pid);
+void print_peek_data_interactively(pid_t tracee_pid);
 
+// print the from the tracee data area the value the instruction pointer currently points
+// to, ergo the next instruction to be executed when singlestepping!
+void print_peek_data_at_rip(pid_t tracee_pid);
 
 
