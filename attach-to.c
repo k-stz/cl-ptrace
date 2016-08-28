@@ -35,6 +35,7 @@ struct user_regs_struct regs;
 int status;
 
 int main(int argc, char **argv) {
+  print_endianness();
   if (argc < 2) {
     printf("Usage: ./attach-to.c <pid-of-target-process>\n");
   } else {
