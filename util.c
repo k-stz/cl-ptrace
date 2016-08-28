@@ -54,7 +54,7 @@ void print_peek_data(pid_t tracee_pid, int byte_offset) {
   peek_output = ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL);
   // if ptrace() is unsuccessful it returns -1 and "errno" is set. "errno" is a global
   // variable (errno.h) that is set whenever a syscall causes a mistake. Finally strerror()
-  // makes that errno error-number readable
+  // returns the string describing the errno error-number
   if (peek_output = -1) {
     printf("errno: %s\n", strerror(errno));
   }
@@ -133,3 +133,24 @@ void print_user_regs_struct(struct user_regs_struct regs) {
   printf ("gs:      %16llx\n", regs.gs);
 }
 
+
+void print_endianness() {
+  // testing endianness:
+  // Endianness is = _byte_ order !!!
+  // 1. &x return the adress of the int
+  // 2. (char*) &x cast it to as a char pointer
+  // 3. ((char*) &x)[0] read the first char (there are 4 chars in an int as one char = 1
+  //    byte, int = 4 bytes
+  // 4. ((int)((char*) &x)[0]) interpret that first char as an int. Now if we have little-endian
+  //    then the int x = 1 will be stored on the machine with least significant byte first ergo
+  //    the "int 1" will look like this byte-1: 00000001 byte-2,3,4: 00000000  on little-endian
+  //    on big-endian.
+  // This is especially important to note when interpreting data from hex-editors
+  int x = 1;
+  printf("Machine uses ");
+  if (1 == ((int)((char*) &x)[0])) { 
+    printf("LITTLE-Endian\n");
+  } else {
+    printf("BIG-Endian\n");
+  };
+}
