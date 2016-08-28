@@ -31,7 +31,6 @@
 // a list of the header sources included in given program
 
 
-
 void poke_user(pid_t tracee_process, int word_offset, long long int word) {
   // Copy the word _data_ to offset _addr_
   printf("    inside poke_user, word_offset: %d, word %llu\n", word_offset, word);

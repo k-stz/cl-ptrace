@@ -34,6 +34,10 @@ struct user_regs_struct regs;
 
 int status;
 
+/* void print_peek_data(pid_t tracee_pid, int word_offset) { */
+/*   printf("PEEKDATA: %llx\n", ptrace(PTRACE_PEEKDATA, tracee_pid, 8 * word_offset, NULL)); */
+/* } */
+
 int main(int argc, char **argv) {
   if (argc < 2) {
     printf("Usage: ./attach-to.c <pid-of-target-process>\n");
@@ -70,3 +74,4 @@ int main(int argc, char **argv) {
   };
 
 }
+

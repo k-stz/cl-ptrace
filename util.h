@@ -23,9 +23,15 @@
 
 
 
-void poke_user(pid_t tracee_process, int word_offset, long long int word);
+void poke_user(pid_t tracee_pid, int word_offset, long long int word);
 
 void print_user_regs_struct(struct user_regs_struct);
+
+void poke_user_interactively(pid_t tracee_pid);
+
+void print_peek_user(pid_t tracee_pid, int word_offset);
+
+void print_peek_user_interactively(pid_t tracee_pid);
 
 
 
