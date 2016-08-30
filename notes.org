@@ -163,3 +163,16 @@ Examples - software interrupt:
   global variable - accessed by all procedures as they call deeper and deeper. On the
   SPARC-Architecture those are R0 to R7.
   - Try to figure out if x86-64 also has those
+
+* gcc
+
+** TODO =gcc -g=
+   "with this option the compiler and linker will generate and retain symbol information
+   in the executable itself"
+   For example loading the executable with =gdb= allows to associate the sourcecode files
+   with the produces assembly. =(gdb) info line 12= for example, will show at what address
+   in the process memory those are mapped to.
+   Though since we can read out the instruction pointer we can pass that address to gdb
+   and get the assembly pointed at by !
+   For exmaple:
+   =(gdb) disassembly 0x400500= 
