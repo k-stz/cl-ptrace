@@ -147,9 +147,10 @@ void print_endianness() {
   //    byte, int = 4 bytes
   // 4. ((int)((char*) &x)[0]) interpret that first char as an int. Now if we have little-endian
   //    then the int x = 1 will be stored on the machine with least significant byte first ergo
-  //    the "int 1" will look like this byte-1: 00000001 byte-2,3,4: 00000000  on little-endian
-  //    on big-endian.
-  // This is especially important to note when interpreting data from hex-editors
+
+  //    the "int 1" will look like this byte-1: 00000001 byte-2,3,4: 00000000, on
+  //    big-endian it would be in reverse orer, so byte-4 would be 00000001 and the rest
+  //    zeros
   int x = 1;
   printf("Machine uses ");
   if (1 == ((int)((char*) &x)[0])) { 
