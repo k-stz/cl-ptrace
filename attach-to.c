@@ -51,20 +51,30 @@ int main(int argc, char **argv) {
     printf("now lets step through the child\n");
     printf("Press ENTER to step or q and then ENTER to quit\n");
     while( input_char != 'q') {
-      printf("while() entered\n");
-      ptrace(PTRACE_GETREGS, tracee_pid, NULL, &regs);
-      
-
+      printf("  %c\n", input_char);
       ptrace(PTRACE_SINGLESTEP, tracee_pid, NULL, NULL);
       waitpid(tracee_pid, &status, 0);
+      ptrace(PTRACE_GETREGS, tracee_pid, NULL, &regs);
       // thanks to waitpid the code here now definitely deals with a stopped child at its
       // next instruction:
-      /* poke_user_interactively(tracee_pid); */
-      print_peek_data_interactively(tracee_pid);
+      printf("Current Register state:\n");
       print_user_regs_struct (regs);
-      /* print_peek_user_interactively(tracee_pid); */
 
-      input_char = getchar();
+      printf("(q)uit, next (s)tep, (p)eek text, (P)oke text, peek (u)ser, poke (U)ser, print (r)egisters  \n");
+      input_char = '0'; // reset input
+      while (input_char != 's' && input_char != 'q') {
+	input_char = getchar();
+	if(input_char != '\n') {
+	  switch (input_char) {
+	  case 'p' : print_peek_data_interactively(tracee_pid); break;
+	  case 'u' : print_peek_user_interactively(tracee_pid); break;
+	  case 'r' : print_user_regs_struct(regs);
+	  }
+	}
+      }
+      
+
+      /* print_peek_user_interactively(tracee_pid); */
     }
     printf("singlestepping aborted.\n");
     ptrace(PTRACE_DETACH, tracee_pid, NULL, NULL);
