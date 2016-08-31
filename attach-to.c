@@ -60,6 +60,9 @@ int main(int argc, char **argv) {
       printf("Current Register state:\n");
       print_user_regs_struct (regs);
 
+      // TODO: put into function, needs input: user_struct_regs, and tracee_pid
+      //       add the other features
+      //       solve problem of outer loop depending on input_char - could return "false"?
       printf("(q)uit, next (s)tep, (p)eek text, (P)oke text, peek (u)ser, poke (U)ser, print (r)egisters  \n");
       input_char = '0'; // reset input
       while (input_char != 's' && input_char != 'q') {
