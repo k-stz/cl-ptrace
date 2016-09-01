@@ -21,6 +21,8 @@
 // They're used so that files  might need other headers don't have to load their definitions again
 // if they're already known by the overall program.
 
+#include <stdbool.h>
+
 void print_user_regs_struct(struct user_regs_struct);
 
 // User area operation
@@ -45,3 +47,12 @@ void print_peek_data_interactively(pid_t tracee_pid);
 void print_peek_data_at_rip(pid_t tracee_pid);
 
 
+/*
+  Interactively querries for input to perform all the above operations on the child.  It
+  returns a boolean signaling if the function's loop has been terminated due to user
+  wanting to 'q' quit (false), else true.
+
+*/
+// TODO: The function is not fully decoupled from the program flow as terminating the loop
+// with input 's' from the user expects it to run till the next (s)tep.
+bool peekpoke_interactively(pid_t tracee_pid ,struct user_regs_struct regs);
