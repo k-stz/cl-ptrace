@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/user.h> // for: struct user_regs_struct !
+#include <stdbool.h> // to use boolean types, for example by function peekpoke_interactively
 
 #include "util.h"
 
@@ -157,5 +158,26 @@ void print_endianness() {
     printf("LITTLE-Endian\n");
   } else {
     printf("BIG-Endian\n");
+  };
+}
+
+bool peekpoke_interactively(pid_t tracee_pid ,struct user_regs_struct regs)  {
+  printf("(q)uit, next (s)tep, (p)eek text, (P)oke text, peek (u)ser, poke (U)ser, print (r)egisters  \n");
+  int input_char;
+  while (input_char != 's' && input_char != 'q') {
+    input_char = getchar();
+    if(input_char != '\n') {
+      switch (input_char) {
+      case 'p' : print_peek_data_interactively(tracee_pid); break;
+      case 'u' : print_peek_user_interactively(tracee_pid); break;
+      case 'r' : print_user_regs_struct(regs);
+      }
+    }
+  }
+  // so that callee can decide to terminate as well, or call function again
+  if (input_char == 'q') { 
+    return false;
+  } else { 
+    return true;
   };
 }
