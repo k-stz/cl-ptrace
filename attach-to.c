@@ -61,7 +61,6 @@ int main(int argc, char **argv) {
       keep_looping = peekpoke_interactively(tracee_pid, regs);
       
 
-      /* print_peek_user_interactively(tracee_pid); */
     }
     printf("singlestepping aborted.\n");
     ptrace(PTRACE_DETACH, tracee_pid, NULL, NULL);

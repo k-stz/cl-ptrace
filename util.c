@@ -33,10 +33,15 @@
 
 
 void poke_user(pid_t tracee_process, int word_offset, long long int word) {
+  int ptrace_output;
   // Copy the word _data_ to offset _addr_
   printf("    inside poke_user, word_offset: %d, word %llu\n", word_offset, word);
   //                                          *addr       *data
-  ptrace(PTRACE_POKEUSER, tracee_process, 8 * word_offset, word);
+  ptrace_output = ptrace(PTRACE_POKEUSER, tracee_process, 8 * word_offset, word);
+  if (ptrace_output = -1) {
+    printf("errno: %s\n", strerror(errno));
+
+  }
 }
 
 void poke_user_interactively(pid_t tracee_pid) {
@@ -74,6 +79,31 @@ void print_peek_data_interactively(pid_t tracee_pid) {
 void print_peek_data_at_rip(pid_t tracee_pid) {
   
 }
+
+
+/// TODO: DOESNT WORK YET
+void poke_data(pid_t tracee_pid, int byte_offset, long long int word) {
+  int ptrace_output;
+  printf ("  poke_data called pid:%d, offset:%d, word:%llx\n", tracee_pid, byte_offset, word);
+  long long int  data = 0xAABBCCDD;
+  printf ("  data:%llx\n", data);
+  ptrace_output = ptrace(PTRACE_POKEDATA, tracee_pid, byte_offset, (void *)data);
+    if (ptrace_output = -1) {
+    printf("errno: %s\n", strerror(errno));
+  }
+}
+
+void poke_data_interactively(pid_t tracee_pid) {
+  int byte_offset;
+  long int word;
+  printf ("poke hexaddr: ");
+  scanf ("%d", &byte_offset);
+  printf ("hexword:");
+  scanf("%lx", &word);
+  poke_data(tracee_pid, byte_offset, word);
+
+}
+
 
 /**
  * This assumes that the tracee_pid referenced process is already traced!
@@ -162,14 +192,16 @@ void print_endianness() {
 }
 
 bool peekpoke_interactively(pid_t tracee_pid ,struct user_regs_struct regs)  {
-  printf("(q)uit, next (s)tep, (p)eek text, (P)oke text, peek (u)ser, poke (U)ser, print (r)egisters  \n");
+  printf("(q)uit, next (s)tep, (p)eek data, (P)oke data, peek (u)ser, poke (U)ser, print (r)egisters  \n");
   int input_char;
   while (input_char != 's' && input_char != 'q') {
     input_char = getchar();
     if(input_char != '\n') {
       switch (input_char) {
       case 'p' : print_peek_data_interactively(tracee_pid); break;
+      case 'P' : poke_data_interactively(tracee_pid); break;
       case 'u' : print_peek_user_interactively(tracee_pid); break;
+      case 'U' : poke_user_interactively(tracee_pid); break;
       case 'r' : print_user_regs_struct(regs);
       }
     }
