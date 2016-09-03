@@ -176,3 +176,9 @@ Examples - software interrupt:
    and get the assembly pointed at by !
    For exmaple:
    =(gdb) disassembly 0x400500= 
+   
+* TODO Disable Adress Space Layout Randomzation (ASLR)
+  On Linux:
+  =echo 0 > /proc/sys/kernel/randomize_va_space=
+
+  This might be needed, or come in handy

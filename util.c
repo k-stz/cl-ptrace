@@ -38,7 +38,7 @@ void poke_user(pid_t tracee_process, int word_offset, long long int word) {
   printf("    inside poke_user, word_offset: %d, word %llu\n", word_offset, word);
   //                                          *addr       *data
   ptrace_output = ptrace(PTRACE_POKEUSER, tracee_process, 8 * word_offset, word);
-  if (ptrace_output = -1) {
+  if (ptrace_output == -1) {
     printf("errno: %s\n", strerror(errno));
 
   }
@@ -61,7 +61,7 @@ void print_peek_data(pid_t tracee_pid, int byte_offset) {
   // if ptrace() is unsuccessful it returns -1 and "errno" is set. "errno" is a global
   // variable (errno.h) that is set whenever a syscall causes a mistake. Finally strerror()
   // returns the string describing the errno error-number
-  if (peek_output = -1) {
+  if (peek_output == -1) {
     printf("errno: %s\n", strerror(errno));
   }
   printf("PEEKDATA: %lx\n", ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL));
@@ -82,22 +82,22 @@ void print_peek_data_at_rip(pid_t tracee_pid) {
 
 
 /// TODO: DOESNT WORK YET
-void poke_data(pid_t tracee_pid, int byte_offset, long long int word) {
+void poke_data(pid_t tracee_pid, long long int byte_offset, long long int word) {
   int ptrace_output;
-  printf ("  poke_data called pid:%d, offset:%d, word:%llx\n", tracee_pid, byte_offset, word);
+  printf ("  poke_data called pid:%d, offset:%llx, word:%llx\n", tracee_pid, byte_offset, word);
   long long int  data = 0xAABBCCDD;
   printf ("  data:%llx\n", data);
-  ptrace_output = ptrace(PTRACE_POKEDATA, tracee_pid, byte_offset, (void *)data);
-    if (ptrace_output = -1) {
+  ptrace_output = ptrace(PTRACE_POKEDATA, tracee_pid, byte_offset, data);
+    if (ptrace_output == -1) {
     printf("errno: %s\n", strerror(errno));
   }
 }
 
 void poke_data_interactively(pid_t tracee_pid) {
-  int byte_offset;
+  long long int byte_offset;
   long int word;
   printf ("poke hexaddr: ");
-  scanf ("%d", &byte_offset);
+  scanf ("%llx", &byte_offset);
   printf ("hexword:");
   scanf("%lx", &word);
   poke_data(tracee_pid, byte_offset, word);
@@ -191,8 +191,26 @@ void print_endianness() {
   };
 }
 
+
+/** just test function to see which *byte-offset adresses* are readable. This
+ *  information will be used to make better sense of /proc/pid/maps as they use different adresses
+ *  than PTRACE_PEEKDATA request expects
+ */
+void peek_adresses (pid_t tracee_pid) {
+  int i;
+  int peek_output;
+  for (i = 400500; i < 400505; i++) {
+      peek_output = ptrace(PTRACE_PEEKDATA, tracee_pid, i, NULL);
+      if (peek_output == -1) {
+	printf ("i:%d\n", i);
+	printf ("errno%d, strerr: %s\n", errno, strerror (errno));
+      }
+  }
+}
+
+
 bool peekpoke_interactively(pid_t tracee_pid ,struct user_regs_struct regs)  {
-  printf("(q)uit, next (s)tep, (p)eek data, (P)oke data, peek (u)ser, poke (U)ser, print (r)egisters  \n");
+  printf("(q)uit, next (s)tep, (p)eek data, (P)oke data, peek (u)ser, poke (U)ser, print (r)egisters, (e)experiments  \n");
   int input_char;
   while (input_char != 's' && input_char != 'q') {
     input_char = getchar();
@@ -203,6 +221,7 @@ bool peekpoke_interactively(pid_t tracee_pid ,struct user_regs_struct regs)  {
       case 'u' : print_peek_user_interactively(tracee_pid); break;
       case 'U' : poke_user_interactively(tracee_pid); break;
       case 'r' : print_user_regs_struct(regs);
+      case 'e' : peek_adresses (tracee_pid); break;
       }
     }
   }
@@ -213,3 +232,4 @@ bool peekpoke_interactively(pid_t tracee_pid ,struct user_regs_struct regs)  {
     return true;
   };
 }
+
