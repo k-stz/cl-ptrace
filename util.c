@@ -232,7 +232,7 @@ void find_readable_memory (pid_t tracee_pid, long long int from_num, long long i
 }
 
 
-void query_readable_memory (tracee_pid) {
+void query_readable_memory (pid_t tracee_pid) {
   long long int from, to;
   printf ("Show readable address regions \nfrom hexaddr:");
   scanf ("%llx", &from);
