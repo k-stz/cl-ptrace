@@ -79,14 +79,13 @@ void print_peek_data_at_rip(pid_t tracee_pid) {
 }
 
 
-/// TODO: DOESNT WORK YET
 void poke_data(pid_t tracee_pid, long long int byte_offset, long long int word) {
   int ptrace_output;
   printf ("  poke_data called pid:%d, offset:%lld, word:%llx\n", tracee_pid, byte_offset, word);
   long long int  data = 0xAABBCCDD;
   printf ("  data:%llx\n", data);
   ptrace_output = ptrace(PTRACE_POKEDATA, tracee_pid, byte_offset, data);
-    if (ptrace_output == -1) {
+    if (ptrace_output == -1 & errno != 0) {
     printf("errno: %s\n", strerror(errno));
   }
 }
