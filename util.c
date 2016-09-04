@@ -57,7 +57,6 @@ void poke_user_interactively(pid_t tracee_pid) {
 
 void print_peek_data(pid_t tracee_pid, int byte_offset) {
   long long int peek_output;
-  printf ("  byte_offset: %d\n", byte_offset);
   peek_output = ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL);
   // if ptrace() is unsuccessful it returns -1 and "errno" is set. "errno" is a global
   // variable (errno.h) that is set whenever a syscall causes a mistake. Finally strerror()
@@ -65,6 +64,7 @@ void print_peek_data(pid_t tracee_pid, int byte_offset) {
   if (peek_output == -1 & errno != 0) {
     printf("errno: %s\n", strerror(errno));
   }
+  printf ("PEEKDATA: %llx \n", peek_output);
 }
 
 void print_peek_data_interactively(pid_t tracee_pid) {
@@ -194,27 +194,25 @@ void print_endianness() {
  *  information will be used to make better sense of /proc/pid/maps as they use different addresses
  *  than PTRACE_PEEKDATA request expects
  */
-void find_readable_memory (pid_t tracee_pid) {
+void find_readable_memory (pid_t tracee_pid, long long int from_num, long long int to_num) {
   int ranges = 0; // counts readable regions
   long long int i;
   long long int start;
-  long long int from = 0x3ff00;
-  long long int to = 0x400f00;
+  long long int from = from_num;
+  long long int to = to_num;
   long long int peek_output;
   bool found_first_readable = false;
-  for (i = from; i < to; i = i + 4) {
+  for (i = from; i < to; i = i + 1) {
     peek_output = ptrace(PTRACE_PEEKDATA, tracee_pid, i, NULL);
-    if (peek_output == -1 & errno != 0) { // TODO: add errno test, because non error output could be -1 as well
-      /* printf ("i:%lld\n", i); */
+    if (peek_output == -1 & errno != 0) {
 
-      // found first unreadable word, of after a sequence of readable once
+      // found first unreadable word, after a sequence of readable ones,
       // so this is where we will print the address range of readable words
       if (found_first_readable == true) {
 	printf ("range: %d. 0x%llx-0x%llx\n", ranges, start, i);
 	ranges++;
 	found_first_readable = false;
       }
-      /* printf ("errno%d, strerr: %s\n", errno, strerror (errno)); */
       start = i; // setting new start point of region
     } else {
       // we found a readable address
@@ -230,7 +228,17 @@ void find_readable_memory (pid_t tracee_pid) {
     // it as such up to the for-loop limit address
     printf ("range: %d. 0x%llx-0x%llx\n", ranges, start, to);
   }
-  
+  printf ("***scanning complete.***\n");
+}
+
+
+void query_readable_memory (tracee_pid) {
+  long long int from, to;
+  printf ("Show readable address regions \nfrom hexaddr:");
+  scanf ("%llx", &from);
+  printf ("to hexaddr:");
+  scanf ("%llx", &to);
+  find_readable_memory (tracee_pid, from, to);  
 }
 
 
@@ -246,7 +254,7 @@ bool peekpoke_interactively(pid_t tracee_pid ,struct user_regs_struct regs)  {
       case 'u' : print_peek_user_interactively(tracee_pid); break;
       case 'U' : poke_user_interactively(tracee_pid); break;
       case 'r' : print_user_regs_struct(regs); break;
-      case 'e' : find_readable_memory (tracee_pid); break;
+      case 'e' : query_readable_memory (tracee_pid); break;
       }
     }
   }
@@ -257,4 +265,3 @@ bool peekpoke_interactively(pid_t tracee_pid ,struct user_regs_struct regs)  {
     return true;
   };
 }
-
