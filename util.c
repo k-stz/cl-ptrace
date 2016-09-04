@@ -38,7 +38,7 @@ void poke_user(pid_t tracee_process, int word_offset, long long int word) {
   printf("    inside poke_user, word_offset: %d, word %llu\n", word_offset, word);
   //                                          *addr       *data
   ptrace_output = ptrace(PTRACE_POKEUSER, tracee_process, 8 * word_offset, word);
-  if (ptrace_output == -1) {
+  if (ptrace_output == -1 & errno != 0) {
     printf("errno: %s\n", strerror(errno));
 
   }
@@ -57,16 +57,14 @@ void poke_user_interactively(pid_t tracee_pid) {
 
 void print_peek_data(pid_t tracee_pid, int byte_offset) {
   long long int peek_output;
+  printf ("  byte_offset: %d\n", byte_offset);
   peek_output = ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL);
   // if ptrace() is unsuccessful it returns -1 and "errno" is set. "errno" is a global
   // variable (errno.h) that is set whenever a syscall causes a mistake. Finally strerror()
   // returns the string describing the errno error-number
-  if (peek_output == -1) {
+  if (peek_output == -1 & errno != 0) {
     printf("errno: %s\n", strerror(errno));
   }
-  printf("PEEKDATA: %lx\n", ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL));
-
-
 }
 
 void print_peek_data_interactively(pid_t tracee_pid) {
@@ -84,7 +82,7 @@ void print_peek_data_at_rip(pid_t tracee_pid) {
 /// TODO: DOESNT WORK YET
 void poke_data(pid_t tracee_pid, long long int byte_offset, long long int word) {
   int ptrace_output;
-  printf ("  poke_data called pid:%d, offset:%llx, word:%llx\n", tracee_pid, byte_offset, word);
+  printf ("  poke_data called pid:%d, offset:%lld, word:%llx\n", tracee_pid, byte_offset, word);
   long long int  data = 0xAABBCCDD;
   printf ("  data:%llx\n", data);
   ptrace_output = ptrace(PTRACE_POKEDATA, tracee_pid, byte_offset, data);
@@ -172,7 +170,7 @@ void print_user_regs_struct(struct user_regs_struct regs) {
 void print_endianness() {
   // testing endianness:
   // Endianness is = _byte_ order !!!
-  // 1. &x return the adress of the int
+  // 1. &x return the address of the int
   // 2. (char*) &x cast it to as a char pointer
   // 3. ((char*) &x)[0] read the first char (there are 4 chars in an int as one char = 1
   //    byte, int = 4 bytes
@@ -192,20 +190,47 @@ void print_endianness() {
 }
 
 
-/** just test function to see which *byte-offset adresses* are readable. This
- *  information will be used to make better sense of /proc/pid/maps as they use different adresses
+/** just test function to see which *byte-offset addresses* are readable. This
+ *  information will be used to make better sense of /proc/pid/maps as they use different addresses
  *  than PTRACE_PEEKDATA request expects
  */
-void peek_adresses (pid_t tracee_pid) {
-  int i;
-  int peek_output;
-  for (i = 400500; i < 400505; i++) {
-      peek_output = ptrace(PTRACE_PEEKDATA, tracee_pid, i, NULL);
-      if (peek_output == -1) {
-	printf ("i:%d\n", i);
-	printf ("errno%d, strerr: %s\n", errno, strerror (errno));
+void find_readable_memory (pid_t tracee_pid) {
+  int ranges = 0; // counts readable regions
+  long long int i;
+  long long int start;
+  long long int from = 0x3ff00;
+  long long int to = 0x400f00;
+  long long int peek_output;
+  bool found_first_readable = false;
+  for (i = from; i < to; i = i + 4) {
+    peek_output = ptrace(PTRACE_PEEKDATA, tracee_pid, i, NULL);
+    if (peek_output == -1 & errno != 0) { // TODO: add errno test, because non error output could be -1 as well
+      /* printf ("i:%lld\n", i); */
+
+      // found first unreadable word, of after a sequence of readable once
+      // so this is where we will print the address range of readable words
+      if (found_first_readable == true) {
+	printf ("range: %d. 0x%llx-0x%llx\n", ranges, start, i);
+	ranges++;
+	found_first_readable = false;
       }
+      /* printf ("errno%d, strerr: %s\n", errno, strerror (errno)); */
+      start = i; // setting new start point of region
+    } else {
+      // we found a readable address
+      if (!found_first_readable) {
+	start = i;
+	found_first_readable = true;
+      }
+    }
+    /* printf ("0x%llx: %llx\n", i, peek_output); */
   }
+  if (found_first_readable == true) {
+    // i.e. if we finished the upper loop while reading readable region, we will print
+    // it as such up to the for-loop limit address
+    printf ("range: %d. 0x%llx-0x%llx\n", ranges, start, to);
+  }
+  
 }
 
 
@@ -220,8 +245,8 @@ bool peekpoke_interactively(pid_t tracee_pid ,struct user_regs_struct regs)  {
       case 'P' : poke_data_interactively(tracee_pid); break;
       case 'u' : print_peek_user_interactively(tracee_pid); break;
       case 'U' : poke_user_interactively(tracee_pid); break;
-      case 'r' : print_user_regs_struct(regs);
-      case 'e' : peek_adresses (tracee_pid); break;
+      case 'r' : print_user_regs_struct(regs); break;
+      case 'e' : find_readable_memory (tracee_pid); break;
       }
     }
   }
