@@ -32,10 +32,10 @@
 // a list of the header sources included in given program
 
 
-void poke_user(pid_t tracee_process, int word_offset, long long int word) {
+void poke_user(pid_t tracee_process, long long int word_offset, long long int word) {
   int ptrace_output;
   // Copy the word _data_ to offset _addr_
-  printf("    inside poke_user, word_offset: %d, word %llu\n", word_offset, word);
+  printf("    inside poke_user, word_offset: %lld, word %llu\n", word_offset, word);
   //                                          *addr       *data
   ptrace_output = ptrace(PTRACE_POKEUSER, tracee_process, 8 * word_offset, word);
   if (ptrace_output == -1 & errno != 0) {
@@ -45,17 +45,18 @@ void poke_user(pid_t tracee_process, int word_offset, long long int word) {
 }
 
 void poke_user_interactively(pid_t tracee_pid) {
-  int word_offset;
+  long long int word_offset;
   long long int word;
   printf("write to user word index: ");
-  scanf("%d", &word_offset);
+  scanf("%lld", &word_offset);
   printf("hex: ");
   scanf("%llx", &word);
   poke_user(tracee_pid, word_offset, word);
 }
 
 
-void print_peek_data(pid_t tracee_pid, int byte_offset) {
+void print_peek_data(pid_t tracee_pid, long long int byte_offset) {
+  printf("byte_offset:%llx\n", byte_offset);
   long long int peek_output;
   peek_output = ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL);
   // if ptrace() is unsuccessful it returns -1 and "errno" is set. "errno" is a global
@@ -68,9 +69,9 @@ void print_peek_data(pid_t tracee_pid, int byte_offset) {
 }
 
 void print_peek_data_interactively(pid_t tracee_pid) {
-  int input;
+  long long int input;
   printf("peekdata hexaddr: ");
-  scanf("%x", &input);
+  scanf("%llx", &input);
   print_peek_data(tracee_pid, input);
 }
 
@@ -80,11 +81,10 @@ void print_peek_data_at_rip(pid_t tracee_pid) {
 
 
 void poke_data(pid_t tracee_pid, long long int byte_offset, long long int word) {
-  int ptrace_output;
+  long long int ptrace_output;
   printf ("  poke_data called pid:%d, offset:%lld, word:%llx\n", tracee_pid, byte_offset, word);
-  long long int  data = 0xAABBCCDD;
-  printf ("  data:%llx\n", data);
-  ptrace_output = ptrace(PTRACE_POKEDATA, tracee_pid, byte_offset, data);
+  printf ("  word:%llx\n", word);
+  ptrace_output = ptrace(PTRACE_POKEDATA, tracee_pid, byte_offset, word);
     if (ptrace_output == -1 & errno != 0) {
     printf("errno: %s\n", strerror(errno));
   }
@@ -92,11 +92,11 @@ void poke_data(pid_t tracee_pid, long long int byte_offset, long long int word) 
 
 void poke_data_interactively(pid_t tracee_pid) {
   long long int byte_offset;
-  long int word;
+  long long int word;
   printf ("poke hexaddr: ");
   scanf ("%llx", &byte_offset);
   printf ("hexword:");
-  scanf("%lx", &word);
+  scanf("%llx", &word);
   poke_data(tracee_pid, byte_offset, word);
 
 }
@@ -108,9 +108,9 @@ void poke_data_interactively(pid_t tracee_pid) {
  * process to print.
  */
 void print_peek_user_interactively(pid_t tracee_pid) {
-  int input;
+  long long int input;
   printf("read from user word index: ");
-  scanf("%d", &input);
+  scanf("%lld", &input);
   // the layout of user_regs and how we PEEK into it must not necessarily align, according
   // to the documentation. But it seems to work on x86_64+linux
 
@@ -125,7 +125,7 @@ void print_peek_user_interactively(pid_t tracee_pid) {
   print_peek_user(tracee_pid, input);
 }
 
-void print_peek_user(pid_t tracee_pid, int word_offset) {
+void print_peek_user(pid_t tracee_pid, long long int word_offset) {
   printf("PEEKUSER: %lx\n", ptrace(PTRACE_PEEKUSER, tracee_pid, 8 * word_offset, NULL));
 }
 
@@ -243,7 +243,7 @@ void query_readable_memory (pid_t tracee_pid) {
 
 bool peekpoke_interactively(pid_t tracee_pid ,struct user_regs_struct regs)  {
   printf("(q)uit, next (s)tep, (p)eek data, (P)oke data, peek (u)ser, poke (U)ser, print (r)egisters, (e)experiments  \n");
-  int input_char;
+  char input_char;
   while (input_char != 's' && input_char != 'q') {
     input_char = getchar();
     if(input_char != '\n') {

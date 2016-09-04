@@ -26,11 +26,11 @@
 void print_user_regs_struct(struct user_regs_struct);
 
 // User area operation
-void print_peek_user(pid_t tracee_pid, int word_offset);
+void print_peek_user(pid_t tracee_pid, long long int word_offset);
 
 void print_peek_user_interactively(pid_t tracee_pid);
 
-void poke_user(pid_t tracee_pid, int word_offset, long long int word);
+void poke_user(pid_t tracee_pid, long long int word_offset, long long int word);
 
 void poke_user_interactively(pid_t tracee_pid);
 
@@ -38,7 +38,7 @@ void poke_user_interactively(pid_t tracee_pid);
 
 // will read from the byte_offset'th byte.. if that makes sense
 // this way we can use the instruction pointer value directly (regs.rip)!
-void print_peek_data(pid_t tracee_pid, int byte_offset);
+void print_peek_data(pid_t tracee_pid, long long int byte_offset);
 
 void print_peek_data_interactively(pid_t tracee_pid);
 
