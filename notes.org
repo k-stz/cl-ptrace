@@ -182,3 +182,55 @@ Examples - software interrupt:
   =echo 0 > /proc/sys/kernel/randomize_va_space=
 
   This might be needed, or come in handy
+
+
+* /proc/pid/maps memory layout
+  "A file containing the currently mapped memory regions and their access permissions"
+  from =man proc=.  shows the virtuel address space of a process and its protection
+  (read,write,executable).  See the function in util.c called =find_readable_memory= to
+  find the regions corresponding with 'r' as in 'r'eadable For example the first row of
+  /proc/pid/maps:
+
+| start-end of virtual | permission            |   offset |    dev |   inode | pathname     |
+| address              | last one is p=private |          |        |         |              |
+|                      | or  s=shared          |          |        |         |              |
+| 00400000-00401000    | r-xp                  | 00000000 | 103:03 | 8529909 | /path/to/exe |
+|                      |                       |          |        |         |              |
+
+permission, can be changed using the =mprotect= syscall
+When a process violates its memory access then a SIGSEGV (segmentaiton fault) is issued by
+the kernel.
+TODO: not sure if permission hinders PTRACE_POKE* in any sense, as it didn't hinder it on 'w'
+lacking regions.. might be because I was using a sudo tracer process to do so..?
+
+dev, pathname and inode,
+help us find the file on the disc that this process was fed data from (I think this is the
+executable)
+
+offset,
+is the offset into the file we wrote into memory and mapped with virtuel addresses
+
+pathname,
+this one is useful for example "[stack]" might be the area containing the dynamic object,
+so if you want to =ptrace()= ourselves some object created at runtime, is is where we
+might find them
+
+** pathname and hexaddress in memory:
+you can peek_data the instructions and the search them in the executable, they're usually
+in order. But very important when you search the address you have to consider if you're
+machine uses big- or little-endian. I think most machines use little-endian. Because now
+a peekadress might return: 200b5b058901c083
+but the address is laid out in memory
+PEEKDATA:  200b 5b05 8901 c083 
+in memory: 83c0 0189 055b 0b20
+
+in the hexeditor a word is in fact a halfword it seems, just look at the last entry in the
+PEEKDATA row is c083 and in memory it is the leading chuck, we start with the least
+significant portion of a datum (little endian). Because we have broken down the datum in
+in 4x4hex value. We get 4 halfword because 0xffff can represent up to 16⁴ or 2¹⁶ aka 16
+bit (halfword).
+
+The definition of a "word" is not very rigid, but in the literature I use a word is 32bit,
+double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man page the
+"word" is used and annoted as being architecture dependent.
+
