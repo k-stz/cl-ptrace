@@ -8,6 +8,7 @@ build:
 	gcc -o bin/return-x return-x.c
 	gcc -o bin/attach-to attach-to.c
 	gcc -o bin/spam spam.c
+	gcc -o bin/dspm  dspm.c
 
 run-ptrace-test:
 	./bin/ptrace-test ./bin/return-x

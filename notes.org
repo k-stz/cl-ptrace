@@ -238,37 +238,27 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
 
 
-* TODO disassembly hacking
+* disassembly hacking
+  =(gdb) disas /r main= Shows not only the mnemonics but also the associated process data!!
+  returns the disassembly of the main function. The striking oberservation is the way it
+  is formated regarding the spacinf of addresses. It is important to note that different
+  instruction make up a smaller or bigger instruction size!! (You can tell by the <+xyz>
+  column and the process data after
 
-  from ptrace() we know the data segment value at 0x400500 is:
-| virtual address | data-value       | disassembly                                 | code                     |
-|        0x4004fa | c08300200b64058b | mov    0x200b64(%rip),%eax   # 0x601064 <x> | "EAX=x to operate on it" |
-|        0x400500 | 200b5b058901c083 | add    $0x1,%eax                            | x++;                     |
-|                 |                  |                                             |                          |
+  Example from (dspm)
+   0x00000000004004ed <+0>:	55	push   %rbp
+   0x00000000004004ee <+1>:	48 89 e5	mov    %rsp,%rbp
+   0x00000000004004f1 <+4>:	89 7d fc	mov    %edi,-0x4(%rbp)
+   0x00000000004004f4 <+7>:	48 89 75 f0	mov    %rsi,-0x10(%rbp)
+   0x00000000004004f8 <+11>:	eb 0f	jmp    0x400509 <main+28>
+   0x00000000004004fa <+13>:	8b 05 64 0b 20 00	mov    0x200b64(%rip),%eax        # 0x601064 <x>
+   0x0000000000400500 <+19>:	83 e8 01	sub    $0x1,%eax
+   0x0000000000400503 <+22>:	89 05 5b 0b 20 00	mov    %eax,0x200b5b(%rip)        # 0x601064 <x>
+   0x0000000000400509 <+28>:	8b 05 4d 0b 20 00	mov    0x200b4d(%rip),%eax        # 0x60105c <flagg>
+   0x000000000040050f <+34>:	3d cd ab 00 00	cmp    $0xabcd,%eax
+   0x0000000000400514 <+39>:	74 e4	je     0x4004fa <main+13>
+   0x0000000000400516 <+41>:	8b 05 48 0b 20 00	mov    0x200b48(%rip),%eax        # 0x601064 <x>
+   0x000000000040051c <+47>:	5d	pop    %rbp
+   0x000000000040051d <+48>:	c3	retq   
 
-Now if we change x++ to x--
-
-| 0x4004fa | e88300200b64058b | mov    0x200b64(%rip),%eax          # 0x601064 <x> | "EAX=x to operate on it" |
-| 0x400500 | 200b5b058901e883 | sub    $0x1,%eax                                   | x--;                     |
-
-We could conclude that 'e8' is the opcode for SUB and 'c0' for 
-
-which somewhat makes sense, at least for 0x400500 now all the data-value are the same but
-the least significant hexes.
-
-But the address before that 0x4004fa, tho the same instruction ('05' might represent the
-MOV opcode) the part before that is quite different? Well not quite just the two first
-hexes
-
-| code pre | data-value first hexes |
-| x++      | c0 8300200b64058b      |
-| x--      | e8 8300200b64058b      |
-|          |                        |
-2. test
-| x++ | c0 8300200b64058b |
-| x-- | e8 8300200b64058b |
-so we can't blame this on ASLR..
-
-TODO: might be off-by one bug, or figure out why the exact same disassembly has different
-corresponding data entry. Try to find a way to feed the machineword directly in get disassemble
-translate it
+   The addresses are thus alligned variably! The PUSH operation only needs a single byte!
