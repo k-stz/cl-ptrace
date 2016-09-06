@@ -234,3 +234,41 @@ The definition of a "word" is not very rigid, but in the literature I use a word
 double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man page the
 "word" is used and annoted as being architecture dependent.
 
+
+
+
+
+* TODO disassembly hacking
+
+  from ptrace() we know the data segment value at 0x400500 is:
+| virtual address | data-value       | disassembly                                 | code                     |
+|        0x4004fa | c08300200b64058b | mov    0x200b64(%rip),%eax   # 0x601064 <x> | "EAX=x to operate on it" |
+|        0x400500 | 200b5b058901c083 | add    $0x1,%eax                            | x++;                     |
+|                 |                  |                                             |                          |
+
+Now if we change x++ to x--
+
+| 0x4004fa | e88300200b64058b | mov    0x200b64(%rip),%eax          # 0x601064 <x> | "EAX=x to operate on it" |
+| 0x400500 | 200b5b058901e883 | sub    $0x1,%eax                                   | x--;                     |
+
+We could conclude that 'e8' is the opcode for SUB and 'c0' for 
+
+which somewhat makes sense, at least for 0x400500 now all the data-value are the same but
+the least significant hexes.
+
+But the address before that 0x4004fa, tho the same instruction ('05' might represent the
+MOV opcode) the part before that is quite different? Well not quite just the two first
+hexes
+
+| code pre | data-value first hexes |
+| x++      | c0 8300200b64058b      |
+| x--      | e8 8300200b64058b      |
+|          |                        |
+2. test
+| x++ | c0 8300200b64058b |
+| x-- | e8 8300200b64058b |
+so we can't blame this on ASLR..
+
+TODO: might be off-by one bug, or figure out why the exact same disassembly has different
+corresponding data entry. Try to find a way to feed the machineword directly in get disassemble
+translate it
