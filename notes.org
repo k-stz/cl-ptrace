@@ -262,3 +262,20 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    0x000000000040051d <+48>:	c3	retq   
 
    The addresses are thus alligned variably! The PUSH operation only needs a single byte!
+
+   As you might notice with the first 3 MOV instruction don't seem to have the same
+   opcode. Well first of all there ARE differnt opcode for MOV instructions (see
+   "Instruction Set Reference"), but in this case the "89" is the opcode for MOV and in
+   the 1st and 3rd line the leading 48 is in fact a _"rex prefix"_ for 64 bit operands and
+   registers (%rbp and %rsp are GPRs), that means the the MOV in the 2nd line is a 32bit
+   MOV!
+
+
+
+   _The rex prefix is a prefix for the opcode byte_ and indicates that 64 bit operands
+   or GPRs or FPRs registers will be used.
+
+
+* Instruction Set Reference
+  This is quite helpful
+  http://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
