@@ -241,7 +241,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 * disassembly hacking
   =(gdb) disas /r main= Shows not only the mnemonics but also the associated process data!!
   returns the disassembly of the main function. The striking oberservation is the way it
-  is formated regarding the spacinf of addresses. It is important to note that different
+  is formated regarding the spacing of addresses. It is important to note that different
   instruction make up a smaller or bigger instruction size!! (You can tell by the <+xyz>
   column and the process data after
 
