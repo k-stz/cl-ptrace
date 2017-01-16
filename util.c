@@ -29,7 +29,7 @@
 /* }; */
 // The full implementation can be found on /usr/include/sys/user.h:
 // It could vary on your machine use gcc -H -fsyntax-only <program.c> to get
-// a list of the header sources included in given program
+// a list of the header sources included in a given program
 
 
 void poke_user(pid_t tracee_process, long long int word_offset, long long int word) {
