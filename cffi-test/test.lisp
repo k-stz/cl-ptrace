@@ -43,3 +43,8 @@
 
 ;; (defcfun "ptrace" int ((__ptrace_request :enum)))
 
+;;       
+(defcfun ("abs" absoluto) :int (flags :int)) ; WOOOOOOOOOOOOOOOOOOOOOOOOOOORKS
+;; "abs" is the name of the clib function
+;; where `absoluto' refers to the name we can invoke it with in the lisp code!
+;; :int return-value
