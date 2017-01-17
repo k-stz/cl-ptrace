@@ -10,6 +10,10 @@ build:
 	gcc -o bin/spam spam.c
 	gcc -o bin/dspm  dspm.c
 
+	# creating own shared libraries(!!!):
+	# fPIC : "position independent code"
+	gcc -shared -fPIC -g test.c -o bin/libtest.so
+
 run-ptrace-test:
 	./bin/ptrace-test ./bin/return-x
 
@@ -22,3 +26,5 @@ run-attach-to:
 run-spam:
 	./bin/spam
 
+# run-test: shouldn't make sense to run *.so files!
+# 	./bin/test.so

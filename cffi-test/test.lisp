@@ -51,3 +51,15 @@
 ;; "abs" is the name of the clib function
 ;; where `absoluto' refers to the name we can invoke it with in the lisp code!
 ;; :int return-value
+
+;; testing with self made libraries:
+(define-foreign-library libtest
+  ;; none of these work..
+    (t (:default "~/sol_sanctum/cl-ptrace/bin/libtest")))
+
+;; nope only works on *.so files (shared object files) !
+;; trickying it into loading it anyway raises the signal: "(...) cannot dynamically load
+;; executable"
+(use-foreign-library libtest) 
+
+(defcfun ("returnsTwo" return-two) :int)
