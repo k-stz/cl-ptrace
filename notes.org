@@ -36,8 +36,8 @@
    - Note: the *init* process is a big deal - nobody is allowed to trace or control it!  A
      process is also not allowed to trace itself.
    What actually happens:
-   1. In the background all the cases are handled (1) is it the init (2) current (3)
-      already traced process, before permission to attach is granted.
+   1. In the background all the cases are handled (1) is it the init (2) itself aka
+      current process (3) already traced process, before permission to attach is granted.
    2. "the child is removed from the task queue and its parent process field is changed
       (...). It is put to the queue again in such a position that *init* comes next to it"
    3. (!)Interesting: _finally a =SIGSTOP= signal is delivered to it._ This could be useful
@@ -141,10 +141,11 @@ Examples - hardware interrupt:
 1. telling the CPU when I/O components are available - instead of a spin lock solution
 2. watchdog circuits - tell the CPU if some hardware component is not working properly
    these are interrupts are highly critical. Interupts have a priority hierarchy scheme so
-   that these kind of interrupts can handled before others.
+   that these kind of interrupts can get handled before others.
 Examples - software interrupt:
 1. system calls!
-2. Exception system is handled through software interrupts! Such as division-by-zero 
+2. Programming language Exception system is handled through software interrupts! Such as
+   division-by-zero
 
 [fn:2] on i386 this is the =eax= register - a 32bit register
 
@@ -173,7 +174,7 @@ Examples - software interrupt:
    with the produces assembly. =(gdb) info line 12= for example, will show at what address
    in the process memory those are mapped to.
    Though since we can read out the instruction pointer we can pass that address to gdb
-   and get the assembly pointed at by !
+   and get the assembly pointed at !
    For exmaple:
    =(gdb) disassembly 0x400500= 
    
@@ -200,8 +201,9 @@ Examples - software interrupt:
 permission, can be changed using the =mprotect= syscall
 When a process violates its memory access then a SIGSEGV (segmentaiton fault) is issued by
 the kernel.
-TODO: not sure if permission hinders PTRACE_POKE* in any sense, as it didn't hinder it on 'w'
-lacking regions.. might be because I was using a sudo tracer process to do so..?
+TODO: not sure if permission hinders PTRACE_POKE* in any sense, as it didn't hinder it on
+'w' lacking regions.. might be because I was using a sudo (root privilege sudo command)
+tracer process to do so..?
 
 dev, pathname and inode,
 help us find the file on the disc that this process was fed data from (I think this is the
@@ -212,7 +214,7 @@ is the offset into the file we wrote into memory and mapped with virtuel address
 
 pathname,
 this one is useful for example "[stack]" might be the area containing the dynamic object,
-so if you want to =ptrace()= ourselves some object created at runtime, is is where we
+so if you want to =ptrace()= a particular runtime object, this is where we
 might find them
 
 ** pathname and hexaddress in memory:

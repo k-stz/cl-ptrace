@@ -25,7 +25,7 @@
 
 void print_user_regs_struct(struct user_regs_struct);
 
-// User area operation
+// User area operations
 void print_peek_user(pid_t tracee_pid, long long int word_offset);
 
 void print_peek_user_interactively(pid_t tracee_pid);
@@ -34,7 +34,7 @@ void poke_user(pid_t tracee_pid, long long int word_offset, long long int word);
 
 void poke_user_interactively(pid_t tracee_pid);
 
-// Data area operation
+// Data area operations
 
 // will read from the byte_offset'th byte.. if that makes sense
 // this way we can use the instruction pointer value directly (regs.rip)!
@@ -42,8 +42,8 @@ void print_peek_data(pid_t tracee_pid, long long int byte_offset);
 
 void print_peek_data_interactively(pid_t tracee_pid);
 
-// print the from the tracee data area the value the instruction pointer currently points
-// to, ergo the next instruction to be executed when singlestepping!
+// print from the tracee data area the value the instruction pointer currently points to,
+// ergo the next instruction to be executed when singlestepping!
 void print_peek_data_at_rip(pid_t tracee_pid);
 
 
