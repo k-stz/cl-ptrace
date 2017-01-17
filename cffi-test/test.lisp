@@ -18,16 +18,19 @@
 ;; hopefully libc-2.24 has and is what we need
 (define-foreign-library libc
   ;; none of these work..
-  ;; (:unix (:or (;"libc-2.19"
-  ;; 	       "libc-2.19.so"
-  ;; 	       "/lib/x86_64-linux-gnu/libc-2.19"
-  ;; 	       "/lib/x86_64-linux-gnu/libc.so.6"
-  ;; 	       "/usr/lib/x86_64-linux-gnu/libc.so"
-  ;; 	       "libc.so.6" "libc.so" "libc-2.24.so" "libc.a"
-  ;; 	       "/usr/lib/libc-2.24.so" "/usr/lib/libc-2.24")))
+  (:unix (:or ;"libc-2.19"
+	  "libc.so.6"
+	  "libc.so"
+	  "libc-2.19.so"
+	  "/lib/x86_64-linux-gnu/libc-2.19"
+	  "/lib/x86_64-linux-gnu/libc.so.6"
+	  "/usr/lib/x86_64-linux-gnu/libc.so"
+	  "libc.so.6" "libc.so" "libc-2.24.so" "libc.a"
+	  "/usr/lib/libc-2.24.so" "/usr/lib/libc-2.24"))
   ;; TODO: how to actually load differnt versions with (:user (:OR ..)) ??
   ;; ubuntu:
-  (t (:default  "/lib/x86_64-linux-gnu/libc-2.19")))
+    (t (:default "/lib/x86_64-linux-gnu/libc-2.19"
+	   "/usr/lib/libc.so")))
 
 
 ;; NEXT-TODO:
