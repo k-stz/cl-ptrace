@@ -1,6 +1,7 @@
 # Notes while reading http://tldp.org/LDP/LGNET/81/sandeep.html
 #                     http://www.linuxjournal.com/article/6210
 #                     http://www.hep.wisc.edu/~pinghc/Process_Memory.htm
+#                     cffi manual
 
 * =ptrace()= protoype:
   #+BEGIN_SRC c
@@ -281,3 +282,10 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 * Instruction Set Reference
   This is quite helpful
   http://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+
+* CFFI
+  "Bindings [to C] are written in Lisp. They can be created at-will by Lisp programms. Lisp
+  programmers can write new bindings and add them to the image (...)
+  The oly foreig libray to load is the oe being wrapped- the one with pure C interface; no
+  C or other no-Lisp compilation is required."
+
