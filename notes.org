@@ -284,9 +284,9 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   http://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 
 * CFFI
-  "Bindings [to C] are written in Lisp. They can be created at-will by Lisp programms. Lisp
+  "Bindings [to C] are written in Lisp. They can be created at-will by Lisp programs. Lisp
   programmers can write new bindings and add them to the image (...)
-  The oly foreig libray to load is the oe being wrapped- the one with pure C interface; no
+  The only foreign library to load is the one being wrapped- the one with pure C interface; no
   C or other no-Lisp compilation is required."
 
   Because CFFI can only deal with .so files, a summary follows:
@@ -297,7 +297,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   .a statically linked:
   This means when a program is linked against it, and the library changed, the program
   needs to be compiled again for it to use the new library. Because the _linking only_
-  _takes place once, statically, during compliation_
+  _takes place once, statically, during compilation_
   If the .a static library changes the program needs to be compiled again, against it for
   the changes to be available to the program
 
@@ -308,11 +308,11 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   is dynamically taking place _at runtime of the application_
 
 ** .a .so how does it matter to CFFI?
-   Because only shared object files "*.so" can by dyncamically loaded into the
+   Because only shared object files "*.so" can by dynamically loaded into the
    Lisp image for binding creation
 
 ** creating .so libraries
-   Only differs from regular compilationn in the command line switches
+   Only differs from regular compilation in the command line switches
    
    =gcc -shared -fPIC -g test.c -o bin/libtest.so=
    
@@ -359,13 +359,16 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    TODO:
    The command line tool =nm= lets us see the symbols of an object file, the output of,
    for example =nm libtest.so= returns among other:
-                    w _Jv_RegisterClasses
-    00000000000006e5 T main
-                     U printf@@GLIBC_2.2.5
-    0000000000000630 t register_tm_clones
-    0000000000000711 T returnsTwo
+   #+BEGIN_SRC shell
+                         w _Jv_RegisterClasses
+         00000000000006e5 T main
+                          U printf@@GLIBC_2.2.5
+         0000000000000630 t register_tm_clones
+         0000000000000711 T returnsTwo
 
-    There might be some useful info in there pertaining address ofset of particular
-    functions. (And where to find functions of interest in the process' memory via ptrace!)
-   
-    For example "T" in the 2nd column means that the particular symbol is in the test/code section
+   #+END_SRC
+
+   There might be some useful info in there pertaining address offset of particular
+   functions. (And where to find functions of interest in the process' memory via ptrace!)
+ 
+   For example "T" in the 2nd column means that the particular symbol is in the text/code section
