@@ -289,3 +289,65 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   The oly foreig libray to load is the oe being wrapped- the one with pure C interface; no
   C or other no-Lisp compilation is required."
 
+  Because CFFI can only deal with .so files, a summary follows:
+
+** C - .a and .so files
+  shortly put .a are static linked libraries and .so dynamic linked libraries
+
+  .a statically linked:
+  This means when a program is linked against it, and the library changed, the program
+  needs to be compiled again for it to use the new library. Because the _linking only_
+  _takes place once, statically, during compliation_
+  If the .a static library changes the program needs to be compiled again, against it for
+  the changes to be available to the program
+
+  .so dynamically linked:
+  only .so libraries can by dynamically linked when compiling a program. That means
+  that once the compilation is complete and the .so library changes in the future,
+  the changes will be immediately available to the program because the linking
+  is dynamically taking place _at runtime of the application_
+
+** .a .so how does it matter to CFFI?
+   Because only shared object files "*.so" can by dyncamically loaded into the
+   Lisp image for binding creation
+
+** creating .so libraries
+   Only differs from regular compilationn in the command line switches
+   
+   =gcc -shared -fPIC -g test.c -o bin/libtest.so=
+   
+   where =-shared -fPIC= suffices
+
+   I.e. a shared libraries (and also .a files) can be created from any source files
+
+** Creating C bindings from any .so file!!
+   All we need is an .so file, and here is how it works:
+
+   1. First we _describe how to load a shared library_ into the Lisp image with
+      =define-foreign-library=
+      
+#+BEGIN_SRC common-lisp
+  (define-foreign-library libc-definition-name
+    ;; where to fetch the .so files on :unix systems:
+    (:unix (:or ;"libc-2.19"
+	    "libc.so"
+	    "/lib/x86_64-linux-gnu/libc-2.19"))
+      ;; default search location - if all fails
+      (t (:default "/lib/x86_64-linux-gnu/libc-2.19"
+	     "/usr/lib/libc.so")))
+
+#+END_SRC
+   2. Then we _actually load the described library_ into the Lisp image
+
+#+BEGIN_SRC common-lisp
+  (use-foreign-library libc-definition-name)
+#+END_SRC      
+
+   3. And now we can _create the bindings to the functions we care about_
+
+#+BEGIN_SRC common-lisp
+  (defcfun ("abs" absoluto) :int (flags :int))
+  ;; "abs" is the name of the clib function where `absoluto' refers to the name we can
+  ;; invoke it with in the lisp code (as `abs' is already a function in Common Lisp!
+  ;; :int = return-value
+#+END_SRC
