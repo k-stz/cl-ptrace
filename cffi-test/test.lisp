@@ -56,7 +56,7 @@
 ;; executable"
 (use-foreign-library libtest) 
 
-(defcfun ("returnsTwo" return-two) :int)
+(defcfun "returnsTwo" :int)
 
 (defctype pid-t :long)
 
@@ -66,7 +66,7 @@
                              
 (defcfun "ptrace" (:long-long)
   ;;here the multiple arguments follow:
-  (ptrace-request :int) (pid t_pid) (addr :pointer) (data :pointer))
+  (ptrace-request :int) (pid pid-t) (addr :pointer) (data :pointer))
 
 (defcfun "waitpid" :int (pid-t :int) (status :pointer) (options :int))
 
@@ -75,14 +75,15 @@
 
 (defconstant +PTRACE_ATTACH+ 16)
 (defconstant +PTRACE_DETACH+ 17)
-(defconstant +NULL+ (null-pointer))
+(defvar null-value (null-pointer))
+(defconstant +NULL+ null-value)
 
 ;; (ptrace +PTRACE_ATTACH+ <pid-t> +NULL+ +NULL+)
 ;; (waitpid <pid-t> status 0)
 ;; (ptrace +PTRACE_DETACH+ <pid-t> +NULL+ +NULL+)
 
-;; NEXT-TODO: read from status pointer; probablly have to run lisp as root process or
-;;            attaching won't work.. ?
+;; WORKS when Lisp is run as root!!!
+;; NEXT-TODO: read from status pointer;
 (defun attach-to (pid)
   (let ((status (null-pointer)))
     (print "ptrace ptrace_attach..")
@@ -90,4 +91,11 @@
     (print "waitpid..")
     (waitpid pid status 0)
     ;; TODO how to retrieve statuscode from `status'
-    (format t "attached to process PID: ~a " pid)))
+    (format t "attached to process PID: ~a " pid))
+  pid)
+
+;; add some datastructure to capture the state of a process, such as if it is already
+;; traced, or ptrace returns a signal accordingly somehow if we try to detach from an
+;; non-traced process?
+;; (defun detach-from (pid)
+;;   )
