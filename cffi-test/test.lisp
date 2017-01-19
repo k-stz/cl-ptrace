@@ -57,3 +57,37 @@
 (use-foreign-library libtest) 
 
 (defcfun ("returnsTwo" return-two) :int)
+
+(defctype pid-t :long)
+
+
+ ;; long int ptrace(enum __ptrace_request request, pid_t pid,
+ ;;                 void *addr, void *data)
+                             
+(defcfun "ptrace" (:long-long)
+  ;;here the multiple arguments follow:
+  (ptrace-request :int) (pid t_pid) (addr :pointer) (data :pointer))
+
+(defcfun "waitpid" :int (pid-t :int) (status :pointer) (options :int))
+
+;; PTRACE_ATTACH = 16
+;; PTRACE_DETACH = 17
+
+(defconstant +PTRACE_ATTACH+ 16)
+(defconstant +PTRACE_DETACH+ 17)
+(defconstant +NULL+ (null-pointer))
+
+;; (ptrace +PTRACE_ATTACH+ <pid-t> +NULL+ +NULL+)
+;; (waitpid <pid-t> status 0)
+;; (ptrace +PTRACE_DETACH+ <pid-t> +NULL+ +NULL+)
+
+;; NEXT-TODO: read from status pointer; probablly have to run lisp as root process or
+;;            attaching won't work.. ?
+(defun attach-to (pid)
+  (let ((status (null-pointer)))
+    (print "ptrace ptrace_attach..")
+    (ptrace +PTRACE_ATTACH+ pid +NULL+ +NULL+)
+    (print "waitpid..")
+    (waitpid pid status 0)
+    ;; TODO how to retrieve statuscode from `status'
+    (format t "attached to process PID: ~a " pid)))

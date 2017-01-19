@@ -5,6 +5,7 @@
 // this list with the -I option while compiling the source code
 // On my machine the files can be found in /usr/include for example sys/user.h is in
 // /usr/include/sys/user.h
+// on another in /usr/include/x86_64-linux-gnu/sys/ptrace.h
 
 #include <sys/ptrace.h>
 #include <sys/reg.h>
