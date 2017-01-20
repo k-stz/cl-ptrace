@@ -8,3 +8,7 @@ int main(int argc, char **argv) {
 int returnsTwo() {
   return 2;
 }
+
+void passByReference(int *x) {
+  *x = 2;
+}

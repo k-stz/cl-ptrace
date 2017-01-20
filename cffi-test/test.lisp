@@ -99,3 +99,12 @@
 ;; non-traced process?
 ;; (defun detach-from (pid)
 ;;   )
+
+;; TODO: read out pointer value
+;; (with-foreign-pointer (status 4)
+;;   (foreign-funcall "waitpid" :int 0 :pointer status :int 0)
+;;   status)
+
+
+;; testing pass-by-reference
+;; (defcfun ("passByReference" pbr) :void (x :pointer))

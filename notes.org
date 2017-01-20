@@ -1,3 +1,4 @@
+
 # Notes while reading http://tldp.org/LDP/LGNET/81/sandeep.html
 #                     http://www.linuxjournal.com/article/6210
 #                     http://www.hep.wisc.edu/~pinghc/Process_Memory.htm
@@ -372,3 +373,44 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    functions. (And where to find functions of interest in the process' memory via ptrace!)
  
    For example "T" in the 2nd column means that the particular symbol is in the text/code section
+
+** Pointer and Memory allocation
+
+*** Allocating Memory "Lisp dynamically" and "C dynamically"
+   =with-foreign-object= is sometimes called cynamic allocation in Lisp,
+   because the object created (allocated) therin only has dynamic extent. Dynamic extent
+   in Lisp means that the object lives only in the extend of the (with-foreign-object
+   <body>) body. Much like the =let= bindings of special veriables
+
+   =foreign-alloc= on the other hand is _what C calles "dynamic" allocation_. The object
+   get allocated to the heap and stay there unless freed by =foreign-free= !!
+   In C these kind of objects are created with =malloc()= and firends.
+
+*** Accessing Foreign Memory
+    We should always keep in mind that C imposes the semantic on all data that it is
+    really just all arrays. Pointers are represented as arrays as well.
+
+    In Lisp we will derefernence pointers with =mem-aref= and =mem-ref= !! Just like
+    =AREF= those are SETFable places!!
+
+    "To decide which one to use, consider whether you would use the array index operator
+    [n] or the pointer dereference * in C; use mem-aref for array indexing and mem-ref
+    for pointer dereferencing."
+
+*** pass by reference
+    C code:
+    #+BEGIN_SRC C
+      int x = 77;
+      printf("%d\n", x); // => 77
+      passByReference(&x); // sets x = 2
+      printf("%d\n", x); // => 2
+    #+END_SRC
+
+    Common Lisp translation (but with just Lisp's dynamic allocation):
+    #+BEGIN_SRC common-lisp
+      (with-foreign-pointer (x-ptr 4)	    ;; 4 = size of int
+        (setf (mem-ref x-ptr :int) 77)	    ;; x = 77
+        (print (mem-ref x-ptr :int))
+        (passbyreference x-ptr)
+        (print (mem-ref x-ptr :int)))
+    #+END_SRC
