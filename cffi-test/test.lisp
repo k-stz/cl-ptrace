@@ -82,16 +82,16 @@
 ;; (waitpid <pid-t> status 0)
 ;; (ptrace +PTRACE_DETACH+ <pid-t> +NULL+ +NULL+)
 
-;; WORKS when Lisp is run as root!!!
-;; NEXT-TODO: read from status pointer;
+;; WORKS, when Lisp is run as root!!!
 (defun attach-to (pid)
-  (let ((status (null-pointer)))
+  (let ((status (foreign-alloc :int)))
     (print "ptrace ptrace_attach..")
     (ptrace +PTRACE_ATTACH+ pid +NULL+ +NULL+)
     (print "waitpid..")
     (waitpid pid status 0)
-    ;; TODO how to retrieve statuscode from `status'
-    (format t "attached to process PID: ~a " pid))
+    (format t "waitpid status: ~a~%" (mem-ref status :int))
+    (format t "attached to process PID: ~a ~%" pid)
+    (foreign-free status)) ;; TODO replace with (with-foreign-object ...) or put in *variable*
   pid)
 
 ;; add some datastructure to capture the state of a process, such as if it is already
@@ -100,11 +100,11 @@
 ;; (defun detach-from (pid)
 ;;   )
 
-;; TODO: read out pointer value
-;; (with-foreign-pointer (status 4)
-;;   (foreign-funcall "waitpid" :int 0 :pointer status :int 0)
-;;   status)
-
 
 ;; testing pass-by-reference
-;; (defcfun ("passByReference" pbr) :void (x :pointer))
+(defcfun ("passByReference" pbr) :void (x :pointer))
+
+;; works:
+;; (with-foreign-object (ptr :int 1)
+;;   (pbr ptr)
+;;   (print (mem-ref ptr :int)))
