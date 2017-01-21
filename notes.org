@@ -414,3 +414,25 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
         (passbyreference x-ptr)
         (print (mem-ref x-ptr :int)))
     #+END_SRC
+
+** temporary root priviledge for ptrace
+   Now because ptrace() is a system call it requires root privilege. To successfully call
+   it in lisp requires for lisp to be run as root. There is no other way, _you need to_
+   _start the lisp program with root privilege._
+   For securities sake it you can _use another system call_ to _turn off root privilege at_
+   _runtime_ and turn it back on again. *This only works when the process was started as
+   root to begin with!!
+
+   The systemcall to toggle root priviledge is, =seteuid()=
+
+   #+BEGIN_SRC common-lisp
+     ;; This only works if you run the lisp program as root to begin with!
+     ;; turn on root priviledge
+     (sb-posix:seteuid 0)
+     ;; do your thang
+     (ptrace-or-another-root-priviledged-call)
+     ;; become root again
+     (sb-posix:seteuid 1000)
+   #+END_SRC
+
+   
