@@ -49,7 +49,7 @@
 ;; testing with self made libraries:
 (define-foreign-library libtest
   ;; none of these work..
-    (t (:default "~/sol_sanctum/cl-ptrace/bin/libtest")))
+    (t (:default "/home/k-stz/sol_sanctum/cl-ptrace/bin/libtest")))
 
 ;; nope only works on *.so files (shared object files) !
 ;; trickying it into loading it anyway raises the signal: "(...) cannot dynamically load
@@ -70,23 +70,23 @@
 
 (defcfun "waitpid" :int (pid-t :int) (status :pointer) (options :int))
 
-;; PTRACE_ATTACH = 16
-;; PTRACE_DETACH = 17
+;; PTRACE-ATTACH = 16
+;; PTRACE-DETACH = 17
 
-(defconstant +PTRACE_ATTACH+ 16)
-(defconstant +PTRACE_DETACH+ 17)
+(defconstant +PTRACE-ATTACH+ 16)
+(defconstant +PTRACE-DETACH+ 17)
 (defvar null-value (null-pointer))
 (defconstant +NULL+ null-value)
 
-;; (ptrace +PTRACE_ATTACH+ <pid-t> +NULL+ +NULL+)
+;; (ptrace +PTRACE-ATTACH+ <pid-t> +NULL+ +NULL+)
 ;; (waitpid <pid-t> status 0)
-;; (ptrace +PTRACE_DETACH+ <pid-t> +NULL+ +NULL+)
+;; (ptrace +PTRACE-DETACH+ <pid-t> +NULL+ +NULL+)
 
 ;; WORKS, when Lisp is run as root!!!
 (defun attach-to (pid)
   (let ((status (foreign-alloc :int)))
-    (print "ptrace ptrace_attach..")
-    (ptrace +PTRACE_ATTACH+ pid +NULL+ +NULL+)
+    (print "ptrace ptrace-attach..")
+    (ptrace +PTRACE-ATTACH+ pid +NULL+ +NULL+)
     (print "waitpid..")
     (waitpid pid status 0)
     (format t "waitpid status: ~a~%" (mem-ref status :int))
@@ -97,8 +97,8 @@
 ;; add some datastructure to capture the state of a process, such as if it is already
 ;; traced, or ptrace returns a signal accordingly somehow if we try to detach from an
 ;; non-traced process?
-;; (defun detach-from (pid)
-;;   )
+(defun detach-from (pid)
+  (ptrace +ptrace-detach+ pid +null+ +null+))
 
 
 ;; testing pass-by-reference
