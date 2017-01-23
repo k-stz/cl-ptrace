@@ -124,3 +124,78 @@
   (= (sb-posix:getuid) 0))
 
 
+;; (defcstruct user-regs-struct :struct )
+
+;; struct user_regs_struct
+;; {
+;;   __extension__ unsigned long long int r15;
+;;   __extension__ unsigned long long int r14;
+;;   __extension__ unsigned long long int r13;
+;;   __extension__ unsigned long long int r12;
+;;   __extension__ unsigned long long int rbp;
+;;   __extension__ unsigned long long int rbx;
+;;   __extension__ unsigned long long int r11;
+;;   __extension__ unsigned long long int r10;
+;;   __extension__ unsigned long long int r9;
+;;   __extension__ unsigned long long int r8;
+;;   __extension__ unsigned long long int rax;
+;;   __extension__ unsigned long long int rcx;
+;;   __extension__ unsigned long long int rdx;
+;;   __extension__ unsigned long long int rsi;
+;;   __extension__ unsigned long long int rdi;
+;;   __extension__ unsigned long long int orig_rax;
+;;   __extension__ unsigned long long int rip;
+;;   __extension__ unsigned long long int cs;
+;;   __extension__ unsigned long long int eflags;
+;;   __extension__ unsigned long long int rsp;
+;;   __extension__ unsigned long long int ss;
+;;   __extension__ unsigned long long int fs_base;
+;;   __extension__ unsigned long long int gs_base;
+;;   __extension__ unsigned long long int ds;
+;;   __extension__ unsigned long long int es;
+;;   __extension__ unsigned long long int fs;
+;;   __extension__ unsigned long long int gs;
+;; };
+
+(defcstruct user-regs-struct
+  (r15 :unsigned-long-long)
+  (r14 :unsigned-long-long)
+  (r13 :unsigned-long-long)
+  (r12 :unsigned-long-long)
+  (rbp :unsigned-long-long)
+  (rbx :unsigned-long-long)
+  (r11 :unsigned-long-long)
+  (r10 :unsigned-long-long)
+  (r9 :unsigned-long-long)
+  (r8 :unsigned-long-long)
+  (rax :unsigned-long-long)
+  (rcx :unsigned-long-long)
+  (rdx :unsigned-long-long)
+  (rsi :unsigned-long-long)
+  (rdi :unsigned-long-long)
+  (orig_rax :unsigned-long-long)
+  (rip :unsigned-long-long)
+  (cs :unsigned-long-long)
+  (eflags :unsigned-long-long)				       
+  (rsp :unsigned-long-long)
+  (ss :unsigned-long-long)
+  (fs_base :unsigned-long-long)
+  (gs_base :unsigned-long-long)
+  (ds :unsigned-long-long)
+  (es :unsigned-long-long)
+  (fs :unsigned-long-long)
+  (gs :unsigned-long-long))
+
+
+;; c-struct allocation
+;; (defparameter *regs* (foreign-alloc  '(:struct user-regs-struct)))
+;; (setf
+;;  (foreign-slot-value *regs* '(:struct user-regs-struct) 'rax))
+;; 42)
+
+;; TODO: print regs, capture regs struct
+(defun getregs (pid)
+  (ptrace +ptrace-getregs+ pid +null+ +null+)
+  ;;(ptrace +ptrace-getregs+ pid +null+ regs) ;; <- should be regs at the end!
+  )
+
