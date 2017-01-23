@@ -103,6 +103,14 @@
 (defun detach-from (pid)
   (ptrace +ptrace-detach+ pid +null+ +null+))
 
+;; for quick testing
+(defvar *pid*)
+(defun attach ()
+  (ptrace +ptrace-attach+ *pid* +null+ +null+))
+
+(defun detach ()
+  (ptrace +ptrace-detach+ *pid* +null+ +null+))
+
 
 ;; testing pass-by-reference
 (defcfun ("passByReference" pbr) :void (x :pointer))
@@ -114,3 +122,5 @@
 
 (defun am-i-root? ()
   (= (sb-posix:getuid) 0))
+
+

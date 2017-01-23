@@ -1,0 +1,22 @@
+* player: totem
+  When you stop the player process the music still plays
+  When you stop the soundserver, in my case puleaudio, the music stops
+
+  When you resume both, the music continues as if it was never stopped
+  from the according place in the future (as if it was just muted)
+
+  The implementation might then look for the system time and continue the music
+  accordingly.
+
+  TODO: trace syscalls issued by puleaudio/totem, I assume there is a syscall
+  returning the system time? The test could then be to see in what register
+  the time is moved to and if there is a machine instruction doing the comparison.
+  Then we might simple SETREG another value.. but then on the next iteration
+  of the loop it might simply query the acutal value.
+
+  This is where we might write a syscall tracer that will stop the process whenever
+  the time query occurs and replace the register to a fixed value.
+
+  Rather there also might be a variable storing the systemtime at startup of the music
+  track and play the music to its offset. Setting this veriable in the text portion
+  of the process might be a better fix.
