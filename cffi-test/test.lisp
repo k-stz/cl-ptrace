@@ -70,13 +70,16 @@
 
 (defcfun "waitpid" :int (pid-t :int) (status :pointer) (options :int))
 
-;; PTRACE-ATTACH = 16
-;; PTRACE-DETACH = 17
+(defconstant +PTRACE-singlestep+ 9)
+(defconstant +PTRACE-getregs+ 12)
+(defconstant +PTRACE-setregs+ 13)
+(defconstant +PTRACE-attach+ 16)
+(defconstant +PTRACE-detach+ 17)
 
-(defconstant +PTRACE-ATTACH+ 16)
-(defconstant +PTRACE-DETACH+ 17)
+
 (defvar null-value (null-pointer))
 (defconstant +NULL+ null-value)
+
 
 ;; (ptrace +PTRACE-ATTACH+ <pid-t> +NULL+ +NULL+)
 ;; (waitpid <pid-t> status 0)
@@ -108,3 +111,6 @@
 ;; (with-foreign-object (ptr :int 1)
 ;;   (pbr ptr)
 ;;   (print (mem-ref ptr :int)))
+
+(defun am-i-root? ()
+  (= (sb-posix:getuid) 0))
