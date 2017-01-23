@@ -188,14 +188,17 @@
 
 
 ;; c-struct allocation
+;; "DONE": what is the difference between '(:struct user-regs-struct) and
+;;                            '(:pointer (:struct user-regs-struct))  ?
+;;   ... testing with (getregs ..) and subsequent (foreign-slot-value ..)
+;;       seems to yield the same results, so never mind...
 ;; (defparameter *regs* (foreign-alloc  '(:struct user-regs-struct)))
 ;; (setf
 ;;  (foreign-slot-value *regs* '(:struct user-regs-struct) 'rax))
 ;; 42)
 
 ;; TODO: print regs, capture regs struct
-(defun getregs (pid)
-  (ptrace +ptrace-getregs+ pid +null+ +null+)
-  ;;(ptrace +ptrace-getregs+ pid +null+ regs) ;; <- should be regs at the end!
-  )
+(defun getregs (pid regs)
+  (ptrace +ptrace-getregs+ pid +null+ regs)
+  regs)
 
