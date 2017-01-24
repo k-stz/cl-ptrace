@@ -202,7 +202,8 @@
   (ptrace +ptrace-getregs+ pid +null+ regs)
   regs)
 
-(defun print-user-regs-struct (regs &optional without-register-docs-p)
+(defun print-user-regs-struct (regs &optional without-register-description-p)
+                        ;;(<register> <optional description>
   (loop for register in '((r15 "general purpose registers")
 			  (r14)
 			  (r13)
@@ -235,6 +236,6 @@
        (format t "~8a:~(~20x~)   ~a~%" 
 	       (car register)
 	       (foreign-slot-value regs '(:struct user-regs-struct) (car register))
-	       (if (or (null (second register)) without-register-docs-p)
+	       (if (or (null (second register)) without-register-description-p)
 		   #\Space 
 		   (second register)))))
