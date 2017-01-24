@@ -81,12 +81,11 @@
 (defconstant +NULL+ null-value)
 
 
-;; (ptrace +PTRACE-ATTACH+ <pid-t> +NULL+ +NULL+)
-;; (waitpid <pid-t> status 0)
-;; (ptrace +PTRACE-DETACH+ <pid-t> +NULL+ +NULL+)
+(defvar *pid* "The process id that functions refer to when non specified") ;; 
+
 
 ;; WORKS, when Lisp is run as root!!!
-(defun attach-to (pid)
+(defun attach-to (&optional (pid *pid*))
   (let ((status (foreign-alloc :int)))
     (print "ptrace ptrace-attach..")
     (ptrace +PTRACE-ATTACH+ pid +NULL+ +NULL+)
@@ -100,16 +99,8 @@
 ;; add some datastructure to capture the state of a process, such as if it is already
 ;; traced, or ptrace returns a signal accordingly somehow if we try to detach from an
 ;; non-traced process?
-(defun detach-from (pid)
+(defun detach-from (&optional (pid *pid*))
   (ptrace +ptrace-detach+ pid +null+ +null+))
-
-;; for quick testing
-(defvar *pid*)
-(defun attach ()
-  (ptrace +ptrace-attach+ *pid* +null+ +null+))
-
-(defun detach ()
-  (ptrace +ptrace-detach+ *pid* +null+ +null+))
 
 
 ;; testing pass-by-reference
@@ -124,9 +115,7 @@
   (= (sb-posix:getuid) 0))
 
 
-;; (defcstruct user-regs-struct :struct )
-
-;; struct user_regs_struct
+;; struct user_regs_struct  // x86_64 specific registers  !
 ;; {
 ;;   __extension__ unsigned long long int r15;
 ;;   __extension__ unsigned long long int r14;
@@ -188,22 +177,18 @@
 
 
 ;; c-struct allocation
-;; "DONE": what is the difference between '(:struct user-regs-struct) and
-;;                            '(:pointer (:struct user-regs-struct))  ?
-;;   ... testing with (getregs ..) and subsequent (foreign-slot-value ..)
-;;       seems to yield the same results, so never mind...
-;; (defparameter *regs* (foreign-alloc  '(:struct user-regs-struct)))
+;; (defparameter *regs* (foreign-alloc '(:struct user-regs-struct)))
 ;; (setf
 ;;  (foreign-slot-value *regs* '(:struct user-regs-struct) 'rax))
 ;; 42)
 
-;; TODO: print regs, capture regs struct
 (defun getregs (pid regs)
+  "Pass by reference, fills `regs' with the current register map of the traced process `pid'."
   (ptrace +ptrace-getregs+ pid +null+ regs)
   regs)
 
-(defun print-user-regs-struct (regs &optional without-register-description-p)
-                        ;;(<register> <optional description>
+(defun print-user-regs-struct (regs &optional (show-description-p t))
+                        ;;(<register> <optional description>)
   (loop for register in '((r15 "general purpose registers")
 			  (r14)
 			  (r13)
@@ -223,7 +208,7 @@
 			  (rip "instruction pointer")
 			  (cs)
 			  (eflags)
-			  (rsp "Stack Pointer (current location in stack")
+			  (rsp "Stack Pointer (current location in stack)")
 			  (ss)
 			  (fs_base)
 			  (gs_base)
@@ -232,10 +217,36 @@
 			  (fs)     
 			  (gs))
      :do
-       ;; ~( x ~) <- downcase hex numbers directive!
+     ;; ~( x ~) <- downcase hex numbers directive!
        (format t "~8a:~(~20x~)   ~a~%" 
 	       (car register)
 	       (foreign-slot-value regs '(:struct user-regs-struct) (car register))
-	       (if (or (null (second register)) without-register-description-p)
+	       (if (or (null (second register)) (not show-description-p))
 		   #\Space 
 		   (second register)))))
+
+(defun print-user-regs-struct-from-pid (&optional (pid *pid*))
+  (with-foreign-object (regs '(:struct user-regs-struct))
+    (getregs pid regs) ;; this implicitly sets `regs'!
+    (print-user-regs-struct regs)))
+
+(defun singlestep (&optional (pid *pid*))
+  (ptrace +ptrace-singlestep+ pid +null+ +null+))
+
+(defun allocate-user-regs ()
+  (foreign-alloc '(:struct user-regs-struct)))
+
+(defvar *regs* (allocate-user-regs)) ;; don't run multiple times!
+
+(defun step-loop (&optional (pid *pid*))
+  (loop 
+     :with input :do
+     (print-user-regs-struct-from-pid pid)
+     (format t "(s)tep (q)uit~%")
+     (setf input (read))
+     (case input
+       (s (singlestep pid))
+       (q (return) ;; return from this loop
+	  )
+       (t ;; but nobody came
+	))))
