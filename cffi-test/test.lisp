@@ -40,7 +40,7 @@
 
 ;; (defcfun "ptrace" int ((__ptrace_request :enum)))
 
-;;       
+;;
 (defcfun ("abs" absoluto) :int (flags :int)) ; WOOOOOOOOOOOOOOOOOOOOOOOOOOORKS
 ;; "abs" is the name of the clib function
 ;; where `absoluto' refers to the name we can invoke it with in the lisp code!
@@ -54,7 +54,7 @@
 ;; nope only works on *.so files (shared object files) !
 ;; trickying it into loading it anyway raises the signal: "(...) cannot dynamically load
 ;; executable"
-(use-foreign-library libtest) 
+(use-foreign-library libtest)
 
 (defcfun "returnsTwo" :int)
 
@@ -63,7 +63,7 @@
 
  ;; long int ptrace(enum __ptrace_request request, pid_t pid,
  ;;                 void *addr, void *data)
-                             
+
 (defcfun "ptrace" (:long-long)
   ;;here the multiple arguments follow:
   (ptrace-request :int) (pid pid-t) (addr :pointer) (data :pointer))
@@ -176,7 +176,7 @@
   (orig_rax :unsigned-long-long)
   (rip :unsigned-long-long)
   (cs :unsigned-long-long)
-  (eflags :unsigned-long-long)				       
+  (eflags :unsigned-long-long)
   (rsp :unsigned-long-long)
   (ss :unsigned-long-long)
   (fs_base :unsigned-long-long)
@@ -202,3 +202,36 @@
   (ptrace +ptrace-getregs+ pid +null+ regs)
   regs)
 
+(defun print-user-regs-struct (regs)
+  (loop for register in '((r15)
+			  (r14)
+			  (r13)
+			  (r12)
+			  (rbp)
+			  (rbx)
+			  (r11)
+			  (r10)
+			  (r9)
+			  (r8)
+			  (rax)
+			  (rcx)
+			  (rdx)
+			  (rsi)
+			  (rdi)
+			  (orig_rax)
+			  (rip)
+			  (cs)
+			  (eflags)
+			  (rsp)
+			  (ss)
+			  (fs_base)
+			  (gs_base)
+			  (ds)
+			  (es)
+			  (fs)     
+			  (gs))
+     :do
+       ;; ~( x ~) <- downcase hex numbers directive!
+       (format t "~8a:~(~20x~)~%" 
+	       (car register)
+	       (foreign-slot-value regs '(:struct user-regs-struct) (car register)))))
