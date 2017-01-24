@@ -231,7 +231,8 @@
     (print-user-regs-struct regs)))
 
 (defun singlestep (&optional (pid *pid*))
-  (ptrace +ptrace-singlestep+ pid +null+ +null+))
+  (ptrace +ptrace-singlestep+ pid +null+ +null+)
+  (waitpid pid +null+ 0))
 
 (defun allocate-user-regs ()
   (foreign-alloc '(:struct user-regs-struct)))
