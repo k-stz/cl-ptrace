@@ -293,23 +293,9 @@
 ;;       the &status variable of the waitpid will contain information that indicate the cause of the
 ;;       stop of the tracee.
 
-;; IMPORTANT: the manual seems to indicate that ptrace() calls only work when the tracee is stopped
+;; IMPORTANT: the manual seems to indicate that ptrace()-calls only work when the tracee is stopped
 
-;; NEXT-TODO: not working yet, add errno() reading out support, check out
-;;           print_peek_data() in util.c !
-(defun peekdata (byte-offset &optional (pid *pid*))
-;  (format t "byte-offset: ~a pid: ~a~%" byte-offset pid)
-  ;; the returnvalue of ptrace peekdata will be the data!
-  ;; ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL);
 
-  ;;   long long int input; <- used as byte-offset to traced memory
-
-  (with-foreign-object (foreign-byte-offset :unsigned-long-long)
-    (setf (mem-ref foreign-byte-offset :unsigned-long-long) byte-offset)
-    (ptrace +ptrace-peekdata+ pid foreign-byte-offset +null+)))
-
-;; peek test data of ./spam:
-;; byte_offset: 400500 (hex) ==> 200b5b058901c083 
 
 (defcvar "errno" :int)
 (get-var-pointer '*errno*)
@@ -321,3 +307,25 @@
   (strerror-arg *errno*))
 
 
+;; NEXT-TODO this fails as `byte-offset' passed to ptrace might be not
+;;           right. In the C code it is simply a variable of long long int;
+;;           but here the problem might be how we defined the binding to ptrace
+;;           specifically the *addr argument is simply (addr :pointer)
+(defun peekdata (byte-offset &optional (pid *pid*))
+;  (format t "byte-offset: ~a pid: ~a~%" byte-offset pid)
+  ;; the returnvalue of ptrace peekdata will be the data!
+  ;; ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL);
+
+  ;;   long long int input; <- used as byte-offset to traced memory
+
+  (let ((peeked-data))
+    (with-foreign-object (foreign-byte-offset :long-long)
+      (setf (mem-ref foreign-byte-offset :long-long) byte-offset)
+      (format t "pid: ~a foreign-byte-offset: ~a" pid foreign-byte-offset)
+      (setf peeked-data (ptrace +ptrace-peekdata+ pid (mem-ref foreign-byte-offset :long-long) +null+))
+      (if (and (= peeked-data -1) (/= *errno* 0))
+	  (print (strerror)))
+      peeked-data)))
+
+;; peek test data of ./spam:
+;; byte_offset: 400500 (hex) ==> 200b5b058901c083 
