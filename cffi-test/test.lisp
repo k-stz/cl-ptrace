@@ -112,7 +112,7 @@
 (defconstant +NULL+ null-value)
 
 
-(defvar *pid* "The process id that functions refer to when non specified") ;; 
+(defvar *pid* 0 "The process id that functions refer to when non specified") ;; 
 
 
 ;; WORKS, when Lisp is run as root!!!
@@ -284,3 +284,40 @@
 	  )
        (t ;; but nobody came
 	))))
+
+
+
+
+;; TODO: (1) tracee will stop whenever a signal is delivered. Test this, and how to
+;;       get at the signal. (2) the tracer will be notified at its next call to waitpid(2)
+;;       the &status variable of the waitpid will contain information that indicate the cause of the
+;;       stop of the tracee.
+
+;; IMPORTANT: the manual seems to indicate that ptrace() calls only work when the tracee is stopped
+
+;; NEXT-TODO: not working yet, add errno() reading out support, check out
+;;           print_peek_data() in util.c !
+(defun peekdata (byte-offset &optional (pid *pid*))
+;  (format t "byte-offset: ~a pid: ~a~%" byte-offset pid)
+  ;; the returnvalue of ptrace peekdata will be the data!
+  ;; ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL);
+
+  ;;   long long int input; <- used as byte-offset to traced memory
+
+  (with-foreign-object (foreign-byte-offset :unsigned-long-long)
+    (setf (mem-ref foreign-byte-offset :unsigned-long-long) byte-offset)
+    (ptrace +ptrace-peekdata+ pid foreign-byte-offset +null+)))
+
+;; peek test data of ./spam:
+;; byte_offset: 400500 (hex) ==> 200b5b058901c083 
+
+(defcvar "errno" :int)
+(get-var-pointer '*errno*)
+
+(defcfun ("strerror" strerror-arg) :string (errno :int))
+
+(defun strerror ()
+  "Return String describing the *errno* number."
+  (strerror-arg *errno*))
+
+
