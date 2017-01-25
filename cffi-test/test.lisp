@@ -70,11 +70,42 @@
 
 (defcfun "waitpid" :int (pid-t :int) (status :pointer) (options :int))
 
+;; "Indicate that the process making this request should be traced.
+;; All signals received by this process can be intercepted by its
+;; parent, and its parent can use the other `ptrace' requests."
+(defconstant +PTRACE-traceme+ 0)
+;; returs the _word_ in the process's text/data/user space at address ADDR (2nd argument to ptrace)
+;; the word size
+;; Remember: the `word' size is architecture dependent! On x86_64 it is 64bits!
+;;           so you ought to provide it ptrace a 8 byte container!
+;; TODO: "Linux does not have seprate text and data address spaces".
+(defconstant +PTRACE-peektext+ 1)
+(defconstant +PTRACE-peekdata+ 2)
+(defconstant +PTRACE-peekuser+ 3)
+
+(defconstant +PTRACE-poketext+ 4)
+(defconstant +PTRACE-pokedata+ 5)
+(defconstant +PTRACE-pokeuser+ 6 )
+
+(defconstant +PTRACE-cont+ 7 "Continue the process")
+(defconstant +PTRACE-kill+ 8 "Kill the process")
 (defconstant +PTRACE-singlestep+ 9)
+
+
 (defconstant +PTRACE-getregs+ 12)
 (defconstant +PTRACE-setregs+ 13)
+;; ptrace_getfpregs 14
+;; ptrace_setfpregs 15
 (defconstant +PTRACE-attach+ 16)
+
+
+(defconstant +ptrace-seize+ #x4205
+  "Like PTRACE_ATTACH, but do not force tracee to trap and do not affect signal or group stop state.")
+
 (defconstant +PTRACE-detach+ 17)
+
+(defconstant +PTRACE-syscall+ 24)
+
 
 
 (defvar null-value (null-pointer))
@@ -114,7 +145,7 @@
 (defun am-i-root? ()
   (= (sb-posix:getuid) 0))
 
-
+;; from /
 ;; struct user_regs_struct  // x86_64 specific registers  !
 ;; {
 ;;   __extension__ unsigned long long int r15;
@@ -229,6 +260,8 @@
   (with-foreign-object (regs '(:struct user-regs-struct))
     (getregs pid regs) ;; this implicitly sets `regs'!
     (print-user-regs-struct regs)))
+
+
 
 (defun singlestep (&optional (pid *pid*))
   (ptrace +ptrace-singlestep+ pid +null+ +null+)

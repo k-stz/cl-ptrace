@@ -212,7 +212,7 @@ help us find the file on the disc that this process was fed data from (I think t
 executable)
 
 offset,
-is the offset into the file we wrote into memory and mapped with virtuel addresses
+is the offset into the file we wrote into memory and mapped with virtual addresses
 
 pathname,
 this one is useful for example "[stack]" might be the area containing the dynamic object,
