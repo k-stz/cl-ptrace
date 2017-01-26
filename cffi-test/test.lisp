@@ -78,9 +78,10 @@
 ;; the word size
 ;; Remember: the `word' size is architecture dependent! On x86_64 it is 64bits!
 ;;           so you ought to provide it ptrace a 8 byte container!
-;; TODO: "Linux does not have seprate text and data address spaces".
+;; "Linux does not have seprate text and data address spaces".
+;; peektext and peekdata are equivalent request on linux!!
 (defconstant +PTRACE-peektext+ 1)
-(defconstant +PTRACE-peekdata+ 2)
+(defconstant +PTRACE-peekdata+ 2) 
 (defconstant +PTRACE-peekuser+ 3)
 
 (defconstant +PTRACE-poketext+ 4)
@@ -306,26 +307,11 @@
   "Return String describing the *errno* number."
   (strerror-arg *errno*))
 
-
-;; NEXT-TODO this fails as `byte-offset' passed to ptrace might be not
-;;           right. In the C code it is simply a variable of long long int;
-;;           but here the problem might be how we defined the binding to ptrace
-;;           specifically the *addr argument is simply (addr :pointer)
 (defun peekdata (byte-offset &optional (pid *pid*))
-;  (format t "byte-offset: ~a pid: ~a~%" byte-offset pid)
-  ;; the returnvalue of ptrace peekdata will be the data!
-  ;; ptrace(PTRACE_PEEKDATA, tracee_pid, byte_offset, NULL);
-
-  ;;   long long int input; <- used as byte-offset to traced memory
-
   (let ((peeked-data))
-    (with-foreign-object (foreign-byte-offset :long-long)
-      (setf (mem-ref foreign-byte-offset :long-long) byte-offset)
-      (format t "pid: ~a foreign-byte-offset: ~a" pid foreign-byte-offset)
-      (setf peeked-data (ptrace +ptrace-peekdata+ pid (mem-ref foreign-byte-offset :long-long) +null+))
-      (if (and (= peeked-data -1) (/= *errno* 0))
-	  (print (strerror)))
-      peeked-data)))
+    (setf peeked-data (ptrace +ptrace-peekdata+ pid (make-pointer byte-offset) +null+))
+    (if (and (= peeked-data -1) (/= *errno* 0))
+	(print (strerror)))
+    (format t "~x" peeked-data)
+    peeked-data))
 
-;; peek test data of ./spam:
-;; byte_offset: 400500 (hex) ==> 200b5b058901c083 
