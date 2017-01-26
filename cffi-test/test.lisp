@@ -315,3 +315,10 @@
     (format t "~x" peeked-data)
     peeked-data))
 
+(defun pokedata (byte-offset data &optional (pid *pid*))
+  (let ((ptrace-return-value))
+    (setf ptrace-return-value
+	  (ptrace +ptrace-pokedata+ pid (make-pointer byte-offset) (make-pointer data)))
+    (if (and (= ptrace-return-value -1) (/= *errno* 0))
+	(print (strerror))
+	data)))
