@@ -331,9 +331,11 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   for us!!!
   83 C0 01  add $01, %eax
   
-  Things to keep in mind next:
-  is every opcode only just one byte long. When does "01", assuming it is in argument
-  position, refer to EAX? etc etc
+  Feeding the above into another disassembler online reveals that
+  C0 = EAX
+  and 01 = $01
+  ... so the gdb output doesn't seem to intend to mirror the machinecode byte sequence
+  and might always put out arguments to some rule order
 
 
 
