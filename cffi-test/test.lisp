@@ -219,6 +219,10 @@
   (ptrace +ptrace-getregs+ pid +null+ regs)
   regs)
 
+
+(defun setregs (regs &optional (pid *pid*))
+  (ptrace +ptrace-setregs+ pid +null+ regs))
+
 (defun print-user-regs-struct (regs &optional (show-description-p t))
                         ;;(<register> <optional description>)
   (loop for register in '((r15 "general purpose registers")
