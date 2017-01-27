@@ -224,17 +224,17 @@ you can peek_data the instructions and the search them in the executable, they'r
 in order. But very important when you search the address you have to consider if you're
 machine uses big- or little-endian. I think most machines use little-endian. Because now
 a peekadress might return: 200b5b058901c083
-but the address is laid out in memory
+but the address is laid out in memory differently
 PEEKDATA:  200b 5b05 8901 c083 
 in memory: 83c0 0189 055b 0b20
 
 in the hexeditor a word is in fact a halfword it seems, just look at the last entry in the
-PEEKDATA row is c083 and in memory it is the leading chuck, we start with the least
+PEEKDATA row is c083 and in memory it is the leading chunk, we start with the least
 significant portion of a datum (little endian). Because we have broken down the datum in
 in 4x4hex value. We get 4 halfword because 0xffff can represent up to 16⁴ or 2¹⁶ aka 16
 bit (halfword).
 
-The definition of a "word" is not very rigid, but in the literature I use a word is 32bit,
+The definition of a "word" is not very rigid, but in the literature I use, a word is 32bit,
 double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man page the
 "word" is used and annoted as being architecture dependent.
 
@@ -267,7 +267,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
    The addresses are thus alligned variably! The PUSH operation only needs a single byte!
 
-   As you might notice with the first 3 MOV instruction don't seem to have the same
+   As you might notice the first 3 MOV instruction don't seem to have the same
    opcode. Well first of all there ARE differnt opcode for MOV instructions (see
    "Instruction Set Reference"), but in this case the "89" is the opcode for MOV and in
    the 1st and 3rd line the leading 48 is in fact a _"rex prefix"_ for 64 bit operands and
@@ -278,6 +278,63 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
    _The rex prefix is a prefix for the opcode byte_ and indicates that 64 bit operands
    or GPRs or FPRs registers will be used.
+
+* disassembly doing it all again, a few months after hiatus..
+  if (peekdata #x400500) is 200B5B058901C083
+  and the next instruction is #x400503, then the instruction is only
+  #x400500 + 3 bytes long!
+  One byte can be represented by two hex numbers
+  so of the 200B5B058901C083, only 6 places count
+  a :least endian representation, we have to read instruction in backwards
+  "380C109850B5B002"  no, not quite!
+  the tricky thing to know is that little endian pertains _byte_ order
+  so if 1024 is represented as #x400 then in memory it will be layed out as
+  0 0 4 0
+  The first two zeros are the first byte
+  4 and 0 is the 2nd byte. We start with the least significant of the #400
+  namely "00" and the then we move to the next byte "04"
+  
+  So lets go back to our example
+  200B5B058901C083 represented as bytes
+  20 0B 5B 05 89 01 C0 83
+  first we can make a surefire cut though! Because #x400503 is the next instruction
+  and it is only 6 hex numbers appart, called peekdata should return some overlapping
+  data!
+  (peekdata #x400503) ==> 58B00200B5B0589
+  
+  lets compare the two
+        200B5B058901C083
+   58B00200B5B0589    !!!oooooh, hooohooo
+
+  Oh! they overlap in a different way I imagined they would..
+  Now even more surprising is:
+  (peekdata #x400500) ==>       200B5B058901C083
+  (peekdata #x400501) ==>       200B5B058901C0
+  (peekdata #x400502) ==>  -74FFDFF4A4FA76FF    ;; what the..?
+  (peekdata #x400503) ==>  58B00200B5B0589
+  
+  let's keep that (peekdata #x400502) output in mind. It might be an issue of
+  representing a number as twos-complement. It should be avoidable by only issuing
+  peekdata at portions the instructionp pointer rip will point to!
+
+  Moving along, only 6 bytes make up the instruction. But which 6?
+  It should be obvious now that those must be the bytes that went missing
+  with increasing hex-number calls so:
+  01 C0 83
+  And because we use :little-endian, it is in fact
+  83 C0 01
+  Now which instruction is this??
+  Well after redicovering that I already did a lot of good progress on this same
+  issue some months ago before before my hiatus on this project, calling
+  gdb bin/spam and then (gdb) disas /r main
+  lets us see an output of the process data that directly is translated to assembly
+  for us!!!
+  83 C0 01  add $01, %eax
+  
+  Things to keep in mind next:
+  is every opcode only just one byte long. When does "01", assuming it is in argument
+  position, refer to EAX? etc etc
+
 
 
 * Instruction Set Reference

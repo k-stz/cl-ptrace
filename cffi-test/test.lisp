@@ -326,3 +326,13 @@
     (if (and (= ptrace-return-value -1) (/= *errno* 0))
 	(print (strerror))
 	data)))
+
+#+sbcl
+(defun endianess ()
+  (if (find :little-endian *features*)
+      :little-endian
+      :big-endian))
+
+;; on #+sbcl (machine-type) will return the architecture!
+;; (machine-type) => "X86-64"
+
