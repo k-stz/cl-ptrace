@@ -3,6 +3,7 @@
 #                     http://www.linuxjournal.com/article/6210
 #                     http://www.hep.wisc.edu/~pinghc/Process_Memory.htm
 #                     cffi manual
+#                     https://software.intel.com/en-us/articles/introduction-to-x64-assembly
 
 * =ptrace()= protoype:
   #+BEGIN_SRC c
@@ -157,7 +158,11 @@ Examples - software interrupt:
 
 
 * TODO Inspect instructions of the memory
-  - is the instruction pointer used to read from the process memory part, using PTRACE_PEEKDATA?
+  DONE:
+  - is the instruction pointer used to read from the process memory part, using
+    PTRACE_PEEKDATA? -> Yes
+    
+  TODO:
   - If so, inspect if the commands match the executable e.g. ./bin/spam  !
 
 * TODO Registers reserved for global variables
@@ -186,7 +191,8 @@ Examples - software interrupt:
 
   This might be needed, or come in handy
 
-
+  Can it affect code injection? Or single stepping, at what time does it matter?
+   
 * /proc/pid/maps memory layout
   "A file containing the currently mapped memory regions and their access permissions"
   from =man proc=.  shows the virtuel address space of a process and its protection
@@ -521,3 +527,85 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    #+END_SRC
 
    
+
+
+* x64 Assembly - general notes
+
+  | byte             | 8bit     |
+  | word             | 16 bit   |
+  | double word      | 32 bit   |
+  | quadword (qword) | 64 bits  |
+  | double quadword  | 128 bits |
+
+  We have the general purpose registers, that we know from user-regs-struct
+  
+  First 8 general purpose Registers: RAX, RBX, RCX ... RSP
+
+  | RAX | access full 64bits                                |
+  | EAX | access first 32bits                               |
+  | AX  | first 16 bits                                     |
+  | AL  | of the AX access the lower byte (aka first 8 bits |
+  | AH  | the higher, 2nd, byte of AX                       |
+
+  you can see this in action when you diassemble 0x400500 the bin/spam binary
+  by replacing the x type accordingly
+
+  | int x             | add $0x1 %eax |                                 |
+  | long long x       | add $0x1 %rax |                                 |
+  | short x or char x | add $0x1 %eax | hmm the compiler doesnt care !  |
+
+
+  The new registers can be accessed in a similar manner R8 thorugh R15
+
+  | R8  | quadword (64bits)    |                                                 |
+  | R8D | lower dword (32bits) |                                                 |
+  | R8H | higher dword         |                                                 |
+  | R8W | lowest word          |                                                 |
+  | R8B | lowest byte          | this is "MASM" (microsoft) style, "Intel style" |
+  |     |                      | is R8L, note there is no R8H                    |
+
+
+  RIP,
+  points at the _next instruction_ this might be important to remember when
+  you want immdiate changes while singlestepping!
+  
+  RSP,
+  points to last item pushed onto stack, _which grows toward lower addresses_
+  Used to store return values of function in high-level languages (C etc.)
+
+  RFLAGS, (formed from x86 32bit register EFLAGS, so EFLAGS value can't be used
+  directly..?),
+  contains stores flags used for results of operations and for controller the cpu.
+  Some of the most useful flags include information on:
+  1. operation generated a carry or borrow
+  2. last byte was even number of 1's
+  3. result was zero
+  4. most significunt bit of result is 1
+  5. Overflow on signed operation
+
+  FPU - floating point unit,
+  contains the eight registers FPR0-FPR7, status and control register.
+  The FPR0 to FPR7 registers share space with the 64-bit MMX registers.
+  
+
+  SIMD Architecture,
+  instruction execute a single command on up to 8 pieces of data. Which might be
+  troublesome when finding the instruction, or data, we wish to change.
+
+  Also some "extensions" such as SSE2 SSE3 etc. _include opertions for_pre-fetching_
+  _memory_ (for performance reasons) might proof tricky. How can they be recognised?
+  Is this immediately apperent in the instruction name?
+
+
+  a short overview of _some command sets_ and _which registers_ they operate on
+  This is helpful, knowing that the general purpose registers are never used for
+  this.
+
+  | Technology      | Register size/type | items in parallel |
+  | MMX             | 64 MMX             | 8, 4, 2, 1        |
+  | SSE2/SSE3/SSSE3 | 64 MMX             | 8, 4, 2, 1        |
+  These are not all, nor fixed. For examle just "SSE" may operate on 64 MMX and 128 XXM!
+
+  Tools and caveats,
+  _Some assemblers reverse source and destination_ (remember how peekdata order of
+  args didn't match with the output _sequence of args to opcodes_ from gdb disas!)

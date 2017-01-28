@@ -243,7 +243,8 @@
 			  (orig_rax)
 			  (rip "instruction pointer")
 			  (cs)
-			  (eflags)
+			  ;; the most useful flaggs see notes.org
+			  (eflags "flags used for results of operations and cpu controll")
 			  (rsp "Stack Pointer (to last item pushed on stack; grows towards lower addresses)")
 			  (ss)
 			  (fs_base)
