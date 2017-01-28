@@ -244,7 +244,7 @@
 			  (rip "instruction pointer")
 			  (cs)
 			  (eflags)
-			  (rsp "Stack Pointer (current location in stack)")
+			  (rsp "Stack Pointer (to last item pushed on stack; grows towards lower addresses)")
 			  (ss)
 			  (fs_base)
 			  (gs_base)

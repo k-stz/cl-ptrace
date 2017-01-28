@@ -337,7 +337,33 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   ... so the gdb output doesn't seem to intend to mirror the machinecode byte sequence
   and might always put out arguments to some rule order
 
+* disassembly api for lisp
+  <k-stz> hey asm newb here, trying to find an api/library that will let me
+          disassemble machinecode. (x86_64 littleendian). so that foo(83 c0 01)
+	  => add $01 %eax
+  <anon0> RTFM, its only 
+  <anon1> k-stz: https://github.com/jonwil/unlinker/tree/master/udis86  [00:41]
+  <k-stz> anon1: thank you looks good  [00:42]
+  <k-stz> Furthermore I'm attempting to read out the machine code out of a live
+	  process, using the instruction pointer. I wonder if i might run into
+	  some pitfalls where the same bytes will translate to something
+	  different depending on say context..?   [00:46]
+  <anon2> k-stz: the only context you need is the operating mode (16/32/64
+	   bits)  [00:48]
+  <anon2> and you need to start from the instruction pointer of course	   
+  <k-stz> anon: thanks
 
+** TODO udis86
+   https://github.com/jonwil/unlinker/tree/master/udis86
+   I read that the format needs to be XML somewhere.. so its looking bad already
+  
+** operating mode (assembly)
+   What is the operating mode and how can it affect how machinecode will be
+   interpreted by the CPU? Finally how to tell in which operating mode a process
+   is, and do I have to perhaps change it?
+
+   
+   
 
 * Instruction Set Reference
   This is quite helpful
