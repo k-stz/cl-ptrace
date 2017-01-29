@@ -220,6 +220,12 @@
   regs)
 
 
+;; TODO extend SETF to simple write
+(defun set-user-register (user-regs-struct register new-value)
+  (setf  (foreign-slot-value user-regs-struct '(:struct user-regs-struct) register)
+	 new-value))
+
+
 (defun setregs (regs &optional (pid *pid*))
   (ptrace +ptrace-setregs+ pid +null+ regs))
 
@@ -244,8 +250,8 @@
 			  (rip "instruction pointer")
 			  (cs)
 			  ;; the most useful flaggs see notes.org
-			  (eflags "flags used for results of operations and cpu controll")
-			  (rsp "Stack Pointer (to last item pushed on stack; grows towards lower addresses)")
+			  (eflags "flags used for results of operations and cpu control")
+			  (rsp "Stack Pointer to last item pushed on stack; grows to lower addresses")
 			  (ss)
 			  (fs_base)
 			  (gs_base)
@@ -269,9 +275,14 @@
 
 
 
-(defun singlestep (&optional (pid *pid*))
+(defun singlestep (&optional (pid *pid*) (print-instruction-pointer? t))
   (ptrace +ptrace-singlestep+ pid +null+ +null+)
-  (waitpid pid +null+ 0))
+  (waitpid pid +null+ 0)
+  (when print-instruction-pointer?
+      (with-foreign-object (regs '(:struct user-regs-struct))
+	(getregs pid regs) ;; regs gets set here pass-by-reference style
+	(format t "rip: ~x" 
+		(foreign-slot-value regs '(:struct user-regs-struct) 'rip)))))
 
 (defun allocate-user-regs ()
   (foreign-alloc '(:struct user-regs-struct)))

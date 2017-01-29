@@ -12,5 +12,6 @@ int main(int argc, char **argv) {
   while(flagg == 43981) {
     x++;
   }
+  printf("Left the endless loop, because flagg = %d!\n", flagg);
   return x;
 }
