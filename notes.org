@@ -682,7 +682,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    (3) 83 c0 01 89 05 17 0b 20
 
    If you chose 3 and thought that 1 is just silly than you're goddamn right.
-   Remember that two hex make a byte #xff => 255 => #b1111
+   Remember that two hex make a byte #xff => 255 => #b11111111
 
    _the following has been only tested for bin/spam_
    You can actually find the instructions of bin/spam that you fetched with
