@@ -273,14 +273,14 @@
     (getregs pid regs) ;; this implicitly sets `regs'!
     (print-user-regs-struct regs)))
 
+(defun hex-print (number)
+  (format t "~(~x~)" number))
 
-(defun rip-address (&optional (pid *pid*) (hex-print t) )
+(defun rip-address (&optional (pid *pid*))
   ;; btw (let ((regs *regs*)) ) doesn't work, modifying `regs' will modify `*regs*'
   ;; becond the lexical scope of `regs'
   (with-foreign-object (regs '(:struct user-regs-struct))
     (getregs pid regs)
-    (when hex-print
-      (format t "~x" (foreign-slot-value regs '(:struct user-regs-struct) 'rip)))
     (foreign-slot-value regs '(:struct user-regs-struct) 'rip)))
 
 (defun singlestep (&optional (pid *pid*) (print-instruction-pointer? t))
@@ -356,3 +356,5 @@
 ;; on #+sbcl (machine-type) will return the architecture!
 ;; (machine-type) => "X86-64"
 
+;; NEXT-TODO solve problem of twoc number representation as returned by peekdata
+;; see (peekdata #x400553) on ./spam process!
