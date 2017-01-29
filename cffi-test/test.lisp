@@ -274,6 +274,14 @@
     (print-user-regs-struct regs)))
 
 
+(defun rip-address (&optional (pid *pid*) (hex-print t) )
+  ;; btw (let ((regs *regs*)) ) doesn't work, modifying `regs' will modify `*regs*'
+  ;; becond the lexical scope of `regs'
+  (with-foreign-object (regs '(:struct user-regs-struct))
+    (getregs pid regs)
+    (when hex-print
+      (format t "~x" (foreign-slot-value regs '(:struct user-regs-struct) 'rip)))
+    (foreign-slot-value regs '(:struct user-regs-struct) 'rip)))
 
 (defun singlestep (&optional (pid *pid*) (print-instruction-pointer? t))
   (ptrace +ptrace-singlestep+ pid +null+ +null+)
