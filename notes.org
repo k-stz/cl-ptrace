@@ -651,3 +651,42 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    7fff9338e0e0    rsp of this emacs session of the time of writing
    7fffffffffff    highest address
 
+
+* Little Endian
+  Way of laying out a datum that needs more than one byte to be represented.
+  Consider the C integer 33, which needs 32 bits/4 bytes to be represented
+
+  0000 0000 0010 0001 
+  1    2    3    4 bytes!
+
+  In what order can we write these 4 bytes in memory? Well there are two schemes
+  the above is big-endian because the most significant byte (big) is the first
+  and the least significant the last.
+
+  With little endian we put the least significant byte first, so the above
+  integer would be represented like so
+
+  0001 0010 0000 0000
+  1st  2nd  3rd  4th byte
+
+  each byte has an own address and here 0001 has the first(smaller) address than
+  0010.
+
+** Finally what does it matter to this project?
+   (peekdata hexhex-value) => 0x200B17058901C083
+   than in what way is the above layed out in memory,
+   out of the following
+
+   (1) 200B 1705 8901 C083
+   (2) 20 0b 17 05 89 01 c0 83
+   (3) 83 c0 01 89 05 17 0b 20
+
+   If you chose 3 and thought that 1 is just silly than you're goddamn right.
+   Remember that two hex make a byte #xff => 255 => #b1111
+
+   _the following has been only tested for bin/spam_
+   You can actually find the instructions of bin/spam that you fetched with
+   (peekdata...) if you look at bin/spam with a hexeditor. If the
+   peeked address is #400500 then you will find the byte order in question
+   at byte 500 and the following!
+   

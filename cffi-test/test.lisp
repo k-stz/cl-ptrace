@@ -64,7 +64,7 @@
  ;; long int ptrace(enum __ptrace_request request, pid_t pid,
  ;;                 void *addr, void *data)
 
-(defcfun "ptrace" (:long-long)
+(defcfun "ptrace" (:unsigned-long-long)
   ;;here the multiple arguments follow:
   (ptrace-request :int) (pid pid-t) (addr :pointer) (data :pointer))
 
@@ -331,12 +331,13 @@
   "Return String describing the *errno* number."
   (strerror-arg *errno*))
 
-(defun peekdata (byte-offset &optional (pid *pid*))
+(defun peekdata (byte-offset &optional (pid *pid*) (print-peeked-data? t))
   (let ((peeked-data))
     (setf peeked-data (ptrace +ptrace-peekdata+ pid (make-pointer byte-offset) +null+))
     (if (and (= peeked-data -1) (/= *errno* 0))
 	(print (strerror)))
-    (format t "~x" peeked-data)
+    (when print-peeked-data?
+      (format t "~x" peeked-data))
     peeked-data))
 
 (defun pokedata (byte-offset data &optional (pid *pid*))
@@ -354,7 +355,33 @@
       :big-endian))
 
 ;; on #+sbcl (machine-type) will return the architecture!
-;; (machine-type) => "X86-64"
+;; (machine-type) => "X86-6 4"
 
 ;; NEXT-TODO solve problem of twoc number representation as returned by peekdata
 ;; see (peekdata #x400553) on ./spam process!
+
+> (peekdata #x400544)
+200B17058901C083  ;; right
+2308964546498379907
+> (peekdata #x40053e)
+-3F7CFFDFF4DFFA75 ;; wrong, should be positive and 8b 05 20 0b 20 00 83 c0
+                  ;; #x8b05200b200083c0 
+
+;; only for tests right now
+(defun rip-data-print (number-of-instructions)
+  (loop for i upto number-of-instructions
+     :for rip-address = (rip-address)
+     :do (singlestep *pid* nil)
+       (format t "~x:  ~20d ~20x ~%"
+	       rip-address
+	       (peekdata rip-address *pid* nil)
+	       (peekdata rip-address *pid* nil))))
+
+;; 400553:  -8366434664387457731    -741B8BFFFF5432C3 bits: #C(62.859318 4.53236)
+;; 400558:      9019276795831412       200AFC058BE474 bits: 53.001934
+;; 40053E:  -4574812658852690549    -3F7CFFDFF4DFFA75 bits: #C(61.98842 4.53236)
+;; 400544:   2308964546498379907     200B17058901C083 bits: 61.001953
+;; 400547:    399413129577432457      58B00200B170589 bits: 58.47066
+;; 40054D:  -3657767184730880629    -32C2FFDFF4F6FA75 bits: #C(61.66567 4.53236)
+;; 400553:  -8366434664387457731    -741B8BFFFF5432C3 bits: #C(62.859318 4.53236)
+;; 400558:      9019276795831412       200AFC058BE474 bits: 53.001934
