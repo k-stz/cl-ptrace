@@ -236,7 +236,7 @@
 			  (r9 "6.")
 			  (r8 "5.")
 			  (rax)
-			  (rcx "4.")
+			  (rcx "4.; used for LOOPing in assembly..")
 			  (rdx "3.")
 			  (rsi "2.")
 			  (rdi "1. function/syscall argument")

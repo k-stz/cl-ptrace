@@ -537,6 +537,8 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   | quadword (qword) | 64 bits  |
   | double quadword  | 128 bits |
 
+
+** Registers
   We have the general purpose registers, that we know from user-regs-struct
   
   First 8 general purpose Registers: RAX, RBX, RCX ... RSP
@@ -609,3 +611,43 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   Tools and caveats,
   _Some assemblers reverse source and destination_ (remember how peekdata order of
   args didn't match with the output _sequence of args to opcodes_ from gdb disas!)
+
+
+
+** Instructions
+
+   Addressing
+   Modes The usual: immediate (literal numbers),direct (content of registers),
+   indirect(use adresses of registers).
+
+   Some Opcodes:
+   | Opcode | Meaning          |
+   | CMOV   | conditional move |
+   | JE     | jump equal       |
+   | JC     | jump carry       |
+   | LOOP   | loop with ECX    |
+   | NOP    | No operation     |
+
+   LOOPing,
+   instruction is used by decrementing RCX, ECX or CX depending on range
+   JNE if the result is 0. (testing this with a very simple for-loop _did not_
+   _use *CX_!)
+
+   floating point opcodes,
+   usually start with F
+
+** operating system
+
+   Althogh 64bit system allow addressing 64 bytes, no current CPUs can implement
+   accessing all 16 exabytes 18.446.744.073.709.551.616, how weak is that!
+
+   The AMD architecture only _uses the lower 48bits_ of an address, while the
+   bits 48 through 63 must be a copy of bit 47 or the cpu raises an interrupt.
+
+   Thus the _address range_ is in effect _0 to 00007fff'ffffffff_
+
+   (!) which explains why the stack pointer of user-regs-struct is close to that
+   limit (remember the stack pointer grows downwards!):
+   7fff9338e0e0    rsp of this emacs session of the time of writing
+   7fffffffffff    highest address
+

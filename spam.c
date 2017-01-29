@@ -9,9 +9,7 @@ int flagg = 43981; /* Hex representation: abcd */
 
 int main(int argc, char **argv) {
   /* flagg will be found in the RAX register! */
-  while(flagg == 43981) { 
-    /* TODO: it seems RAX alters between containing "flagg" and x. find a way to display */
-    /* the instructions executed */
+  while(flagg == 43981) {
     x++;
   }
   return x;
