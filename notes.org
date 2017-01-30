@@ -1,9 +1,11 @@
-
-# Notes while reading http://tldp.org/LDP/LGNET/81/sandeep.html
+# sources             http://tldp.org/LDP/LGNET/81/sandeep.html
 #                     http://www.linuxjournal.com/article/6210
 #                     http://www.hep.wisc.edu/~pinghc/Process_Memory.htm
 #                     cffi manual
 #                     https://software.intel.com/en-us/articles/introduction-to-x64-assembly
+#                     https://en.wikipedia.org/wiki/X86_assembly_language#Syntax
+
+
 
 * =ptrace()= protoype:
   #+BEGIN_SRC c
@@ -244,9 +246,40 @@ The definition of a "word" is not very rigid, but in the literature I use, a wor
 double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man page the
 "word" is used and annoted as being architecture dependent.
 
+* gdb
+** useful commands
 
+   | print <var>  | print value of var                                      |
+   | print &<var> | print address of var! useful for veryfing with peekdata |
+   |              |                                                         |
 
+* assembly
 
+** syntax
+   x86 assembly has two main syntax branches:
+   1. /intel syntax/ - prevalent in the Windows world and
+   2. /AT&T syntax/ - prevalent in the Linux world, hence the one =gdb= uses
+
+   |                 | AT&T                                  | intel                      | comment |
+   | Sigils          | $<immediate value>, %register         | automatic recognition      |         |
+   |                 |                                       |                            |         |
+   | parameter order | mov <src>, <destination>              | mov <destination>, <src>   | *sigh*  |
+   |                 |                                       |                            |         |
+   | parameter size  | mnemonic suffixes e.g. addl           | register used imply size!  |         |
+   |                 |                                       | rax,eax,ax,al are q,l,w,b  |         |
+   |                 |                                       |                            |         |
+   | addresses       | disp(base,index,scale)                | all arighmetic expressions |         |
+   |                 |                                       | are written in [brackets]  |         |
+   |                 | movl mem_location(%ebx, %ecx,4), %eax | mov eax, [ebx + ecx*4 +    |         |
+   |                 |                                       | mem_location]              |         |
+
+  
+** display the assembly of any executable
+   Even prints the machinecode assembly mapping!
+
+   =objdump -d <program>=
+
+   
 
 * disassembly hacking
   =(gdb) disas /r main= Shows not only the mnemonics but also the associated process data!!
