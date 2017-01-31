@@ -281,6 +281,130 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
    
 
+* x64 Assembly - general notes
+  
+  | byte             | 8bit     |
+  | word             | 16 bit   |
+  | double word      | 32 bit   |
+  | quadword (qword) | 64 bits  |
+  | double quadword  | 128 bits |
+
+
+** Registers
+  We have the general purpose registers, that we know from user-regs-struct
+  
+  First 8 general purpose Registers: RAX, RBX, RCX ... RSP
+
+  | RAX | access full 64bits                                |
+  | EAX | access first 32bits                               |
+  | AX  | first 16 bits                                     |
+  | AL  | of the AX access the lower byte (aka first 8 bits |
+  | AH  | the higher, 2nd, byte of AX                       |
+
+  you can see this in action when you diassemble 0x400500 the bin/spam binary
+  by replacing the x type accordingly
+
+  | int x             | add $0x1 %eax |                                 |
+  | long long x       | add $0x1 %rax |                                 |
+  | short x or char x | add $0x1 %eax | hmm the compiler doesnt care !  |
+
+
+  The new registers can be accessed in a similar manner R8 thorugh R15
+
+  | R8  | quadword (64bits)    |                                                 |
+  | R8D | lower dword (32bits) |                                                 |
+  | R8H | higher dword         |                                                 |
+  | R8W | lowest word          |                                                 |
+  | R8B | lowest byte          | this is "MASM" (microsoft) style, "Intel style" |
+  |     |                      | is R8L, note there is no R8H                    |
+
+
+  RIP,
+  points at the _next instruction_ this might be important to remember when
+  you want immdiate changes while singlestepping!
+  
+  RSP,
+  points to last item pushed onto stack, _which grows toward lower addresses_
+  Used to store return values of function in high-level languages (C etc.)
+
+  RFLAGS, (formed from x86 32bit register EFLAGS, so EFLAGS value can't be used
+  directly..?),
+  contains stores flags used for results of operations and for controller the cpu.
+  Some of the most useful flags include information on:
+  1. operation generated a carry or borrow
+  2. last byte was even number of 1's
+  3. result was zero
+  4. most significunt bit of result is 1
+  5. Overflow on signed operation
+
+  FPU - floating point unit,
+  contains the eight registers FPR0-FPR7, status and control register.
+  The FPR0 to FPR7 registers share space with the 64-bit MMX registers.
+  
+
+  SIMD Architecture,
+  instruction execute a single command on up to 8 pieces of data. Which might be
+  troublesome when finding the instruction, or data, we wish to change.
+
+  Also some "extensions" such as SSE2 SSE3 etc. _include opertions for_pre-fetching_
+  _memory_ (for performance reasons) might proof tricky. How can they be recognised?
+  Is this immediately apperent in the instruction name?
+
+
+  a short overview of _some command sets_ and _which registers_ they operate on
+  This is helpful, knowing that the general purpose registers are never used for
+  this.
+
+  | Technology      | Register size/type | items in parallel |
+  | MMX             | 64 MMX             | 8, 4, 2, 1        |
+  | SSE2/SSE3/SSSE3 | 64 MMX             | 8, 4, 2, 1        |
+  These are not all, nor fixed. For examle just "SSE" may operate on 64 MMX and 128 XXM!
+
+  Tools and caveats,
+  _Some assemblers reverse source and destination_ (remember how peekdata order of
+  args didn't match with the output _sequence of args to opcodes_ from gdb disas!)
+
+
+
+** Instructions
+
+   Addressing
+   Modes The usual: immediate (literal numbers),direct (content of registers),
+   indirect(use adresses of registers).
+
+   Some Opcodes:
+   | Opcode | Meaning          |
+   | CMOV   | conditional move |
+   | JE     | jump equal       |
+   | JC     | jump carry       |
+   | LOOP   | loop with ECX    |
+   | NOP    | No operation     |
+
+   LOOPing,
+   instruction is used by decrementing RCX, ECX or CX depending on range
+   JNE if the result is 0. (testing this with a very simple for-loop _did not_
+   _use *CX_!)
+
+   floating point opcodes,
+   usually start with F
+
+** operating system
+
+   Althogh 64bit system allow addressing 64 bytes, no current CPUs can implement
+   accessing all 16 exabytes 18.446.744.073.709.551.616, how weak is that!
+
+   The AMD architecture only _uses the lower 48bits_ of an address, while the
+   bits 48 through 63 must be a copy of bit 47 or the cpu raises an interrupt.
+
+   Thus the _address range_ is in effect _0 to 00007fff'ffffffff_
+
+   (!) which explains why the stack pointer of user-regs-struct is close to that
+   limit (remember the stack pointer grows downwards!):
+   7fff9338e0e0    rsp of this emacs session of the time of writing
+   7fffffffffff    highest address
+
+
+   
 * disassembly hacking
   =(gdb) disas /r main= Shows not only the mnemonics but also the associated process data!!
   returns the disassembly of the main function. The striking oberservation is the way it
@@ -309,29 +433,55 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    As you might notice the first 3 MOV instruction don't seem to have the same
    opcode. Well first of all there ARE differnt opcode for MOV instructions (see
    "Instruction Set Reference"), but in this case the "89" is the opcode for MOV and in
-   the 1st and 3rd line the leading 48 is in fact a _"rex prefix"_ for 64 bit operands and
-   registers (%rbp and %rsp are GPRs), that means the the MOV in the 2nd line is a 32bit
+   the <+1> and <+7> line the leading 48 is in fact a _"rex prefix"_ for 64 bit operands and
+   registers (%rbp and %rsp are GPRs), that means the the MOV in the <+4> line is a 32bit
    MOV!
-
-
 
    _The rex prefix is a prefix for the opcode byte_ and indicates that 64 bit operands
    or GPRs or FPRs registers will be used.
 
-* disassembly doing it all again, a few months after hiatus..
-  if (peekdata #x400500) is 200B5B058901C083
-  and the next instruction is #x400503, then the instruction is only
-  #x400500 + 3 bytes long!
-  One byte can be represented by two hex numbers
-  so of the 200B5B058901C083, only 6 places count
-  a :least endian representation, we have to read instruction in backwards
-  "380C109850B5B002"  no, not quite!
-  the tricky thing to know is that little endian pertains _byte_ order
-  so if 1024 is represented as #x400 then in memory it will be layed out as
-  0 0 4 0
-  The first two zeros are the first byte
-  4 and 0 is the 2nd byte. We start with the least significant of the #400
-  namely "00" and the then we move to the next byte "04"
+** disassembly process hacking
+   Consider the output:
+   
+   0x0000000000400558 <+43>:	74 e4	je     0x40053e <main+17>
+   0x000000000040055a <+45>:	8b 05 fc 0a 20 00	mov    0x200afc(%rip),%eax  # 0x60105c <flagg>
+   0x0000000000400560 <+51>:	89 c6	mov    %eax,%esi
+
+   If we want to change the value of the variable flagg, gdb's disas output helpfully puts
+   it there in clear text. Refering to it is a bit tricky. It is moved to EAX in line
+   <+45>. It is refered to with the disp(base,index,scale) address notation. Since it is
+   just disp(base) though it is a simply:
+
+   0x200afc+%rip = &flagg
+
+   But, the what value is %rip? The obvious answer is wrong, it is not 0x40055a like the
+   address of the current instruction beginning. But rather _rip points to the next_
+   _instruction_ So whenever you read assembly that wants to use the contets of %rip,
+   you need to remember that it refers to the next instruction, after the one it is
+   refered one.
+   
+   so to refer to flagg in this example
+   (peekdata (+ #x200afc (+ (rip-address) <next-instruction-offset>)))
+   and to change it, call pokedata accordingly
+
+   This changes `flagg' for every subsequent instruction! As we change it directly
+   in its memory location!
+
+   TODO: in what memory portion is flagg stored
+   TODO: test if changing it in a register will write the changed value back
+         to memory? This might be an issue of modyfing the register, like
+	 rip where changes change effect only on the next instruction... Think
+	 register and their value in assembly program-flow-charts!
+   
+** disassembly doing it all again, a few months after hiatus..
+  if (peekdata #x400500) is 200B5B058901C083 and the next instruction is #x400503, then
+  the instruction is only #x400500 + 3 bytes long!  One byte can be represented by two hex
+  numbers so of the 200B5B058901C083, only 6 places count a :least endian representation,
+  we have to read instruction in backwards "380C109850B5B002" no, not quite!  the tricky
+  thing to know is that little endian pertains _byte_ order so if 1024 is represented as
+  #x400 then in memory it will be layed out as 0 0 4 0 The first two zeros are the first
+  byte 4 and 0 is the 2nd byte. We start with the least significant of the #400 namely
+  "00" and the then we move to the next byte "04"
   
   So lets go back to our example
   200B5B058901C083 represented as bytes
@@ -376,7 +526,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   ... so the gdb output doesn't seem to intend to mirror the machinecode byte sequence
   and might always put out arguments to some rule order
 
-* disassembly api for lisp
+** disassembly api for lisp
   <k-stz> hey asm newb here, trying to find an api/library that will let me
           disassemble machinecode. (x86_64 littleendian). so that foo(83 c0 01)
 	  => add $01 %eax
@@ -391,11 +541,10 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 	   bits)  [00:48]
   <anon2> and you need to start from the instruction pointer of course	   
   <k-stz> anon: thanks
-
+  
 ** TODO udis86
    https://github.com/jonwil/unlinker/tree/master/udis86
    I read that the format needs to be XML somewhere.. so its looking bad already
-  
 ** operating mode (assembly)
    What is the operating mode and how can it affect how machinecode will be
    interpreted by the CPU? Finally how to tell in which operating mode a process
@@ -562,127 +711,6 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    
 
 
-* x64 Assembly - general notes
-
-  | byte             | 8bit     |
-  | word             | 16 bit   |
-  | double word      | 32 bit   |
-  | quadword (qword) | 64 bits  |
-  | double quadword  | 128 bits |
-
-
-** Registers
-  We have the general purpose registers, that we know from user-regs-struct
-  
-  First 8 general purpose Registers: RAX, RBX, RCX ... RSP
-
-  | RAX | access full 64bits                                |
-  | EAX | access first 32bits                               |
-  | AX  | first 16 bits                                     |
-  | AL  | of the AX access the lower byte (aka first 8 bits |
-  | AH  | the higher, 2nd, byte of AX                       |
-
-  you can see this in action when you diassemble 0x400500 the bin/spam binary
-  by replacing the x type accordingly
-
-  | int x             | add $0x1 %eax |                                 |
-  | long long x       | add $0x1 %rax |                                 |
-  | short x or char x | add $0x1 %eax | hmm the compiler doesnt care !  |
-
-
-  The new registers can be accessed in a similar manner R8 thorugh R15
-
-  | R8  | quadword (64bits)    |                                                 |
-  | R8D | lower dword (32bits) |                                                 |
-  | R8H | higher dword         |                                                 |
-  | R8W | lowest word          |                                                 |
-  | R8B | lowest byte          | this is "MASM" (microsoft) style, "Intel style" |
-  |     |                      | is R8L, note there is no R8H                    |
-
-
-  RIP,
-  points at the _next instruction_ this might be important to remember when
-  you want immdiate changes while singlestepping!
-  
-  RSP,
-  points to last item pushed onto stack, _which grows toward lower addresses_
-  Used to store return values of function in high-level languages (C etc.)
-
-  RFLAGS, (formed from x86 32bit register EFLAGS, so EFLAGS value can't be used
-  directly..?),
-  contains stores flags used for results of operations and for controller the cpu.
-  Some of the most useful flags include information on:
-  1. operation generated a carry or borrow
-  2. last byte was even number of 1's
-  3. result was zero
-  4. most significunt bit of result is 1
-  5. Overflow on signed operation
-
-  FPU - floating point unit,
-  contains the eight registers FPR0-FPR7, status and control register.
-  The FPR0 to FPR7 registers share space with the 64-bit MMX registers.
-  
-
-  SIMD Architecture,
-  instruction execute a single command on up to 8 pieces of data. Which might be
-  troublesome when finding the instruction, or data, we wish to change.
-
-  Also some "extensions" such as SSE2 SSE3 etc. _include opertions for_pre-fetching_
-  _memory_ (for performance reasons) might proof tricky. How can they be recognised?
-  Is this immediately apperent in the instruction name?
-
-
-  a short overview of _some command sets_ and _which registers_ they operate on
-  This is helpful, knowing that the general purpose registers are never used for
-  this.
-
-  | Technology      | Register size/type | items in parallel |
-  | MMX             | 64 MMX             | 8, 4, 2, 1        |
-  | SSE2/SSE3/SSSE3 | 64 MMX             | 8, 4, 2, 1        |
-  These are not all, nor fixed. For examle just "SSE" may operate on 64 MMX and 128 XXM!
-
-  Tools and caveats,
-  _Some assemblers reverse source and destination_ (remember how peekdata order of
-  args didn't match with the output _sequence of args to opcodes_ from gdb disas!)
-
-
-
-** Instructions
-
-   Addressing
-   Modes The usual: immediate (literal numbers),direct (content of registers),
-   indirect(use adresses of registers).
-
-   Some Opcodes:
-   | Opcode | Meaning          |
-   | CMOV   | conditional move |
-   | JE     | jump equal       |
-   | JC     | jump carry       |
-   | LOOP   | loop with ECX    |
-   | NOP    | No operation     |
-
-   LOOPing,
-   instruction is used by decrementing RCX, ECX or CX depending on range
-   JNE if the result is 0. (testing this with a very simple for-loop _did not_
-   _use *CX_!)
-
-   floating point opcodes,
-   usually start with F
-
-** operating system
-
-   Althogh 64bit system allow addressing 64 bytes, no current CPUs can implement
-   accessing all 16 exabytes 18.446.744.073.709.551.616, how weak is that!
-
-   The AMD architecture only _uses the lower 48bits_ of an address, while the
-   bits 48 through 63 must be a copy of bit 47 or the cpu raises an interrupt.
-
-   Thus the _address range_ is in effect _0 to 00007fff'ffffffff_
-
-   (!) which explains why the stack pointer of user-regs-struct is close to that
-   limit (remember the stack pointer grows downwards!):
-   7fff9338e0e0    rsp of this emacs session of the time of writing
-   7fffffffffff    highest address
 
 
 * Little Endian

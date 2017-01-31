@@ -220,7 +220,7 @@
   regs)
 
 
-;; TODO extend SETF to simple write
+;; TODO extend SETF to replace this
 (defun set-user-register (user-regs-struct register new-value)
   (setf  (foreign-slot-value user-regs-struct '(:struct user-regs-struct) register)
 	 new-value))
@@ -318,10 +318,6 @@
 ;;       the &status variable of the waitpid will contain information that indicate the cause of the
 ;;       stop of the tracee.
 
-;; IMPORTANT: the manual seems to indicate that ptrace()-calls only work when the tracee is stopped
-
-
-
 (defcvar "errno" :int)
 (get-var-pointer '*errno*)
 
@@ -356,32 +352,3 @@
 
 ;; on #+sbcl (machine-type) will return the architecture!
 ;; (machine-type) => "X86-6 4"
-
-;; NEXT-TODO solve problem of twoc number representation as returned by peekdata
-;; see (peekdata #x400553) on ./spam process!
-
-> (peekdata #x400544)
-200B17058901C083  ;; right
-2308964546498379907
-> (peekdata #x40053e)
--3F7CFFDFF4DFFA75 ;; wrong, should be positive and 8b 05 20 0b 20 00 83 c0
-                  ;; #x8b05200b200083c0 
-
-;; only for tests right now
-(defun rip-data-print (number-of-instructions)
-  (loop for i upto number-of-instructions
-     :for rip-address = (rip-address)
-     :do (singlestep *pid* nil)
-       (format t "~x:  ~20d ~20x ~%"
-	       rip-address
-	       (peekdata rip-address *pid* nil)
-	       (peekdata rip-address *pid* nil))))
-
-;; 400553:  -8366434664387457731    -741B8BFFFF5432C3 bits: #C(62.859318 4.53236)
-;; 400558:      9019276795831412       200AFC058BE474 bits: 53.001934
-;; 40053E:  -4574812658852690549    -3F7CFFDFF4DFFA75 bits: #C(61.98842 4.53236)
-;; 400544:   2308964546498379907     200B17058901C083 bits: 61.001953
-;; 400547:    399413129577432457      58B00200B170589 bits: 58.47066
-;; 40054D:  -3657767184730880629    -32C2FFDFF4F6FA75 bits: #C(61.66567 4.53236)
-;; 400553:  -8366434664387457731    -741B8BFFFF5432C3 bits: #C(62.859318 4.53236)
-;; 400558:      9019276795831412       200AFC058BE474 bits: 53.001934
