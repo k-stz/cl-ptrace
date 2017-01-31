@@ -352,3 +352,12 @@
 
 ;; on #+sbcl (machine-type) will return the architecture!
 ;; (machine-type) => "X86-6 4"
+
+(defun find-instruction-loop ()
+  (let  ((anchor-rip (rip-address))
+	 (i -1)) 
+    (singlestep)
+    (loop while (/= anchor-rip i) do
+         (setf i (rip-address))
+	 (format t "~x~%" i)
+	 (singlestep *pid* nil))))
