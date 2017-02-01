@@ -5,6 +5,10 @@ int main(int argc, char **argv) {
   return 2;
 }
 
+long foo (long x) {
+  return x;
+}
+
 int returnsTwo() {
   return 2;
 }

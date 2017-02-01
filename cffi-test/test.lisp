@@ -58,13 +58,26 @@
 
 (defcfun "returnsTwo" :int)
 
+(defcfun "foo" :long (x :long))
+
 (defctype pid-t :long)
 
 
  ;; long int ptrace(enum __ptrace_request request, pid_t pid,
  ;;                 void *addr, void *data)
 
-(defcfun "ptrace" (:unsigned-long-long)
+;; sao location: /usr/include/x86_64-linux-gnu/sys/ptrace.h
+
+;; error occured?
+
+;; ptrace returning -1 might indicate an error, has happened (or the return value is
+;; indeed -1). This is when we check *errno* which will be '0' on "Success". But due to
+;; cffi we have the problem that the return value of ptrace gets translated to Lisp. -1 is
+;; represented as #xffffffffffffffff, so we instead will test against that return value. Tests
+;; indicated that this is semantically correct
+;; The problem araised from using the ptrace return type :unsigned-long-long instead of :long-long
+;; which would indeed return -1, but bogus for some other values read with peekdata.
+(defcfun "ptrace" :unsigned-long-long
   ;;here the multiple arguments follow:
   (ptrace-request :int) (pid pid-t) (addr :pointer) (data :pointer))
 
@@ -330,7 +343,7 @@
 (defun peekdata (byte-offset &optional (pid *pid*) (print-peeked-data? t))
   (let ((peeked-data))
     (setf peeked-data (ptrace +ptrace-peekdata+ pid (make-pointer byte-offset) +null+))
-    (if (and (= peeked-data -1) (/= *errno* 0))
+    (if (and (= peeked-data #xffffffffffffffff) (/= *errno* 0))
 	(print (strerror)))
     (when print-peeked-data?
       (format t "~x" peeked-data))
@@ -340,7 +353,7 @@
   (let ((ptrace-return-value))
     (setf ptrace-return-value
 	  (ptrace +ptrace-pokedata+ pid (make-pointer byte-offset) (make-pointer data)))
-    (if (and (= ptrace-return-value -1) (/= *errno* 0))
+    (if (and (= ptrace-return-value #xffffffffffffffff) (/= *errno* 0))
 	(print (strerror))
 	data)))
 
@@ -367,13 +380,19 @@
 (defun find-readable-memory (from-num to-num &optional (pid *pid*))
   (loop for i from from-num to to-num by 8
      for peeked-data = (peekdata i pid nil) do
-       (if (and (= peeked-data -1) (/= *errno* 0))
+       (if (and (= peeked-data #xffffffffffffffff) (/= *errno* 0))
 	   (print (strerror))
 	   peeked-data)
        (print (strerror))
        ;; (print i)
        ))
 
-;; NEXT-TODO: because ptrace is unsigned-long-long it never returns -1 on readerror
-;; but #xFFFFFFFFFFFFFFFF, either change you're tests accordingly or find a differnt
-;; way!!
+
+(defun print-peekdata-over (n)
+  (loop for i upto n
+     for rip = (rip-address) do
+       (format t "rip: ~x ~x~%"
+	       rip
+	       (peekdata rip *pid* nil))
+       (singlestep *pid* nil)))
+
