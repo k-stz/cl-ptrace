@@ -361,3 +361,19 @@
          (setf i (rip-address))
 	 (format t "~x~%" i)
 	 (singlestep *pid* nil))))
+
+
+
+(defun find-readable-memory (from-num to-num &optional (pid *pid*))
+  (loop for i from from-num to to-num by 8
+     for peeked-data = (peekdata i pid nil) do
+       (if (and (= peeked-data -1) (/= *errno* 0))
+	   (print (strerror))
+	   peeked-data)
+       (print (strerror))
+       ;; (print i)
+       ))
+
+;; NEXT-TODO: because ptrace is unsigned-long-long it never returns -1 on readerror
+;; but #xFFFFFFFFFFFFFFFF, either change you're tests accordingly or find a differnt
+;; way!!
