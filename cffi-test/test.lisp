@@ -83,6 +83,12 @@
 
 (defcfun "waitpid" :int (pid-t :int) (status :pointer) (options :int))
 
+;; TODO where are they implemented, also in a .h file?
+(defconstant +SIGCONT+ 18)
+(defconstant +SIGSTOP+ 19)
+
+(defcfun "kill" :int (pid-t :int) (signal :int))
+
 ;; "Indicate that the process making this request should be traced.
 ;; All signals received by this process can be intercepted by its
 ;; parent, and its parent can use the other `ptrace' requests."
