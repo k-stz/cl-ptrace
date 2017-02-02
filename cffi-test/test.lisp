@@ -286,8 +286,8 @@
     (getregs pid regs) ;; this implicitly sets `regs'!
     (print-user-regs-struct regs)))
 
-(defun hex-print (number)
-  (format t "~(~x~)~%" number))
+(defun hex-print (number &optional (destination t))
+  (format destination "~(~x~)~%" number))
 
 (defun rip-address (&optional (pid *pid*))
   ;; btw (let ((regs *regs*)) ) doesn't work, modifying `regs' will modify `*regs*'
@@ -380,14 +380,27 @@
 	 (singlestep *pid* nil))))
 
 
-;; NEXT-TODO:
-;; (defun find-readable-memory (from-num to-num &optional (pid *pid*))
-;;   (loop for address from from-num to to-num
-;;      for peeked-data = (peekdata address pid nil) do
-;;        (if (ptrace-successful? peeked-data nil)
-;; 	   (format t "Address: ~(~x~) -> ~a~%" address  (strerror))
-;; 	   peeked-data)
-;;        (hex-print peeked-data)))
+;; well this is useless, it corresponds with /proc/<pid>/maps but just
+;; for the first two address ranges. 
+(defun find-readable-memory (from-num to-num &optional (pid *pid*))
+  (let ((first-readable nil)
+	(last-readable from-num)
+	(start-set? nil))
+    (loop for address from from-num to to-num  
+       for peeked-data = (peekdata address pid nil) do
+	 (if (ptrace-successful? peeked-data nil)
+	     ;; success
+	     (when (not start-set?)
+	       (setf first-readable address) 
+	       (setf start-set? t))
+	     ;; not readable
+	     (when start-set?
+	       (setf start-set? nil)
+	       (setf last-readable address)
+	       (format t "readable: ~(~x~) - ~(~x~)~%" first-readable last-readable))))
+    ;; left the loop, now either no readable found, or no unreadable found yet
+    (when start-set?
+      (format t "readable: ~(~x~) - ~(~x~)~%" first-readable to-num)))))
 
 
 (defun print-peekdata-over (n)
