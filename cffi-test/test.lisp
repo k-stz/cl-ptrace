@@ -287,7 +287,7 @@
     (print-user-regs-struct regs)))
 
 (defun hex-print (number)
-  (format t "~(~x~)" number))
+  (format t "~(~x~)~%" number))
 
 (defun rip-address (&optional (pid *pid*))
   ;; btw (let ((regs *regs*)) ) doesn't work, modifying `regs' will modify `*regs*'
@@ -340,22 +340,26 @@
   "Return String describing the *errno* number."
   (strerror-arg *errno*))
 
-(defun peekdata (byte-offset &optional (pid *pid*) (print-peeked-data? t))
+(defun peekdata (byte-offset &optional (pid *pid*) (hex-print? t))
   (let ((peeked-data))
     (setf peeked-data (ptrace +ptrace-peekdata+ pid (make-pointer byte-offset) +null+))
-    (if (and (= peeked-data #xffffffffffffffff) (/= *errno* 0))
-	(print (strerror)))
-    (when print-peeked-data?
-      (format t "~x" peeked-data))
+    (when hex-print?
+      (hex-print peeked-data))
     peeked-data))
 
-(defun pokedata (byte-offset data &optional (pid *pid*))
+(defun pokedata (byte-offset data &optional (pid *pid*) (print-errno-description? t))
   (let ((ptrace-return-value))
     (setf ptrace-return-value
 	  (ptrace +ptrace-pokedata+ pid (make-pointer byte-offset) (make-pointer data)))
-    (if (and (= ptrace-return-value #xffffffffffffffff) (/= *errno* 0))
-	(print (strerror))
-	data)))
+    (ptrace-successful? ptrace-return-value print-errno-description?)))
+
+(defun ptrace-successful? (ptrace-return-value &optional (print-errno-description? t))
+  "Return T if last ptrace call was successful. Optionally print human readable errno description."
+  (when print-errno-description?
+    (format t "~a" (strerror)))
+  (if (and (= ptrace-return-value #xffffffffffffffff) (/= *errno* 0))
+      (values nil ptrace-return-value)
+      (values t ptrace-return-value)))
 
 #+sbcl
 (defun endianess ()
@@ -376,16 +380,14 @@
 	 (singlestep *pid* nil))))
 
 
-
-(defun find-readable-memory (from-num to-num &optional (pid *pid*))
-  (loop for i from from-num to to-num by 8
-     for peeked-data = (peekdata i pid nil) do
-       (if (and (= peeked-data #xffffffffffffffff) (/= *errno* 0))
-	   (print (strerror))
-	   peeked-data)
-       (print (strerror))
-       ;; (print i)
-       ))
+;; NEXT-TODO:
+;; (defun find-readable-memory (from-num to-num &optional (pid *pid*))
+;;   (loop for address from from-num to to-num
+;;      for peeked-data = (peekdata address pid nil) do
+;;        (if (ptrace-successful? peeked-data nil)
+;; 	   (format t "Address: ~(~x~) -> ~a~%" address  (strerror))
+;; 	   peeked-data)
+;;        (hex-print peeked-data)))
 
 
 (defun print-peekdata-over (n)
