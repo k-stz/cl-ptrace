@@ -200,13 +200,15 @@
     will list symbols from an object files and also to which memory segment they belong!
     
 
-*** TODO ALSR - Adress Space Layout Randomzation
+*** ALSR - Adress Space Layout Randomzation
     The above memory segments used to start at exactly the same virtual addresses.
     This made them vulnerable to exploits. So nowadays modern operation systems employ
     ALSR, adding a random offset to these address.
 
-    TODO: when is the offset applied? Once the Process is created or on each process
-    switch (probably not)...?
+    From what I could gather ALSR is only applied at process initilisation, so far, and
+    doesn't apply at run-time or at process switching. There was a paper on ASLR
+    Re-Randomization, but a paper is for the future..
+    
     It can be easily disabled see (below) but it might be not necessary if it only
     occurs once the process is created since we always will try to ptrace it once
     its created.
@@ -255,21 +257,6 @@ Examples - software interrupt:
   
 
 
-* TODO Inspect instructions of the memory
-  DONE:
-  - is the instruction pointer used to read from the process memory part, using
-    PTRACE_PEEKDATA? -> Yes
-    
-  TODO:
-  - If so, inspect if the commands match the executable e.g. ./bin/spam  !
-
-* TODO Registers reserved for global variables
-  Some CPUs implement a register window scheme to deal with local variables of procedure
-  calls efficiently. Along with this scheme there are some Registers that are reserved for
-  global variable - accessed by all procedures as they call deeper and deeper. On the
-  SPARC-Architecture those are R0 to R7.
-  - Try to figure out if x86-64 also has those
-
 * gcc
 
 ** TODO =gcc -g=
@@ -283,13 +270,10 @@ Examples - software interrupt:
    For exmaple:
    =(gdb) disassembly 0x400500= 
    
-* TODO Disable Adress Space Layout Randomzation (ASLR)
+* Disable Adress Space Layout Randomzation (ASLR)
   On Linux:
   =echo 0 > /proc/sys/kernel/randomize_va_space=
 
-  This might be needed, or come in handy
-
-  Can it affect code injection? Or single stepping, at what time does it matter?
    
 * /proc/pid/maps memory layout
   "A file containing the currently mapped memory regions and their access permissions"
