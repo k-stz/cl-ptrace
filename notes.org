@@ -4,6 +4,7 @@
 #                     cffi manual
 #                     https://software.intel.com/en-us/articles/introduction-to-x64-assembly
 #                     https://en.wikipedia.org/wiki/X86_assembly_language#Syntax
+#                     http://duartes.org/gustavo/blog/post/anatomy-of-a-program-in-memory/
 
 
 
@@ -117,6 +118,102 @@
 
 * The Process
 
+** Memory layout (linux)
+
+*** Kernel Space and User Mode Space
+   The following is on x86, not sure if it still applies to x86_64
+  
+  First every process contains
+  1. the _same_ kernel space
+  2. its own user mode space
+
+  Of the roughly 4GB addressable by 32-bit x86, the 1GB can be kernel space and 3GB user
+  space.
+  
+  Via *page tables* each address is mapped to physical memory. Since each process has to
+  share its virtual address space with the same fixed kernel space, whenever a user mode
+  program tries to touch it a page fault is signaled for example.
+
+  But this also means that "kernel code is always addressable, _ready to handle interrupts_
+  _or system calls at any time_". So finally to understand the fixed kernel space:
+  whenever a process switch happens, only the user space is what changes!
+
+*** Memory Segment Layout
+    The User Mode Space consists of the following distinct _memory segments_, _listed_
+    _in address order from highest to lowest_ (btw "growing downwards" means new elements
+    append to this space at the one end with the lower address)
+
+    Finally these can be examined by looking at /proc/<pid>/maps!
+
+    1. Stack (grows downwards)
+       Contains the pageframes of functions, their environment and whenever you call
+       nested functions the stack grows adding a new frame, and the stack is destroyed
+       when the function returns
+       
+    2. Memory Mapping Segment (grows downwards)
+       This is where the mapping of shared objects, loaded dynamic libraries and the
+       contents of files when needed reside. This portion is filled by using the =mmap()=
+       function. Also big object runtime object (by default about 128kb) get dumped
+       here. For example if you do huge =malloc()= the area might be mapped here instead.
+
+       Btw it is also possible to create an _anonymous memory mapping_ meaning the the
+       area mapped doesn't correspond to any actual file, for example when using program
+       data or perhaps creating new buffer in Emacs before saving it to an actual file.
+
+       (sbcl note: when you load libc.so to create bindings to it with cffi, you can see
+       that it has been indeed mapped into the memory segment by looking up /proc/<pidof
+       sbcl>/maps because it occures right under the [stack:] portion of addresses !!!)
+
+    3. the Heap (grows upwards to the Memory Mapping segment!)
+       This is where runtime object live! Whenver you create an object with the =new=
+       operator or simply to a c =malloc()=. (So this is where we will focus our ptrace
+       process manipulation efforts!)
+       
+       If the Heap runs out of space, it can be enlarged with =brk()= _system call_ (so
+       the kernel must get involved at this point. Heaps are complex to implement having
+       to deliver efficiency and speed and avoid fragmentation
+
+    4. BSS segment
+       stores the contents declared _uninitilized static global variables_ (static int
+       x;). These might be useful!
+
+       (BSS stands for "Basic Service Set" if you must know!)
+
+    5. Data segment
+       stores the _initialized_ i.e. with definition of declared _static global_
+       _variables_ (meaning in the source code it already is initilized: static int =
+       22;). This also means it is _not anonymous_ mapping to the values in the programs's
+       binary image!! This is also explains why you will find initilizes static variables
+       in the executable binary file with a hex-editor.
+
+    6. Text segment
+       stores the executable with its machine code instructions and String literals.
+       Hm, writes to this area cause segmentation faults to avoid pointer bugs.
+       (This might mean that Lisps image based development is a Heap/mmap() Memory Mapping magic
+       show.)
+
+    "Data Segment",
+    people sometimes refer to the Heap + BSS + Data Segment as the simple "data segment"
+
+*** Memory Segment tools
+    =nm <obj-file.o>=
+    will list symbols from an object files and also to which memory segment they belong!
+    
+
+*** TODO ALSR - Adress Space Layout Randomzation
+    The above memory segments used to start at exactly the same virtual addresses.
+    This made them vulnerable to exploits. So nowadays modern operation systems employ
+    ALSR, adding a random offset to these address.
+
+    TODO: when is the offset applied? Once the Process is created or on each process
+    switch (probably not)...?
+    It can be easily disabled see (below) but it might be not necessary if it only
+    occurs once the process is created since we always will try to ptrace it once
+    its created.
+
+
+  
+  
 ** contains
    - program counter
    - all the CPU's registers
@@ -125,7 +222,6 @@
      - return addresses
      - saved variables
 
-  
 ** User Area + Contents
    is a reagion of the process' memory that contains information about:
    - open files

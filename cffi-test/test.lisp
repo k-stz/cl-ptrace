@@ -30,7 +30,6 @@
     (t (:default "/lib/x86_64-linux-gnu/libc-2.19"
 	   "/usr/lib/libc.so")))
 
-
 ;; this effectively loads libc into the Lisp image much, just like we load .lisp files
 ;; into the lisp image. "much like the linker does _when you start_ a C program
 (use-foreign-library libc) ;; after this point "libc" is loaded in the Lisp image!!!
@@ -226,7 +225,6 @@
   (fs :unsigned-long-long)
   (gs :unsigned-long-long))
 
-
 ;; c-struct allocation
 ;; (defparameter *regs* (foreign-alloc '(:struct user-regs-struct)))
 ;; (setf
@@ -417,3 +415,4 @@
 	       (peekdata rip *pid* nil))
        (singlestep *pid* nil)))
 
+;; NEXT-TODO how to get process task_struct
