@@ -274,6 +274,16 @@ Examples - software interrupt:
   On Linux:
   =echo 0 > /proc/sys/kernel/randomize_va_space=
 
+  Now if you have a C program with a malloc()'d pointer try to print its address.
+  By default, meaning with enabled ASLR, the address pointed to will be different
+  on each execution of the program.
+  But if you disable ASLR, like done above, you will see the the address will always
+  be the same!!
+
+  Now if you run the address lookup in an endless loop, you will see that regardless
+  of ASLR the address will stay the same during runtime, meaning that ASLR is only
+  applied once, on process creation!
+
    
 * /proc/pid/maps memory layout
   "A file containing the currently mapped memory regions and their access permissions"
