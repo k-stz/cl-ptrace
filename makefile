@@ -10,7 +10,7 @@ build:
 	gcc -o bin/spam spam.c
 	gcc -o bin/dspm dspm.c
 	gcc -o bin/malloc-test malloc-test.c
-
+	gcc -o bin/mem-layout mem-layout.c
 # creating own shared libraries(!!!):
 # fPIC : "position independent code"
 	gcc -shared -fPIC -g sharedtest.c -o bin/libtest.so
@@ -29,3 +29,6 @@ run-spam:
 
 run-malloc-test:
 	./bin/malloc-test
+
+run-mem-layout:
+	./bin/mem-layout

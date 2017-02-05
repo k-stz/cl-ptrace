@@ -215,7 +215,11 @@
 
 
   
-  
+
+*** Getting the memory segment addresses (Linux)
+    
+    
+    
 ** contains
    - program counter
    - all the CPU's registers
@@ -284,7 +288,35 @@ Examples - software interrupt:
   of ASLR the address will stay the same during runtime, meaning that ASLR is only
   applied once, on process creation!
 
-   
+
+* functions and headerfiles
+  To find the header file for a function use the cmd line =man=
+
+  For example, in what header file is sbrk(), try
+
+  #+BEGIN_SRC shell
+      man 2 sbrk
+  #+END_SRC
+
+  In the *SYNOPSIS* section, one of the first lines, it will show
+  #include <unistd.h>. Great!
+  
+  If you look at =man man= you will find that the second number argument can be
+  used to look up differnt section of the manual. For example "3" refers to Library calls.
+
+  So for =abs(num)=, man 2 abs won't find anything, since =abs()= is not a system call
+  but =man 3 abs= will be more successful. This is especially useful to know when a name
+  can refer to two different manual entries such as =man 1 kill= and =man 2 kill=
+
+  | man <num> | manual section                                            |
+  |         1 | Executable programs or shell commands                     |
+  |         2 | syscalls                                                  |
+  |         3 | library calls                                             |
+  | non given | will look in all section in the order 1 8 3 0 2 5 4 9 6 7 |
+
+  Finally when you call =man ptrace= for example the header will read: =PTRACE(2)=. The 2
+  refers to the manual section 2, as ptrace is indeed a syscall!
+  
 * /proc/pid/maps memory layout
   "A file containing the currently mapped memory regions and their access permissions"
   from =man proc=.  shows the virtuel address space of a process and its protection

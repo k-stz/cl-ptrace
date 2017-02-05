@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h> // sbrk()
+
 
 void *ptr;
 
@@ -40,7 +42,7 @@ int main(int argc, char **argv) {
   printf("pointer content %x\n", *( (int *) ptr));
 
   // yep the output matches with /proc/<pid>/maps [heap] section!
-  printf ("heap offset(?):%x\n", sbrk ());
+  printf ("heap offset(?):%x\n", sbrk (0));
 
   return 2;
 }
