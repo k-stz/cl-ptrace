@@ -217,7 +217,12 @@
   
 
 *** Getting the memory segment addresses (Linux)
-    
+    So apparently /proc is the userspace interface to process information,
+    and should be used to read out process information. Functions like
+    find_task_by_vpid() and basically all not well documentation syscalls
+    are as a rule of thumb _not_ for userspace.
+
+    So we will parse /proc/<pid>/maps directly! 
     
     
 ** contains

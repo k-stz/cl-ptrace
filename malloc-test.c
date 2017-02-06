@@ -42,9 +42,9 @@ int main(int argc, char **argv) {
   printf("pointer content %x\n", *( (int *) ptr));
 
   // yep the output matches with /proc/<pid>/maps [heap] section!
-  printf ("heap offset(?):%x\n", sbrk (0));
+  printf ("heap offset(?):%p\n", (unsigned int *) sbrk (0));
 
-  return 2;
+  return 0;
 }
 
 long foo (long x) {

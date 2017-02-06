@@ -344,9 +344,10 @@
   "Return String describing the *errno* number."
   (strerror-arg *errno*))
 
-(defun peekdata (byte-offset &optional (pid *pid*) (hex-print? t))
+(defun peekdata (byte-offset &optional (pid *pid*) (print-errno-description? t) (hex-print? t))
   (let ((peeked-data))
     (setf peeked-data (ptrace +ptrace-peekdata+ pid (make-pointer byte-offset) +null+))
+    (ptrace-successful? peeked-data print-errno-description?)
     (when hex-print?
       (hex-print peeked-data))
     peeked-data))
@@ -359,10 +360,11 @@
 
 (defun ptrace-successful? (ptrace-return-value &optional (print-errno-description? t))
   "Return T if last ptrace call was successful. Optionally print human readable errno description."
-  (when print-errno-description?
-    (format t "~a" (strerror)))
   (if (and (= ptrace-return-value #xffffffffffffffff) (/= *errno* 0))
-      (values nil ptrace-return-value)
+      (progn
+	(when print-errno-description?
+	  (format t "~a~%" (strerror)))
+	(values nil ptrace-return-value))
       (values t ptrace-return-value)))
 
 #+sbcl
