@@ -393,7 +393,7 @@
 	(last-readable from-num)
 	(start-set? nil))
     (loop for address from from-num to to-num  
-       for peeked-data = (peekdata address pid nil) do
+       for peeked-data = (peekdata address pid nil nil) do
 	 (if (ptrace-successful? peeked-data nil)
 	     ;; success
 	     (when (not start-set?)
@@ -435,9 +435,31 @@
 	 collect text))))
 
 
-;; NEXT-TODO continue implementation
-(defun get-address-range (maps-string-lines &key (memory-segment :data-segment))
-  "Memory Segment can be either explicit [heap], [stack], [vdso], etc or. :data-segment"
-  (lisp map-string-lines))
+;; TODO continue implementation
+;; (defun get-address-range (maps-string-lines &key (memory-segment :data-segment))
+;;   "Memory Segment can be either explicit [heap], [stack], [vdso], etc or. :data-segment"
+;;   (lisp map-string-lines))
 
-(defvar *maps-string-lines* nil)
+;; (defvar *maps-string-lines* nil)
+
+
+(defun find-match-address-full (value from-address to-address &optional (pid *pid*))
+  (loop for address from from-address to to-address
+     :when (= value (peekdata address pid nil nil))
+       collect address))
+
+
+;; (defun find-match-address-partial (value from-address to-address &optional (pid *pid*))
+;;   (loop for address from from-address to to-address
+;;      :when (= value (peekdata address pid nil nil))
+;;        collect address))
+
+
+;; TODO: see if there is some math trick that does this. So we don't need to convert things
+;;       back and forth.
+;; We want to compare only parts of the fixed size output of (peekdata ..). For example if
+;; we want to find the value #xabcd, but peekdata always returns #x10102464c457f, a whole
+;; lot more bytes. We will clear out the leading bytes that we dont care about by anding
+;; them with a mask such that the result will be: #x000000000457f so that we can compare
+;; it with #xabcd. Time for some bit-vector bit twiddling
+
