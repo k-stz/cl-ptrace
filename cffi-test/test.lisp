@@ -406,7 +406,7 @@
 	       (format t "readable: ~(~x~) - ~(~x~)~%" first-readable last-readable))))
     ;; left the loop, now either no readable found, or no unreadable found yet
     (when start-set?
-      (format t "readable: ~(~x~) - ~(~x~)~%" first-readable to-num)))))
+      (format t "readable: ~(~x~) - ~(~x~)~%" first-readable to-num))))
 
 
 (defun print-peekdata-over (n)
@@ -417,4 +417,27 @@
 	       (peekdata rip *pid* nil))
        (singlestep *pid* nil)))
 
-;; NEXT-TODO how to get process task_struct
+
+(defun get-maps-path (pid)
+  (concatenate 'string
+	       "/proc/"
+	       (format nil "~a" pid)
+	       "/maps"))
+
+
+
+(defun parse-proc-pid-maps (pid)
+  "Return list of Strings containing the line entries of /proc/<pid>/maps"
+  (with-open-file (maps-stream (get-maps-path pid) :direction :input)
+    ;; condition of type END-OF-FILE
+    (loop for text = (read-line maps-stream nil nil) 
+       while text ;; nil
+	 collect text))))
+
+
+;; NEXT-TODO continue implementation
+(defun get-address-range (maps-string-lines &key (memory-segment :data-segment))
+  "Memory Segment can be either explicit [heap], [stack], [vdso], etc or. :data-segment"
+  (lisp map-string-lines))
+
+(defvar *maps-string-lines* nil)
