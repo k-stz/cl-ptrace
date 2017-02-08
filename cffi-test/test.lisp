@@ -449,10 +449,11 @@
        collect ))
 
 
-;; (defun find-match-address-partial (value from-address to-address &optional (pid *pid*))
-;;   (loop for address from from-address to to-address
-;;      :when (= value (peekdata address pid nil nil))
-;;        collect address))
+(defun find-match-address-partial (value from-address to-address &optional (pid *pid*))
+  (loop for address from from-address to to-address
+     :when (ends-with-bytes? (peekdata address pid nil nil)
+			     value)
+       collect address))
 
 
 (defun integer->bit-vector (n &optional (size 64))
