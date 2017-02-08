@@ -432,7 +432,7 @@
     ;; condition of type END-OF-FILE
     (loop for text = (read-line maps-stream nil nil) 
        while text ;; nil
-	 collect text))))
+	 collect text)))
 
 
 ;; TODO continue implementation
@@ -446,7 +446,7 @@
 (defun find-match-address-full (value from-address to-address &optional (pid *pid*))
   (loop for address from from-address to to-address
      :when (= value (peekdata address pid nil nil))
-       collect address))
+       collect ))
 
 
 ;; (defun find-match-address-partial (value from-address to-address &optional (pid *pid*))
@@ -486,11 +486,17 @@
     (concatenate 'bit-vector mask-zeroes mask-ones)))
 
 
-;; TODO better name, unit test maybe, since this is a critical function
-(defun match-bytes? (match-num match-bytes)
-  (let* ((bit-v1 (integer->bit-vector match-num))
-	 (match-bytes-bit-vector (integer->bit-vector match-bytes))
-	 (match-bytes-mask (bit-mask-padding match-bytes))
+(defun ends-with-bytes? (target-number match-number)
+"Returns true if `target-number' ends the`match-number' when, where both will be compared as 
+byte their byte representation.
+
+For example (ends-with-bytes ==> #x400500 #x500 true), even though #x400500 = 4195584 \=
+#x500 = 1280"
+  (assert (and (<= target-number (expt 2 64))
+               (<= match-number (expt 2 64))))
+  (let* ((bit-v1 (integer->bit-vector target-number))
+	 (match-bytes-bit-vector (integer->bit-vector match-number))
+	 (match-bytes-mask (bit-mask-padding match-number))
 	 (masked-match-num (bit-and bit-v1 match-bytes-mask)))
     (equal masked-match-num
 	   match-bytes-bit-vector)))
