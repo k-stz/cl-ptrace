@@ -455,15 +455,6 @@
 ;;        collect address))
 
 
-;; TODO: see if there is some math trick that does this. So we don't need to convert things
-;;       back and forth.
-;; We want to compare only parts of the fixed size output of (peekdata ..). For example if
-;; we want to find the value #xabcd, but peekdata always returns #x10102464c457f, a whole
-;; lot more bytes. We will clear out the leading bytes that we dont care about by anding
-;; them with a mask such that the result will be: #x000000000457f so that we can compare
-;; it with #xabcd. Time for some bit-vector bit twiddling
-
-
 (defun integer->bit-vector (n &optional (size 64))
   "Convert integer to bit-vector representation of fixed `size'."
   (let* ((bit-string (format nil "~b" n))
@@ -484,3 +475,17 @@
     (make-array size
 		:element-type 'bit
 		:initial-contents full-bit-list)))
+
+(defun bit-mask-padding (number &optional (size 64))
+  (let* ((bit-string (format nil "~b" number))
+	 (bit-length (length bit-string))
+	 (mask-zeroes
+	  (make-array (- size bit-length) :element-type 'bit :initial-element 0))
+	 (mask-ones
+	  (make-array bit-length :element-type 'bit :initial-element 1)))
+    (concatenate 'bit-vector mask-zeroes mask-ones)))
+
+;; (defun match-bytes? (match-num match-bytes)
+;;   (let ((bit-v1 (integer->bit-vector match-num))
+;; 	(bit-v2 (integer->bit-vector match-bytes)))
+;;     (print (bit-and bit-v1 bit-v2))))
