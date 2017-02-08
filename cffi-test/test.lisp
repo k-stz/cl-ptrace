@@ -485,7 +485,12 @@
 	  (make-array bit-length :element-type 'bit :initial-element 1)))
     (concatenate 'bit-vector mask-zeroes mask-ones)))
 
-;; (defun match-bytes? (match-num match-bytes)
-;;   (let ((bit-v1 (integer->bit-vector match-num))
-;; 	(bit-v2 (integer->bit-vector match-bytes)))
-;;     (print (bit-and bit-v1 bit-v2))))
+
+;; TODO better name, unit test maybe, since this is a critical function
+(defun match-bytes? (match-num match-bytes)
+  (let* ((bit-v1 (integer->bit-vector match-num))
+	 (match-bytes-bit-vector (integer->bit-vector match-bytes))
+	 (match-bytes-mask (bit-mask-padding match-bytes))
+	 (masked-match-num (bit-and bit-v1 match-bytes-mask)))
+    (equal masked-match-num
+	   match-bytes-bit-vector)))
