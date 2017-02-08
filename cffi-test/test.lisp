@@ -463,3 +463,24 @@
 ;; them with a mask such that the result will be: #x000000000457f so that we can compare
 ;; it with #xabcd. Time for some bit-vector bit twiddling
 
+
+(defun integer->bit-vector (n &optional (size 64))
+  "Convert integer to bit-vector representation of fixed `size'."
+  (let* ((bit-string (format nil "~b" n))
+	 (bit-length (length bit-string))
+	 (prepend-zeros
+	  (progn
+	    ;; if this assert signals, the bit-vector representation of n is bigger than
+	    ;; the size of the target bit-vector we want to create
+	    (assert (>= size bit-length))
+	    (make-string (- size bit-length) :initial-element #\0)))
+	 (full-bit-string (concatenate 'string prepend-zeros bit-string))
+	 (full-bit-list
+	  (loop for char in (coerce full-bit-string 'list) 
+	     :if (char= char #\0)
+	     collect 0
+	     :else
+	     collect 1)))
+    (make-array size
+		:element-type 'bit
+		:initial-contents full-bit-list)))
