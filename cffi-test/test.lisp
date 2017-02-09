@@ -5,17 +5,7 @@
 
 (in-package :cffi-user)
 
-;; example use
-;; (define-foreign-library libcurl
-;;     (:darwin (:or "libcurl.3.dylib" "libcurl.dylib"))
-;;     (:unix (:or "libcurl.so.3" "libcurl.so"))
-;;     (t (:default "/usr/lib/libcurl")))
-
-;; (use-foreign-library libcurl)
-
-
 ;; This describes how to load the library _into the Lisp image_ !
-;; hopefully libc-2.24 has and is what we need
 (define-foreign-library libc
   ;; none of these work..
   (:unix (:or ;"libc-2.19"
@@ -30,8 +20,8 @@
     (t (:default "/lib/x86_64-linux-gnu/libc-2.19"
 	   "/usr/lib/libc.so")))
 
-;; this effectively loads libc into the Lisp image much, just like we load .lisp files
-;; into the lisp image. "much like the linker does _when you start_ a C program
+;; this effectively loads libc into the Lisp image, much like we load .lisp files
+;; into the lisp image. "much like the linker does _when you start_ a C program"
 (use-foreign-library libc) ;; after this point "libc" is loaded in the Lisp image!!!
 
 
@@ -39,19 +29,13 @@
 
 ;; (defcfun "ptrace" int ((__ptrace_request :enum)))
 
-;;
-(defcfun ("abs" absoluto) :int (flags :int)) ; WOOOOOOOOOOOOOOOOOOOOOOOOOOORKS
-;; "abs" is the name of the clib function
-;; where `absoluto' refers to the name we can invoke it with in the lisp code!
-;; :int return-value
-
 ;; testing with self made libraries:
 (define-foreign-library libtest
   ;; none of these work..
     (t (:default "/home/k-stz/sol_sanctum/cl-ptrace/bin/libtest")))
 
 ;; nope only works on *.so files (shared object files) !
-;; trickying it into loading it anyway raises the signal: "(...) cannot dynamically load
+;; tricking it into loading it anyway raises the signal: "(...) cannot dynamically load
 ;; executable"
 (use-foreign-library libtest)
 
@@ -62,14 +46,14 @@
 (defctype pid-t :long)
 
 
- ;; long int ptrace(enum __ptrace_request request, pid_t pid,
- ;;                 void *addr, void *data)
+;; long int ptrace(enum __ptrace_request request, pid_t pid,
+;;                 void *addr, void *data)
 
 ;; sao location: /usr/include/x86_64-linux-gnu/sys/ptrace.h
 
 ;; error occured?
 
-;; ptrace returning -1 might indicate an error, has happened (or the return value is
+;; ptrace returning -1 might indicate that an error, has happened (or the return value is
 ;; indeed -1). This is when we check *errno* which will be '0' on "Success". But due to
 ;; cffi we have the problem that the return value of ptrace gets translated to Lisp. -1 is
 ;; represented as #xffffffffffffffff, so we instead will test against that return value. Tests
@@ -156,15 +140,10 @@
 ;; testing pass-by-reference
 (defcfun ("passByReference" pbr) :void (x :pointer))
 
-;; works:
-;; (with-foreign-object (ptr :int 1)
-;;   (pbr ptr)
-;;   (print (mem-ref ptr :int)))
-
 (defun am-i-root? ()
   (= (sb-posix:getuid) 0))
 
-;; from /
+;; from /usr/include/x86_64-linux-gnu/sys/ptrace.h (sao)
 ;; struct user_regs_struct  // x86_64 specific registers  !
 ;; {
 ;;   __extension__ unsigned long long int r15;
@@ -277,7 +256,7 @@
 			  (fs)     
 			  (gs))
      :do
-     ;; ~( x ~) <- downcase hex numbers directive!
+     ;; ~( x ~) <- downcase hex numbers directive!, #xFF -> #xff
        (format t "~8a:~(~20x~)   ~a~%" 
 	       (car register)
 	       (foreign-slot-value regs '(:struct user-regs-struct) (car register))
@@ -287,7 +266,7 @@
 
 (defun print-user-regs-struct-from-pid (&optional (pid *pid*))
   (with-foreign-object (regs '(:struct user-regs-struct))
-    (getregs pid regs) ;; this implicitly sets `regs'!
+    (getregs pid regs) ;; this implicitly sets `regs', which is bad lisp style (TODO)!
     (print-user-regs-struct regs)))
 
 (defun hex-print (number &optional (destination t))
@@ -295,7 +274,7 @@
 
 (defun rip-address (&optional (pid *pid*))
   ;; btw (let ((regs *regs*)) ) doesn't work, modifying `regs' will modify `*regs*'
-  ;; becond the lexical scope of `regs'
+  ;; beyond the lexical scope of `regs'
   (with-foreign-object (regs '(:struct user-regs-struct))
     (getregs pid regs)
     (foreign-slot-value regs '(:struct user-regs-struct) 'rip)))
@@ -425,7 +404,6 @@
 	       "/maps"))
 
 
-
 (defun parse-proc-pid-maps (pid)
   "Return list of Strings containing the line entries of /proc/<pid>/maps"
   (with-open-file (maps-stream (get-maps-path pid) :direction :input)
@@ -446,7 +424,7 @@
 (defun find-match-address-full (value from-address to-address &optional (pid *pid*))
   (loop for address from from-address to to-address
      :when (= value (peekdata address pid nil nil))
-       collect ))
+       collect address))
 
 
 (defun find-match-address-partial (value from-address to-address &optional (pid *pid*))
@@ -528,7 +506,6 @@ at address `byte-offset'"
 	(data-bit-vector (integer->bit-vector data))
 	(data-mask (bit-mask data))
 	 result-pokedata)
-
     ;; clear from target vector's place to fit in `data', using data-mask
     ;; then bit in `data' with bit-ior. Finally convert to an integer,
     ;; ready for being `pokedata'd
