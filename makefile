@@ -11,6 +11,7 @@ build:
 	gcc -o bin/dspm dspm.c
 	gcc -o bin/malloc-test malloc-test.c
 	gcc -o bin/mem-layout mem-layout.c
+	gcc -o bin/bit-twiddling bit-twiddling.c
 # creating own shared libraries(!!!):
 # fPIC : "position independent code"
 	gcc -shared -fPIC -g sharedtest.c -o bin/libtest.so
@@ -32,3 +33,6 @@ run-malloc-test:
 
 run-mem-layout:
 	./bin/mem-layout
+
+run-bit-twiddling:
+	./bin/bit-twiddling

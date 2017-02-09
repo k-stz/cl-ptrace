@@ -456,8 +456,11 @@
        collect address))
 
 
+;; TODO: (bit-vector -1) = (integer->bit-vector 3)
+;; check if this will be an issue
 (defun integer->bit-vector (n &optional (size 64))
-  "Convert integer to bit-vector representation of fixed `size'."
+  "Convert integer to bit-vector representation of fixed `size'. Only works
+with _positive_ integers"
   (let* ((bit-string (format nil "~b" n))
 	 (bit-length (length bit-string))
 	 (prepend-zeros
@@ -477,6 +480,13 @@
 		:element-type 'bit
 		:initial-contents full-bit-list)))
 
+;; implementation idea from edgar-rft
+(defun bit-vector->integer (bit-vector)
+  "Convert bit-vector to _positive_ integer."
+  (reduce #'(lambda (first-bit second-bit)
+	      (+ (* first-bit 2) second-bit))
+	  bit-vector))
+
 (defun bit-mask-padding (number &optional (size 64))
   (let* ((bit-string (format nil "~b" number))
 	 (bit-length (length bit-string))
@@ -485,6 +495,13 @@
 	 (mask-ones
 	  (make-array bit-length :element-type 'bit :initial-element 1)))
     (concatenate 'bit-vector mask-zeroes mask-ones)))
+
+(defun bit-mask (number &optional (size 64))
+  "Return bit-vector bit-mask for `number' that can be used to clear bitvectors to insert
+  `number' in them as bit-vector representations.  Example:
+   (bit-mask 2 8)            ==> #*11111100
+   (integer->bit-vector 2 8) ==> #*00000010 "
+  (bit-not (bit-mask-padding number size)))
 
 
 (defun ends-with-bytes? (target-number match-number)
@@ -501,3 +518,22 @@ For example (ends-with-bytes ==> #x400500 #x500 true), even though #x400500 = 41
 	 (masked-match-num (bit-and bit-v1 match-bytes-mask)))
     (equal masked-match-num
 	   match-bytes-bit-vector)))
+
+;; TODO rename
+(defun pokedata-input-only (byte-offset data &optional (pid *pid*) (print-errno-description? t))
+  "Only `pokedata' the bytes given in `data' at the address `byte-offset'. i.e. data = #xabcd,
+will only replace the first 2 bytes with #xab #xcd instead of the hole 64-bit double word,
+at address `byte-offset'"
+  (let* ((peeked-bit-vector (integer->bit-vector (peekdata byte-offset pid nil nil)))
+	(data-bit-vector (integer->bit-vector data))
+	(data-mask (bit-mask data))
+	 result-pokedata)
+
+    ;; clear from target vector's place to fit in `data', using data-mask
+    ;; then bit in `data' with bit-ior. Finally convert to an integer,
+    ;; ready for being `pokedata'd
+    (setf result-pokedata
+	  (bit-vector->integer
+	   (bit-ior (bit-and peeked-bit-vector data-mask)
+		    data-bit-vector)))
+    (pokedata byte-offset result-pokedata pid print-errno-description?)))
