@@ -404,7 +404,7 @@
 	       "/maps"))
 
 
-(defun parse-proc-pid-maps (pid)
+(defun parse-proc-pid-maps (&optional (pid *pid*))
   "Return list of Strings containing the line entries of /proc/<pid>/maps"
   (with-open-file (maps-stream (get-maps-path pid) :direction :input)
     ;; condition of type END-OF-FILE
@@ -427,6 +427,8 @@
        collect address))
 
 
+;; TODO: add loop that can loop over a list; for our resulting "sieved" matching addresses!
+;; TODO: make this more efficient, first profile, maybe good multi-threading test?
 (defun find-match-address-partial (value from-address to-address &optional (pid *pid*))
   (loop for address from from-address to to-address
      :when (ends-with-bytes? (peekdata address pid nil nil)
@@ -488,6 +490,8 @@ byte their byte representation.
 
 For example (ends-with-bytes ==> #x400500 #x500 true), even though #x400500 = 4195584 \=
 #x500 = 1280"
+;; TODO: test if big scans go faster if we skip the assert! Just profile it all, it takes up
+;; a huge amount of time
   (assert (and (<= target-number (expt 2 64))
                (<= match-number (expt 2 64))))
   (let* ((bit-v1 (integer->bit-vector target-number))
