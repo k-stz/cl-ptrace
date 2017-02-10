@@ -243,6 +243,33 @@
    
   
 
+* Implementation Efficiency
+** Finding a byte pattern in an array fast enough
+   Is basically the problem we're trying to solve. `find-match-address-partial'[fn:4] tries
+   to fix this problem.
+
+** TODO Problem Size
+   
+   The real world example involves an address range of 200 Million. Just `peekdata' over
+   such a range, byte-wise, takes a long time
+
+   TODO: continue, this.
+
+   Ideas (from easy to hard implementation):
+
+   1. use (ptrace ...)directly as it is an order of magnitude faster than (peekdata ..)
+      faster. 
+   2. Compare with raw C ptrace scans, if just peekdata is already an overhead than
+      try to readout the whole processmemory range to, disc/array with "pread" or
+      something like that
+   3. try multithreading it (bordeaux-thread). This would be the hardest to implement
+      but it would be great to finally have a real reason to use it
+      
+   
+
+
+   
+   
 * Footnotes
 
 [fn:1] a soft interrupt is to be contrasted by a hardware interrupt. Both are like a
@@ -264,6 +291,8 @@ Examples - software interrupt:
 [fn:3] the size of a word is architecture and OS dependent: on x86_64 Linux it is 64bit
 
   
+[fn:4] name might be subject to change, this function takes a value like #xabcd and
+searches for it over an address range that is used as index to memory with `peekdata'
 
 
 * gcc

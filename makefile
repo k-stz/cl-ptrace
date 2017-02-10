@@ -28,6 +28,10 @@ run-attach-to:
 run-spam:
 	./bin/spam
 
+run-dspm:
+	./bin/dspm
+
+
 run-malloc-test:
 	./bin/malloc-test
 

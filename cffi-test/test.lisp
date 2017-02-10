@@ -457,6 +457,10 @@ with _positive_ integers"
     (concatenate 'bit-vector prepend-zeros result-bit-vector)))
 
 ;; use sbcl profiler to compare why this is more efficient than `integer->bit-vector' above
+;; even this implementation takes too long. We will be searching thorugh an address range
+;; of 200Million addresses. This will take aproximately 18 minutes...
+;; even just a peekdata loop over every address would take, 46 minutres!!!! TODO subsequent
+;; tests where only 40seconds... of by one on input size?
 (defun lispforum-integer->bit-vector (integer &optional (size 64))
   (labels ((integer->bit-list (int &optional accum)
 	     (cond ((> int 0)
