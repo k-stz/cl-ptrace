@@ -438,27 +438,38 @@
 
 ;; TODO: (bit-vector -1) = (integer->bit-vector 3)
 ;; check if this will be an issue
-(defun integer->bit-vector (n &optional (size 64))
+(defun integer->bit-vector (number &optional (size 64))
   "Convert integer to bit-vector representation of fixed `size'. Only works
 with _positive_ integers"
-  (let* ((bit-string (format nil "~b" n))
+  (let* ((bit-string (format nil "~b" number))
 	 (bit-length (length bit-string))
 	 (prepend-zeros
 	  (progn
 	    ;; if this assert signals, the bit-vector representation of n is bigger than
 	    ;; the size of the target bit-vector we want to create
-	    (assert (>= size bit-length))
-	    (make-string (- size bit-length) :initial-element #\0)))
-	 (full-bit-string (concatenate 'string prepend-zeros bit-string))
-	 (full-bit-list
-	  (loop for char in (coerce full-bit-string 'list) 
-	     :if (char= char #\0)
-	     collect 0
-	     :else
-	     collect 1)))
-    (make-array size
-		:element-type 'bit
-		:initial-contents full-bit-list)))
+	    ;; (assert (>= size bit-length))
+	    (make-array (- size bit-length) :element-type 'bit :initial-element 0)))
+	 (result-bit-vector (make-array (length bit-string) :element-type 'bit )))
+    (loop for char across bit-string 
+       for i from 0 
+       :when (char= char #\1)
+       :do (setf (aref result-bit-vector i) 1))
+    (concatenate 'bit-vector prepend-zeros result-bit-vector)))
+
+;; use sbcl profiler to compare why this is more efficient than `integer->bit-vector' above
+(defun lispforum-integer->bit-vector (integer &optional (size 64))
+  (labels ((integer->bit-list (int &optional accum)
+	     (cond ((> int 0)
+		    (multiple-value-bind (i r) (truncate int 2)
+		      (integer->bit-list i (push r accum))))
+		   ((null accum) (push 0 accum))
+		   (t accum))))
+    (let ((result (coerce (integer->bit-list integer) 'bit-vector)))
+      (concatenate 'bit-vector
+		   (make-array (- size (length result))
+			       :element-type 'bit
+			       :initial-element 0)
+		   result))))
 
 ;; implementation idea from edgar-rft
 (defun bit-vector->integer (bit-vector)
@@ -518,3 +529,18 @@ at address `byte-offset'"
 	   (bit-ior (bit-and peeked-bit-vector data-mask)
 		    data-bit-vector)))
     (pokedata byte-offset result-pokedata pid print-errno-description?)))
+
+
+
+;; before optimizing FIND-MATCH-ADDRESS-PARTIAL, (time) output:
+;; 10.922 seconds of real time
+;;   10.948000 seconds of total run time (10.740000 user, 0.208000 system)
+;;   [ Run times consist of 0.572 seconds GC time, and 10.376 seconds non-GC time. ]
+;;   100.24% CPU
+;;   26,212,917,128 processor cycles
+;;   3,712,013,472 bytes consed
+
+;; profiling tools:
+;; M-x slime-profile-package => CFFI-USER
+;; then after calling the inefficient function run
+;; M-x slime-*-report
