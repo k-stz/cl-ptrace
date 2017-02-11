@@ -253,12 +253,11 @@
    The real world example involves an address range of 200 Million. Just `peekdata' over
    such a range, byte-wise, takes a long time
 
-   TODO: continue, this.
-
    Ideas (from easy to hard implementation):
 
    1. use (ptrace ...)directly as it is an order of magnitude faster than (peekdata ..)
-      faster. 
+      faster.
+      Test done: using _(ptrace ) directly is roughly _6.3 times faster_
    2. Compare with raw C ptrace scans, if just peekdata is already an overhead than
       try to readout the whole processmemory range to, disc/array with "pread" or
       something like that

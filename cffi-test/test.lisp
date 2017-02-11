@@ -39,8 +39,6 @@
 ;; executable"
 (use-foreign-library libtest)
 
-(defcfun "returnsTwo" :int)
-
 (defcfun "foo" :long (x :long))
 
 (defctype pid-t :long)
@@ -135,10 +133,6 @@
 ;; non-traced process?
 (defun detach-from (&optional (pid *pid*))
   (ptrace +ptrace-detach+ pid +null+ +null+))
-
-
-;; testing pass-by-reference
-(defcfun ("passByReference" pbr) :void (x :pointer))
 
 (defun am-i-root? ()
   (= (sb-posix:getuid) 0))
@@ -323,8 +317,19 @@
   "Return String describing the *errno* number."
   (strerror-arg *errno*))
 
+(defun ptrace-successful? (ptrace-return-value &optional (print-errno-description? t))
+  "Return T if last ptrace call was successful. Optionally print human readable errno description."
+  (if (and (= ptrace-return-value #xffffffffffffffff) (/= *errno* 0))
+      (progn
+	(when print-errno-description?
+	  (format t "~a~%" (strerror)))
+	(values nil ptrace-return-value))
+      (values t ptrace-return-value)))
+
+
 (defun peekdata (byte-offset &optional (pid *pid*) (print-errno-description? t) (hex-print? t))
   (let ((peeked-data))
+    ;; (make-pointer ...) isn't causing any consing..
     (setf peeked-data (ptrace +ptrace-peekdata+ pid (make-pointer byte-offset) +null+))
     (ptrace-successful? peeked-data print-errno-description?)
     (when hex-print?
@@ -337,14 +342,6 @@
 	  (ptrace +ptrace-pokedata+ pid (make-pointer byte-offset) (make-pointer data)))
     (ptrace-successful? ptrace-return-value print-errno-description?)))
 
-(defun ptrace-successful? (ptrace-return-value &optional (print-errno-description? t))
-  "Return T if last ptrace call was successful. Optionally print human readable errno description."
-  (if (and (= ptrace-return-value #xffffffffffffffff) (/= *errno* 0))
-      (progn
-	(when print-errno-description?
-	  (format t "~a~%" (strerror)))
-	(values nil ptrace-return-value))
-      (values t ptrace-return-value)))
 
 #+sbcl
 (defun endianess ()
@@ -413,75 +410,6 @@
 	 collect text)))
 
 
-;; TODO continue implementation
-;; (defun get-address-range (maps-string-lines &key (memory-segment :data-segment))
-;;   "Memory Segment can be either explicit [heap], [stack], [vdso], etc or. :data-segment"
-;;   (lisp map-string-lines))
-
-;; (defvar *maps-string-lines* nil)
-
-
-(defun find-match-address-full (value from-address to-address &optional (pid *pid*))
-  (loop for address from from-address to to-address
-     :when (= value (peekdata address pid nil nil))
-       collect address))
-
-
-;; TODO: add loop that can loop over a list; for our resulting "sieved" matching addresses!
-;; TODO: make this more efficient, first profile, maybe good multi-threading test?
-(defun find-match-address-partial (value from-address to-address &optional (pid *pid*))
-  (loop for address from from-address to to-address
-     :when (ends-with-bytes? (peekdata address pid nil nil)
-			     value)
-       collect address))
-
-
-;; TODO: (bit-vector -1) = (integer->bit-vector 3)
-;; check if this will be an issue
-(defun integer->bit-vector (number &optional (size 64))
-  "Convert integer to bit-vector representation of fixed `size'. Only works
-with _positive_ integers"
-  (let* ((bit-string (format nil "~b" number))
-	 (bit-length (length bit-string))
-	 (prepend-zeros
-	  (progn
-	    ;; if this assert signals, the bit-vector representation of n is bigger than
-	    ;; the size of the target bit-vector we want to create
-	    ;; (assert (>= size bit-length))
-	    (make-array (- size bit-length) :element-type 'bit :initial-element 0)))
-	 (result-bit-vector (make-array (length bit-string) :element-type 'bit )))
-    (loop for char across bit-string 
-       for i from 0 
-       :when (char= char #\1)
-       :do (setf (aref result-bit-vector i) 1))
-    (concatenate 'bit-vector prepend-zeros result-bit-vector)))
-
-;; use sbcl profiler to compare why this is more efficient than `integer->bit-vector' above
-;; even this implementation takes too long. We will be searching thorugh an address range
-;; of 200Million addresses. This will take aproximately 18 minutes...
-;; even just a peekdata loop over every address would take, 46 minutres!!!! TODO subsequent
-;; tests where only 40seconds... of by one on input size?
-(defun lispforum-integer->bit-vector (integer &optional (size 64))
-  (labels ((integer->bit-list (int &optional accum)
-	     (cond ((> int 0)
-		    (multiple-value-bind (i r) (truncate int 2)
-		      (integer->bit-list i (push r accum))))
-		   ((null accum) (push 0 accum))
-		   (t accum))))
-    (let ((result (coerce (integer->bit-list integer) 'bit-vector)))
-      (concatenate 'bit-vector
-		   (make-array (- size (length result))
-			       :element-type 'bit
-			       :initial-element 0)
-		   result))))
-
-;; implementation idea from edgar-rft
-(defun bit-vector->integer (bit-vector)
-  "Convert bit-vector to _positive_ integer."
-  (reduce #'(lambda (first-bit second-bit)
-	      (+ (* first-bit 2) second-bit))
-	  bit-vector))
-
 (defun bit-mask-padding (number &optional (size 64))
   (let* ((bit-string (format nil "~b" number))
 	 (bit-length (length bit-string))
@@ -499,6 +427,51 @@ with _positive_ integers"
   (bit-not (bit-mask-padding number size)))
 
 
+;; TODO: (bit-vector -1) = (integer->bit-vector 3)
+;; check if this will be an issue
+(defun integer->bit-vector (number &optional (size 64))
+  "Convert integer to bit-vector representation of fixed `size'. Only works
+with _positive_ integers"
+  (let* ((bit-string (format nil "~b" number))
+	 (bit-length (length bit-string))
+	 (prepend-zeros
+	  (progn
+	    ;; if this assert signals, the bit-vector representation of n is bigger than
+	    ;; the size of the target bit-vector we want to create
+	    ;; (assert (>= size bit-length))
+	    (make-array (- size bit-length) :element-type 'bit :initial-element 0)))
+	 (result-bit-vector (make-array (length bit-string) :element-type 'bit )))
+    (loop for char across bit-string
+       for i from 0 
+       :when (char= char #\1)
+       :do (setf (aref result-bit-vector i) 1))
+    (concatenate 'bit-vector prepend-zeros result-bit-vector)))
+
+;; use sbcl profiler to compare why this is more efficient than `integer->bit-vector' above
+;; even this implementation takes too long. We will be searching thorugh an address range
+;; of 200Million addresses. This will take aproximately 18 minutes...
+;; (defun lispforum-integer->bit-vector (integer &optional (size 64))
+;;   (labels ((integer->bit-list (int &optional accum)
+;; 	     (cond ((> int 0)
+;; 		    (multiple-value-bind (i r) (truncate int 2)
+;; 		      (integer->bit-list i (push r accum))))
+;; 		   ((null accum) (push 0 accum))
+;; 		   (t accum))))
+;;     (let ((result (coerce (integer->bit-list integer) 'bit-vector)))
+;;       (concatenate 'bit-vector
+;; 		   (make-array (- size (length result))
+;; 			       :element-type 'bit
+;; 			       :initial-element 0)
+;; 		   result))))
+
+;; implementation idea from edgar-rft
+(defun bit-vector->integer (bit-vector)
+  "Convert bit-vector to _positive_ integer."
+  (reduce #'(lambda (first-bit second-bit)
+	      (+ (* first-bit 2) second-bit))
+	  bit-vector))
+
+
 (defun ends-with-bytes? (target-number match-number)
 "Returns true if `target-number' ends the`match-number' when, where both will be compared as 
 byte their byte representation.
@@ -507,14 +480,38 @@ For example (ends-with-bytes ==> #x400500 #x500 true), even though #x400500 = 41
 #x500 = 1280"
 ;; TODO: test if big scans go faster if we skip the assert! Just profile it all, it takes up
 ;; a huge amount of time
-  (assert (and (<= target-number (expt 2 64))
-               (<= match-number (expt 2 64))))
+  ;; (assert (and (<= target-number (expt 2 64))
+  ;;              (<= match-number (expt 2 64))))
   (let* ((bit-v1 (integer->bit-vector target-number))
 	 (match-bytes-bit-vector (integer->bit-vector match-number))
 	 (match-bytes-mask (bit-mask-padding match-number))
 	 (masked-match-num (bit-and bit-v1 match-bytes-mask)))
     (equal masked-match-num
 	   match-bytes-bit-vector)))
+
+
+;; TODO (UPDATE: not so important, we care about the [heap] only for now.)  continue
+;; implementation (defun get-address-range (maps-string-lines &key (memory-segment
+;; :data-segment)) "Memory Segment can be either explicit [heap], [stack], [vdso], etc
+;; or. :data-segment" (lisp map-string-lines))
+
+;; (defvar *maps-string-lines* nil)
+
+(defun find-match-address-full (value from-address to-address &optional (pid *pid*))
+  (loop for address from from-address to to-address
+     :when (= value (peekdata address pid nil nil))
+       collect address))
+
+
+
+;; TODO: add loop that can loop over a list; for our resulting "sieved" matching addresses!
+(defun find-match-address-partial (value from-address to-address &optional (pid *pid*))
+  (loop for address from from-address to to-address
+     :when (ends-with-bytes? (peekdata address pid nil nil)
+  			     ;; (ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
+  			     value)
+       collect address))
+
 
 ;; TODO rename
 (defun pokedata-input-only (byte-offset data &optional (pid *pid*) (print-errno-description? t))
@@ -548,3 +545,74 @@ at address `byte-offset'"
 ;; M-x slime-profile-package => CFFI-USER
 ;; then after calling the inefficient function run
 ;; M-x slime-*-report
+
+
+;; some test functions
+
+(defconstant +200m+ 200000000) ;; the problem size we need to deal with efficiently
+
+(defun test (test-fn inverse-fn &optional (problem-size 300000) (compare-fn #'=))
+  "Test if test-fn and its inverse are correct over inputs from 0 to  `problem-size'.
+Return mismatching inputs, or true if all's right"
+  (let (fail-input)
+    (setf fail-input
+	  (loop for i upto problem-size
+	     :unless (funcall compare-fn
+			      i
+			      (funcall inverse-fn
+				       (funcall test-fn i)))
+	     collect i))
+    (if (null fail-input)
+	t
+	(progn (format t "Failed for inputs:~%")
+	       fail-input))))
+
+(defun test-fn-equal (fn-1 fn-2 &optional (problem-size 30000) (equal-test-fn #'=))
+  "Test if two functions return the same value from 0 to `problem-size' using
+  `equal-test-fn' to compare the results"
+  (declare (function fn-1 fn-2 equal-test-fn)
+	   (fixnum problem-size))
+  (let (fail-input)
+    (setf fail-input
+	  (loop for i upto problem-size
+	     :unless (funcall equal-test-fn
+			      (funcall fn-1 i)
+			      (funcall fn-2 i))
+	     collect i))
+    (if (null fail-input)
+	t
+	(progn (format t "Failed for inputs:~%")
+	       fail-input))))
+
+;; profiling data:
+;; *from-addr* to *to-addr* is a range of 1-Million addresses. So only about 0.5% of
+;; the realworld problem size we will face with this system.
+;; 5.3 Seconds is too long. (* 5.3 200)
+;; (find-match-address-partial #xb7 *from-addr* *to-addr*)
+;;
+;;*** with integer->bit-vector
+;;   seconds  |     gc     |     consed    |   calls   |  sec/call  |  name  
+;; ---------------------------------------------------------------
+;;      3.560 |      0.081 | 1,504,610,480 | 2,000,002 |   0.000002 | INTEGER->BIT-VECTOR
+;;      0.919 |      0.053 |   647,499,920 | 1,000,001 |   0.000001 | BIT-MASK-PADDING
+;;      0.356 |      0.000 |    33,023,248 | 1,000,001 |   0.000000 | ENDS-WITH-BYTES?
+;;      0.336 |      0.000 |    16,086,192 | 1,000,001 |   0.000000 | PTRACE
+;;      0.070 |      0.000 |    14,517,376 | 1,000,001 |   0.000000 | PEEKDATA
+;;      0.000 |      0.000 |           128 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
+;;      0.000 |      0.000 |             0 | 1,000,001 |   0.000000 | PTRACE-SUCCESSFUL?
+;; ---------------------------------------------------------------
+;;      5.241 |      0.134 | 2,215,737,344 | 7,000,008 |            | Total
+
+;;*** with lispforum-integer->bit-vector
+;;  seconds  |     gc     |     consed    |   calls   |  sec/call  |  name  
+;; ---------------------------------------------------------------
+;;      2.077 |      0.100 | 1,047,853,824 | 1,000,001 |   0.000002 | LISPFORUM-INTEGER->BIT-VECTOR
+;;      1.039 |      0.043 |   657,010,064 | 1,000,001 |   0.000001 | INTEGER->BIT-VECTOR
+;;      1.021 |      0.025 |   655,109,376 | 1,000,001 |   0.000001 | BIT-MASK-PADDING
+;;      0.270 |      0.000 |    16,348,576 | 1,000,001 |   0.000000 | PTRACE
+;;      0.218 |      0.000 |    13,468,528 | 1,000,001 |   0.000000 | PEEKDATA
+;;      0.201 |      0.000 |    29,877,824 | 1,000,001 |   0.000000 | ENDS-WITH-BYTES?
+;;      0.041 |      0.000 |             0 | 1,000,001 |   0.000000 | PTRACE-SUCCESSFUL?
+;;      0.000 |      0.000 |           240 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
+;; ---------------------------------------------------------------
+;;      4.867 |      0.168 | 2,419,668,432 | 7,000,008 |            | Total
