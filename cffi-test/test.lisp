@@ -432,6 +432,7 @@
 (defun integer->bit-vector (number &optional (size 64))
   "Convert integer to bit-vector representation of fixed `size'. Only works
 with _positive_ integers"
+  (declare (fixnum size))
   (let* ((bit-string (format nil "~b" number))
 	 (bit-length (length bit-string))
 	 (prepend-zeros
@@ -440,12 +441,26 @@ with _positive_ integers"
 	    ;; the size of the target bit-vector we want to create
 	    ;; (assert (>= size bit-length))
 	    (make-array (- size bit-length) :element-type 'bit :initial-element 0)))
-	 (result-bit-vector (make-array (length bit-string) :element-type 'bit )))
+	 (result-bit-vector (make-array bit-length :element-type 'bit )))
     (loop for char across bit-string
        for i from 0 
        :when (char= char #\1)
        :do (setf (aref result-bit-vector i) 1))
     (concatenate 'bit-vector prepend-zeros result-bit-vector)))
+
+
+;; abandoned appraoch for now since the discovery of `LDB'
+;; (defun integer->64bit-vector (number)
+;;   "Convert integer to bit-vector representation of fixed `size'. Only works
+;; with _positive_ integers"
+;;   (let* ((bit-string (format nil "~b" number))
+;; 	 (bit-length (length bit-string))
+;; 	 (result-bit-vector (make-array 64 :element-type 'bit )))
+;;     (loop for char across bit-string
+;;        for i from 0 
+;;        :when (char= char #\1)
+;;        :do (setf (aref result-bit-vector i) 1))
+;;     (concatenate 'bit-vector prepend-zeros result-bit-vector)))
 
 ;; use sbcl profiler to compare why this is more efficient than `integer->bit-vector' above
 ;; even this implementation takes too long. We will be searching thorugh an address range
@@ -471,6 +486,21 @@ with _positive_ integers"
 	      (+ (* first-bit 2) second-bit))
 	  bit-vector))
 
+
+(defun bits-in-number (number)
+  "Return the bytes needed to represent this number"
+  (if (= number 0) ;; dodging division-by-zero
+      1
+      (floor (1+ (log number 2)))))
+
+(defun bytes-in-number (number)
+  (ceiling (bits-in-number number)
+	   8))
+
+(defun neo-ends-with-bytes? (target-number match-number &optional (bytes (bytes-in-number match-number)))
+  (loop for byte-position from 0 below bytes always
+       (= (ldb (byte 8 (* byte-position 8)) target-number)
+	  (ldb (byte 8 (* byte-position 8)) match-number))))
 
 (defun ends-with-bytes? (target-number match-number)
 "Returns true if `target-number' ends the`match-number' when, where both will be compared as 
@@ -514,6 +544,7 @@ For example (ends-with-bytes ==> #x400500 #x500 true), even though #x400500 = 41
 
 
 ;; TODO rename
+;; TODO use the `cl:dpb' !!
 (defun pokedata-input-only (byte-offset data &optional (pid *pid*) (print-errno-description? t))
   "Only `pokedata' the bytes given in `data' at the address `byte-offset'. i.e. data = #xabcd,
 will only replace the first 2 bytes with #xab #xcd instead of the hole 64-bit double word,
@@ -588,20 +619,43 @@ Return mismatching inputs, or true if all's right"
 ;; *from-addr* to *to-addr* is a range of 1-Million addresses. So only about 0.5% of
 ;; the realworld problem size we will face with this system.
 ;; 5.3 Seconds is too long. (* 5.3 200)
-;; (find-match-address-partial #xb7 *from-addr* *to-addr*)
+;; (time (length (find-match-address-partial #xb7 *from-addr* *to-addr*)))
 ;;
 ;;*** with integer->bit-vector
+
 ;;   seconds  |     gc     |     consed    |   calls   |  sec/call  |  name  
 ;; ---------------------------------------------------------------
-;;      3.560 |      0.081 | 1,504,610,480 | 2,000,002 |   0.000002 | INTEGER->BIT-VECTOR
-;;      0.919 |      0.053 |   647,499,920 | 1,000,001 |   0.000001 | BIT-MASK-PADDING
-;;      0.356 |      0.000 |    33,023,248 | 1,000,001 |   0.000000 | ENDS-WITH-BYTES?
-;;      0.336 |      0.000 |    16,086,192 | 1,000,001 |   0.000000 | PTRACE
-;;      0.070 |      0.000 |    14,517,376 | 1,000,001 |   0.000000 | PEEKDATA
-;;      0.000 |      0.000 |           128 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
-;;      0.000 |      0.000 |             0 | 1,000,001 |   0.000000 | PTRACE-SUCCESSFUL?
+;;      3.444 |      0.119 | 1,502,503,360 | 2,000,002 |   0.000002 | INTEGER->BIT-VECTOR
+;;      0.834 |      0.034 |   648,617,776 | 1,000,001 |   0.000001 | BIT-MASK-PADDING
+;;      0.363 |      0.000 |    16,675,984 | 1,000,001 |   0.000000 | PTRACE
+;;      0.320 |      0.004 |    33,613,056 | 1,000,001 |   0.000000 | ENDS-WITH-BYTES?
+;;      0.213 |      0.000 |    14,320,080 | 1,000,001 |   0.000000 | PEEKDATA
+;;      0.044 |      0.000 |             0 | 1,000,001 |   0.000000 | PTRACE-SUCCESSFUL?
+;;      0.000 |      0.000 |           848 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
 ;; ---------------------------------------------------------------
-;;      5.241 |      0.134 | 2,215,737,344 | 7,000,008 |            | Total
+;;      5.218 |      0.157 | 2,215,731,104 | 7,000,008 |            | Total
+;;
+;; estimated total profiling overhead: 4.82 seconds
+;; overhead estimation parameters:
+;;   1.2e-8s/call, 6.88e-7s total profiling, 3.22e-7s internal profiling
+
+;; *** using `NEO-ends-with-bytes?' !!!! [WINNER]
+;;   seconds  |     gc     |    consed   |   calls   |  sec/call  |  name  
+;; -------------------------------------------------------------
+;;      0.318 |      0.003 |  16,285,168 | 1,000,001 |   0.000000 | PEEKDATA
+;;      0.289 |      0.004 |  15,955,120 | 1,000,001 |   0.000000 | PTRACE
+;;      0.247 |      0.014 | 144,133,200 | 1,000,001 |   0.000000 | BITS-IN-NUMBER
+;;      0.117 |      0.000 |           0 | 1,000,001 |   0.000000 | BYTES-IN-NUMBER
+;;      0.007 |      0.000 |           0 | 1,000,001 |   0.000000 | PTRACE-SUCCESSFUL?
+;;      0.000 |      0.000 |      32,768 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
+;;      0.000 |      0.000 |  15,168,704 | 1,000,001 |   0.000000 | NEO-ENDS-WITH-BYTES?
+;; -------------------------------------------------------------
+;;      0.978 |      0.021 | 191,574,960 | 6,000,007 |            | Total
+;;
+;; estimated total profiling overhead: 4.13 seconds
+;; overhead estimation parameters:
+;;   1.2e-8s/call, 6.88e-7s total profiling, 3.22e-7s internal profiling
+ 
 
 ;;*** with lispforum-integer->bit-vector
 ;;  seconds  |     gc     |     consed    |   calls   |  sec/call  |  name  
