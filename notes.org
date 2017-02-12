@@ -264,6 +264,137 @@
    3. try multithreading it (bordeaux-thread). This would be the hardest to implement
       but it would be great to finally have a real reason to use it
       
+** profiling results ENDS-WITH-BYTES? vs NEO-ENDS-WITH-BYTES?
+   The crucial point is to finding out `ldb' existed and `integer-length'
+   Also just ldb the whole bits in one go, and not byte-wise... which was also
+   off-by-one wrong.
+
+*** Profiling data, results
+
+    This is from using TIME and slime-profile-package slime-profile-report
+
+    Btw if you're done profiling use slime-UNprofile-all !
+   
+;; profiling data:
+;; *from-addr* to *to-addr* is a range of 1-Million addresses. So only about 0.5% of
+;; the realworld problem size we will face with this system.
+;; 5.3 Seconds is too long. (* 5.3 200)
+;; (time (length (find-match-address-partial #xb7 *from-addr* *to-addr*)))
+;;
+;;*** with integer->bit-vector
+
+;;   seconds  |     gc     |     consed    |   calls   |  sec/call  |  name  
+;; ---------------------------------------------------------------
+;;      3.444 |      0.119 | 1,502,503,360 | 2,000,002 |   0.000002 | INTEGER->BIT-VECTOR
+;;      0.834 |      0.034 |   648,617,776 | 1,000,001 |   0.000001 | BIT-MASK-PADDING
+;;      0.363 |      0.000 |    16,675,984 | 1,000,001 |   0.000000 | PTRACE
+;;      0.320 |      0.004 |    33,613,056 | 1,000,001 |   0.000000 | ENDS-WITH-BYTES?
+;;      0.213 |      0.000 |    14,320,080 | 1,000,001 |   0.000000 | PEEKDATA
+;;      0.044 |      0.000 |             0 | 1,000,001 |   0.000000 | PTRACE-SUCCESSFUL?
+;;      0.000 |      0.000 |           848 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
+;; ---------------------------------------------------------------
+;;      5.218 |      0.157 | 2,215,731,104 | 7,000,008 |            | Total
+;;
+;; estimated total profiling overhead: 4.82 seconds
+;; overhead estimation parameters:
+;;   1.2e-8s/call, 6.88e-7s total profiling, 3.22e-7s internal profiling
+
+;; *** using `NEO-ends-with-bytes?' !!!! [WINNER]
+;;   seconds  |     gc     |    consed   |   calls   |  sec/call  |  name  
+;; -------------------------------------------------------------
+;;      0.318 |      0.003 |  16,285,168 | 1,000,001 |   0.000000 | PEEKDATA
+;;      0.289 |      0.004 |  15,955,120 | 1,000,001 |   0.000000 | PTRACE
+;;      0.247 |      0.014 | 144,133,200 | 1,000,001 |   0.000000 | BITS-IN-NUMBER
+;;      0.117 |      0.000 |           0 | 1,000,001 |   0.000000 | BYTES-IN-NUMBER
+;;      0.007 |      0.000 |           0 | 1,000,001 |   0.000000 | PTRACE-SUCCESSFUL?
+;;      0.000 |      0.000 |      32,768 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
+;;      0.000 |      0.000 |  15,168,704 | 1,000,001 |   0.000000 | NEO-ENDS-WITH-BYTES?
+;; -------------------------------------------------------------
+;;      0.978 |      0.021 | 191,574,960 | 6,000,007 |            | Total
+;;
+;; estimated total profiling overhead: 4.13 seconds
+;; overhead estimation parameters:
+;;   1.2e-8s/call, 6.88e-7s total profiling, 3.22e-7s internal profiling
+ 
+
+;;*** with lispforum-integer->bit-vector
+;;  seconds  |     gc     |     consed    |   calls   |  sec/call  |  name  
+;; ---------------------------------------------------------------
+;;      2.077 |      0.100 | 1,047,853,824 | 1,000,001 |   0.000002 | LISPFORUM-INTEGER->BIT-VECTOR
+;;      1.039 |      0.043 |   657,010,064 | 1,000,001 |   0.000001 | INTEGER->BIT-VECTOR
+;;      1.021 |      0.025 |   655,109,376 | 1,000,001 |   0.000001 | BIT-MASK-PADDING
+;;      0.270 |      0.000 |    16,348,576 | 1,000,001 |   0.000000 | PTRACE
+;;      0.218 |      0.000 |    13,468,528 | 1,000,001 |   0.000000 | PEEKDATA
+;;      0.201 |      0.000 |    29,877,824 | 1,000,001 |   0.000000 | ENDS-WITH-BYTES?
+;;      0.041 |      0.000 |             0 | 1,000,001 |   0.000000 | PTRACE-SUCCESSFUL?
+;;      0.000 |      0.000 |           240 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
+;; ---------------------------------------------------------------
+;;      4.867 |      0.168 | 2,419,668,432 | 7,000,008 |            | Total
+
+
+;;Evaluation took: just `ends-with-bytes?'
+  ;; 4.836 seconds of real time
+  ;; 4.846667 seconds of total run time (4.600000 user, 0.246667 system)
+  ;; [ Run times consist of 0.107 seconds GC time, and 4.740 seconds non-GC time. ]
+  ;; 100.23% CPU
+  ;; 16,478,953,784 processor cycles
+  ;; 2,247,740,896 bytes consed
+
+;; Evaluation took:
+;;   0.309 seconds of real time
+;;   0.310000 seconds of total run time (0.080000 user, 0.230000 system)
+;;   [ Run times consist of 0.003 seconds GC time, and 0.307 seconds non-GC time. ]
+;;   100.32% CPU
+;;   1,052,773,168 processor cycles
+;;   31,844,240 bytes consed
+  
+
+;; FINAL COPARISON
+
+;; Evaluation took: `ends-with-bytes'
+;;   8.732 seconds of real time
+;;   8.743333 seconds of total run time (6.223333 user, 2.520000 system)
+;;   [ Run times consist of 0.153 seconds GC time, and 8.591 seconds non-GC time. ]
+;;   100.13% CPU
+;;   29,758,796,854 processor cycles
+;;   2,247,718,016 bytes consed
+  
+;; 17
+;;   seconds  |     gc     |     consed    |   calls   |  sec/call  |  name  
+;; ---------------------------------------------------------------
+;;      3.737 |      0.092 | 1,533,066,304 | 2,000,002 |   0.000002 | INTEGER->BIT-VECTOR
+;;      0.982 |      0.061 |   655,445,312 | 1,000,001 |   0.000001 | BIT-MASK-PADDING
+;;      0.208 |      0.000 |    16,021,792 | 1,000,001 |   0.000000 | PTRACE
+;;      0.148 |      0.000 |    27,750,256 | 1,000,001 |   0.000000 | ENDS-WITH-BYTES?
+;;      0.000 |      0.000 |    15,434,352 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
+;; ---------------------------------------------------------------
+;;      5.075 |      0.153 | 2,247,718,016 | 5,000,006 |            | Total
+
+;; estimated total profiling overhead: 3.37 seconds
+;; overhead estimation parameters:
+;;   6.e-9s/call, 6.7400003e-7s total profiling, 3.3199998e-7s internal profiling
+
+;; Evaluation took: `NEO-ends-with-bytes' ;; using spec function `integer-length' and `ldb'
+;;   1.862 seconds of real time
+;;   1.863332 seconds of total run time (0.773333 user, 1.089999 system)
+;;   [ Run times consist of 0.007 seconds GC time, and 1.857 seconds non-GC time. ]
+;;   100.05% CPU
+;;   6,345,773,994 processor cycles
+;;   31,785,104 bytes consed
+  
+;; 17
+;;   seconds  |     gc     |   consed   |   calls   |  sec/call  |  name  
+;; ------------------------------------------------------------
+;;      0.291 |      0.000 | 16,452,384 |         1 |   0.290999 | FIND-MATCH-ADDRESS-PARTIAL
+;;      0.235 |      0.007 | 15,332,720 | 1,000,001 |   0.000000 | PTRACE
+;;      0.000 |      0.000 |          0 | 1,000,001 |   0.000000 | NEO-ENDS-WITH-BYTES?
+;; ------------------------------------------------------------
+;;      0.526 |      0.007 | 31,785,104 | 2,000,003 |            | Total
+
+;; estimated total profiling overhead: 1.35 seconds
+;; overhead estimation parameters:
+;;   6.e-9s/call, 6.7400003e-7s total profiling, 3.3199998e-7s internal profiling
+
    
 
 

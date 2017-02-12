@@ -448,37 +448,6 @@ with _positive_ integers"
        :do (setf (aref result-bit-vector i) 1))
     (concatenate 'bit-vector prepend-zeros result-bit-vector)))
 
-
-;; abandoned appraoch for now since the discovery of `LDB'
-;; (defun integer->64bit-vector (number)
-;;   "Convert integer to bit-vector representation of fixed `size'. Only works
-;; with _positive_ integers"
-;;   (let* ((bit-string (format nil "~b" number))
-;; 	 (bit-length (length bit-string))
-;; 	 (result-bit-vector (make-array 64 :element-type 'bit )))
-;;     (loop for char across bit-string
-;;        for i from 0 
-;;        :when (char= char #\1)
-;;        :do (setf (aref result-bit-vector i) 1))
-;;     (concatenate 'bit-vector prepend-zeros result-bit-vector)))
-
-;; use sbcl profiler to compare why this is more efficient than `integer->bit-vector' above
-;; even this implementation takes too long. We will be searching thorugh an address range
-;; of 200Million addresses. This will take aproximately 18 minutes...
-;; (defun lispforum-integer->bit-vector (integer &optional (size 64))
-;;   (labels ((integer->bit-list (int &optional accum)
-;; 	     (cond ((> int 0)
-;; 		    (multiple-value-bind (i r) (truncate int 2)
-;; 		      (integer->bit-list i (push r accum))))
-;; 		   ((null accum) (push 0 accum))
-;; 		   (t accum))))
-;;     (let ((result (coerce (integer->bit-list integer) 'bit-vector)))
-;;       (concatenate 'bit-vector
-;; 		   (make-array (- size (length result))
-;; 			       :element-type 'bit
-;; 			       :initial-element 0)
-;; 		   result))))
-
 ;; implementation idea from edgar-rft
 (defun bit-vector->integer (bit-vector)
   "Convert bit-vector to _positive_ integer."
@@ -487,8 +456,10 @@ with _positive_ integers"
 	  bit-vector))
 
 
+;; superseded by the cl:integer-length !
 (defun bits-in-number (number)
-  "Return the bytes needed to represent this number"
+  "Return the bits needed to represent this number"
+  (declare (fixnum number))
   (if (= number 0) ;; dodging division-by-zero
       1
       (floor (1+ (log number 2)))))
@@ -497,27 +468,37 @@ with _positive_ integers"
   (ceiling (bits-in-number number)
 	   8))
 
-(defun neo-ends-with-bytes? (target-number match-number &optional (bytes (bytes-in-number match-number)))
-  (loop for byte-position from 0 below bytes always
-       (= (ldb (byte 8 (* byte-position 8)) target-number)
-	  (ldb (byte 8 (* byte-position 8)) match-number))))
-
-(defun ends-with-bytes? (target-number match-number)
-"Returns true if `target-number' ends the`match-number' when, where both will be compared as 
-byte their byte representation.
+(defun ends-with-bits? (target-number match-number &optional (bits (integer-length match-number)))
+  "Returns true if `target-number' ends the`match-number', where both will be compared against
+bit by bit.
 
 For example (ends-with-bytes ==> #x400500 #x500 true), even though #x400500 = 4195584 \=
-#x500 = 1280"
-;; TODO: test if big scans go faster if we skip the assert! Just profile it all, it takes up
-;; a huge amount of time
-  ;; (assert (and (<= target-number (expt 2 64))
-  ;;              (<= match-number (expt 2 64))))
-  (let* ((bit-v1 (integer->bit-vector target-number))
-	 (match-bytes-bit-vector (integer->bit-vector match-number))
-	 (match-bytes-mask (bit-mask-padding match-number))
-	 (masked-match-num (bit-and bit-v1 match-bytes-mask)))
-    (equal masked-match-num
-	   match-bytes-bit-vector)))
+1280 = #x500.
+
+The `bits' argument can be used if only n-bits should be compared. By default all the bits needed
+to represent `match-number' will be used."
+  (declare ((unsigned-byte 64) match-number target-number)
+	   (fixnum bits))
+  (= (ldb (byte bits 0) target-number)
+     (ldb (byte bits 0) match-number)))
+
+;; obsoleted by ENDS-WITH-BITS?
+;; (defun ends-with-bytes? (target-number match-number)
+;;   "Returns true if `target-number' ends the`match-number', where both will be compared against
+;; byte by byte.
+
+;; For example (ends-with-bytes ==> #x400500 #x500 true), even though #x400500 = 4195584 \=
+;; 1280 = #x500"
+;;   ;; TODO: test if big scans go faster if we skip the assert! Just profile it all, it takes up
+;;   ;; a huge amount of time
+;;   ;; (assert (and (<= target-number (expt 2 64))
+;;   ;;              (<= match-number (expt 2 64))))
+;;   (let* ((bit-v1 (integer->bit-vector target-number))
+;; 	 (match-bytes-bit-vector (integer->bit-vector match-number))
+;; 	 (match-bytes-mask (bit-mask-padding match-number))
+;; 	 (masked-match-num (bit-and bit-v1 match-bytes-mask)))
+;;     (equal masked-match-num
+;; 	   match-bytes-bit-vector)))
 
 
 ;; TODO (UPDATE: not so important, we care about the [heap] only for now.)  continue
@@ -533,18 +514,27 @@ For example (ends-with-bytes ==> #x400500 #x500 true), even though #x400500 = 41
        collect address))
 
 
-
-;; TODO: add loop that can loop over a list; for our resulting "sieved" matching addresses!
-(defun find-match-address-partial (value from-address to-address &optional (pid *pid*))
-  (loop for address from from-address to to-address
-     :when (ends-with-bytes? (peekdata address pid nil nil)
-  			     ;; (ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
-  			     value)
-       collect address))
+(defun find-value-address (value &key (pid *pid*) (from-address #x0) (to-address #x0) (address-list nil))
+  "Returns a list of addresses for which (peekdata address ..) will return a number
+ending with the bits to represent `value'.
+Will either search addresses :from-address to :to-address, or a list of, for example already filtered,
+address provided from :address-list"
+  (if (not (null address-list))
+      (loop for address in address-list
+	 :when (neo-ends-with-bytes? ;; (peekdata address pid nil nil)
+		(ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
+		value)
+	 collect address)
+      (loop for address from from-address to to-address
+	 :when (neo-ends-with-bytes? ;; (peekdata address pid nil nil)
+		(ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
+		value)
+	 collect address)))
 
 
 ;; TODO rename
-;; TODO use the `cl:dpb' !!
+;; TODO: use ldb to plug in the data you want, you can do it in one go deciding with bytes-in-number
+;; how much to overwrite and where using the proper size byte specification e.g. (byte 8 0)
 (defun pokedata-input-only (byte-offset data &optional (pid *pid*) (print-errno-description? t))
   "Only `pokedata' the bytes given in `data' at the address `byte-offset'. i.e. data = #xabcd,
 will only replace the first 2 bytes with #xab #xcd instead of the hole 64-bit double word,
@@ -562,20 +552,6 @@ at address `byte-offset'"
 		    data-bit-vector)))
     (pokedata byte-offset result-pokedata pid print-errno-description?)))
 
-
-
-;; before optimizing FIND-MATCH-ADDRESS-PARTIAL, (time) output:
-;; 10.922 seconds of real time
-;;   10.948000 seconds of total run time (10.740000 user, 0.208000 system)
-;;   [ Run times consist of 0.572 seconds GC time, and 10.376 seconds non-GC time. ]
-;;   100.24% CPU
-;;   26,212,917,128 processor cycles
-;;   3,712,013,472 bytes consed
-
-;; profiling tools:
-;; M-x slime-profile-package => CFFI-USER
-;; then after calling the inefficient function run
-;; M-x slime-*-report
 
 
 ;; some test functions
@@ -614,59 +590,3 @@ Return mismatching inputs, or true if all's right"
 	t
 	(progn (format t "Failed for inputs:~%")
 	       fail-input))))
-
-;; profiling data:
-;; *from-addr* to *to-addr* is a range of 1-Million addresses. So only about 0.5% of
-;; the realworld problem size we will face with this system.
-;; 5.3 Seconds is too long. (* 5.3 200)
-;; (time (length (find-match-address-partial #xb7 *from-addr* *to-addr*)))
-;;
-;;*** with integer->bit-vector
-
-;;   seconds  |     gc     |     consed    |   calls   |  sec/call  |  name  
-;; ---------------------------------------------------------------
-;;      3.444 |      0.119 | 1,502,503,360 | 2,000,002 |   0.000002 | INTEGER->BIT-VECTOR
-;;      0.834 |      0.034 |   648,617,776 | 1,000,001 |   0.000001 | BIT-MASK-PADDING
-;;      0.363 |      0.000 |    16,675,984 | 1,000,001 |   0.000000 | PTRACE
-;;      0.320 |      0.004 |    33,613,056 | 1,000,001 |   0.000000 | ENDS-WITH-BYTES?
-;;      0.213 |      0.000 |    14,320,080 | 1,000,001 |   0.000000 | PEEKDATA
-;;      0.044 |      0.000 |             0 | 1,000,001 |   0.000000 | PTRACE-SUCCESSFUL?
-;;      0.000 |      0.000 |           848 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
-;; ---------------------------------------------------------------
-;;      5.218 |      0.157 | 2,215,731,104 | 7,000,008 |            | Total
-;;
-;; estimated total profiling overhead: 4.82 seconds
-;; overhead estimation parameters:
-;;   1.2e-8s/call, 6.88e-7s total profiling, 3.22e-7s internal profiling
-
-;; *** using `NEO-ends-with-bytes?' !!!! [WINNER]
-;;   seconds  |     gc     |    consed   |   calls   |  sec/call  |  name  
-;; -------------------------------------------------------------
-;;      0.318 |      0.003 |  16,285,168 | 1,000,001 |   0.000000 | PEEKDATA
-;;      0.289 |      0.004 |  15,955,120 | 1,000,001 |   0.000000 | PTRACE
-;;      0.247 |      0.014 | 144,133,200 | 1,000,001 |   0.000000 | BITS-IN-NUMBER
-;;      0.117 |      0.000 |           0 | 1,000,001 |   0.000000 | BYTES-IN-NUMBER
-;;      0.007 |      0.000 |           0 | 1,000,001 |   0.000000 | PTRACE-SUCCESSFUL?
-;;      0.000 |      0.000 |      32,768 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
-;;      0.000 |      0.000 |  15,168,704 | 1,000,001 |   0.000000 | NEO-ENDS-WITH-BYTES?
-;; -------------------------------------------------------------
-;;      0.978 |      0.021 | 191,574,960 | 6,000,007 |            | Total
-;;
-;; estimated total profiling overhead: 4.13 seconds
-;; overhead estimation parameters:
-;;   1.2e-8s/call, 6.88e-7s total profiling, 3.22e-7s internal profiling
- 
-
-;;*** with lispforum-integer->bit-vector
-;;  seconds  |     gc     |     consed    |   calls   |  sec/call  |  name  
-;; ---------------------------------------------------------------
-;;      2.077 |      0.100 | 1,047,853,824 | 1,000,001 |   0.000002 | LISPFORUM-INTEGER->BIT-VECTOR
-;;      1.039 |      0.043 |   657,010,064 | 1,000,001 |   0.000001 | INTEGER->BIT-VECTOR
-;;      1.021 |      0.025 |   655,109,376 | 1,000,001 |   0.000001 | BIT-MASK-PADDING
-;;      0.270 |      0.000 |    16,348,576 | 1,000,001 |   0.000000 | PTRACE
-;;      0.218 |      0.000 |    13,468,528 | 1,000,001 |   0.000000 | PEEKDATA
-;;      0.201 |      0.000 |    29,877,824 | 1,000,001 |   0.000000 | ENDS-WITH-BYTES?
-;;      0.041 |      0.000 |             0 | 1,000,001 |   0.000000 | PTRACE-SUCCESSFUL?
-;;      0.000 |      0.000 |           240 |         1 |   0.000000 | FIND-MATCH-ADDRESS-PARTIAL
-;; ---------------------------------------------------------------
-;;      4.867 |      0.168 | 2,419,668,432 | 7,000,008 |            | Total
