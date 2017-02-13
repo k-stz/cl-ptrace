@@ -514,19 +514,23 @@ to represent `match-number' will be used."
        collect address))
 
 
-(defun find-value-address (value &key (pid *pid*) (from-address #x0) (to-address #x0) (address-list nil))
-  "Returns a list of addresses for which (peekdata address ..) will return a number
-ending with the bits to represent `value'.
-Will either search addresses :from-address to :to-address, or a list of, for example already filtered,
-address provided from :address-list"
+(defun find-value-address (value &key (pid *pid*)
+				   (from-address #x0)
+				   (to-address #x0)
+				   (address-list nil))
+  "Returns a list of addresses for which (peekdata address ..) will return a number ending
+with the bits representing `value'.
+
+Will either search addresses :from-address to `:to-address', or a list of, for example
+already filtered, addresses provided from `:address-list'"
   (if (not (null address-list))
       (loop for address in address-list
-	 :when (neo-ends-with-bytes? ;; (peekdata address pid nil nil)
+	 :when (ends-with-bits? ;; (peekdata address pid nil nil)
 		(ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
 		value)
 	 collect address)
       (loop for address from from-address to to-address
-	 :when (neo-ends-with-bytes? ;; (peekdata address pid nil nil)
+	 :when (ends-with-bits? ;; (peekdata address pid nil nil)
 		(ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
 		value)
 	 collect address)))
