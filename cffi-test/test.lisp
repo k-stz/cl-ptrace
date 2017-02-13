@@ -336,7 +336,7 @@
       (hex-print peeked-data))
     peeked-data))
 
-(defun pokedata (byte-offset data &optional (pid *pid*) (print-errno-description? t))
+(defun pokedata-full-addr (byte-offset data &optional (pid *pid*) (print-errno-description? t))
   (let ((ptrace-return-value))
     (setf ptrace-return-value
 	  (ptrace +ptrace-pokedata+ pid (make-pointer byte-offset) (make-pointer data)))
@@ -532,25 +532,20 @@ address provided from :address-list"
 	 collect address)))
 
 
-;; TODO rename
-;; TODO: use ldb to plug in the data you want, you can do it in one go deciding with bytes-in-number
-;; how much to overwrite and where using the proper size byte specification e.g. (byte 8 0)
-(defun pokedata-input-only (byte-offset data &optional (pid *pid*) (print-errno-description? t))
-  "Only `pokedata' the bytes given in `data' at the address `byte-offset'. i.e. data = #xabcd,
-will only replace the first 2 bytes with #xab #xcd instead of the hole 64-bit double word,
-at address `byte-offset'"
-  (let* ((peeked-bit-vector (integer->bit-vector (peekdata byte-offset pid nil nil)))
-	(data-bit-vector (integer->bit-vector data))
-	(data-mask (bit-mask data))
-	 result-pokedata)
-    ;; clear from target vector's place to fit in `data', using data-mask
-    ;; then bit in `data' with bit-ior. Finally convert to an integer,
-    ;; ready for being `pokedata'd
-    (setf result-pokedata
-	  (bit-vector->integer
-	   (bit-ior (bit-and peeked-bit-vector data-mask)
-		    data-bit-vector)))
-    (pokedata byte-offset result-pokedata pid print-errno-description?)))
+(defun pokedata (byte-offset data &key (pid *pid*)
+				    (print-errno-description? t)
+				    (write-bits (integer-length data)))
+  "Only `pokedata' the `write-bits' bits of `data' at the address `byte-offset'. i.e. data = #xabcd,
+and default write-bits (integer-length data) = 16 Bits, will only replace the first 2
+bytes with #xab #xcd instead of the whole 64-bit double word, at address `byte-offset'.
+
+Remember ptrace(PTRACE_PEEKDATA,..) only allows to set full (64bit on x86_64) words at a
+time, so this function takes care to only set the amount of bits you want."
+  (let* ((peeked-data (peekdata byte-offset pid nil nil)))
+    ;; this directly sets the bits in peeked-data to data
+    (print write-bits)
+    (setf (ldb (byte write-bits 0) peeked-data) data)
+    (pokedata-full-addr byte-offset peeked-data pid print-errno-description?)))
 
 
 
@@ -579,13 +574,12 @@ Return mismatching inputs, or true if all's right"
   `equal-test-fn' to compare the results"
   (declare (function fn-1 fn-2 equal-test-fn)
 	   (fixnum problem-size))
-  (let (fail-input)
-    (setf fail-input
-	  (loop for i upto problem-size
-	     :unless (funcall equal-test-fn
-			      (funcall fn-1 i)
-			      (funcall fn-2 i))
-	     collect i))
+  (let ((fail-input
+	 (loop for i upto problem-size
+	    :unless (funcall equal-test-fn
+			     (funcall fn-1 i)
+			     (funcall fn-2 i))
+	    collect i)))
     (if (null fail-input)
 	t
 	(progn (format t "Failed for inputs:~%")
