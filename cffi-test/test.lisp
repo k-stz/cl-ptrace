@@ -34,7 +34,7 @@
   ;; none of these work..
     (t (:default "/home/k-stz/sol_sanctum/cl-ptrace/bin/libtest")))
 
-;; nope only works on *.so files (shared object files) !
+;; libtest must be a *.so files (shared object files) !
 ;; tricking it into loading it anyway raises the signal: "(...) cannot dynamically load
 ;; executable"
 (use-foreign-library libtest)
@@ -56,9 +56,9 @@
 ;; cffi we have the problem that the return value of ptrace gets translated to Lisp. -1 is
 ;; represented as #xffffffffffffffff, so we instead will test against that return value. Tests
 ;; indicated that this is semantically correct
-;; The problem araised from using the ptrace return type :unsigned-long-long instead of :long-long
+;; The problem araised from using the ptrace return type :unsigned-long instead of :long
 ;; which would indeed return -1, but bogus for some other values read with peekdata.
-(defcfun "ptrace" :unsigned-long-long
+(defcfun "ptrace" :unsigned-long
   ;;here the multiple arguments follow:
   (ptrace-request :int) (pid pid-t) (addr :pointer) (data :pointer))
 
@@ -68,6 +68,7 @@
 (defconstant +SIGCONT+ 18)
 (defconstant +SIGSTOP+ 19)
 
+;; Now we cann also do a kill -9 <pid> simply with (kill <pid> 9)
 (defcfun "kill" :int (pid-t :int) (signal :int))
 
 ;; "Indicate that the process making this request should be traced.
@@ -118,14 +119,13 @@
 
 ;; WORKS, when Lisp is run as root!!!
 (defun attach-to (&optional (pid *pid*))
-  (let ((status (foreign-alloc :int)))
+  (with-foreign-object (status :int)
     (print "ptrace ptrace-attach..")
     (ptrace +PTRACE-ATTACH+ pid +NULL+ +NULL+)
     (print "waitpid..")
     (waitpid pid status 0)
     (format t "waitpid status: ~a~%" (mem-ref status :int))
-    (format t "attached to process PID: ~a ~%" pid)
-    (foreign-free status)) ;; TODO replace with (with-foreign-object ...) or put in *variable*
+    (format t "attached to process PID: ~a ~%" pid))
   pid)
 
 ;; add some datastructure to capture the state of a process, such as if it is already
@@ -283,6 +283,7 @@
 		(foreign-slot-value regs '(:struct user-regs-struct) 'rip)))))
 
 (defun allocate-user-regs ()
+  ;; free with (foreign-free ..)
   (foreign-alloc '(:struct user-regs-struct)))
 
 (defvar *regs* (allocate-user-regs)) ;; don't run multiple times!
@@ -300,15 +301,14 @@
        (t ;; but nobody came
 	))))
 
-
-
-
+ 
 ;; TODO: (1) tracee will stop whenever a signal is delivered. Test this, and how to
 ;;       get at the signal. (2) the tracer will be notified at its next call to waitpid(2)
 ;;       the &status variable of the waitpid will contain information that indicate the cause of the
 ;;       stop of the tracee.
 
 (defcvar "errno" :int)
+(declaim ((signed-byte 32) *errno*))
 (get-var-pointer '*errno*)
 
 (defcfun ("strerror" strerror-arg) :string (errno :int))
@@ -319,12 +319,13 @@
 
 (defun ptrace-successful? (ptrace-return-value &optional (print-errno-description? t))
   "Return T if last ptrace call was successful. Optionally print human readable errno description."
+  (declare ((unsigned-byte 64) ptrace-return-value))
   (if (and (= ptrace-return-value #xffffffffffffffff) (/= *errno* 0))
       (progn
 	(when print-errno-description?
 	  (format t "~a~%" (strerror)))
 	(values nil ptrace-return-value))
-      (values t ptrace-return-value)))
+      t))
 
 
 (defun peekdata (byte-offset &optional (pid *pid*) (print-errno-description? t) (hex-print? t))
@@ -385,7 +386,7 @@
       (format t "readable: ~(~x~) - ~(~x~)~%" first-readable to-num))))
 
 
-(defun print-peekdata-over (n)
+(defun print-n-peekdata-instructions (n)
   (loop for i upto n
      for rip = (rip-address) do
        (format t "rip: ~x ~x~%"
@@ -410,96 +411,80 @@
 	 collect text)))
 
 
-(defun bit-mask-padding (number &optional (size 64))
-  (let* ((bit-string (format nil "~b" number))
-	 (bit-length (length bit-string))
-	 (mask-zeroes
-	  (make-array (- size bit-length) :element-type 'bit :initial-element 0))
-	 (mask-ones
-	  (make-array bit-length :element-type 'bit :initial-element 1)))
-    (concatenate 'bit-vector mask-zeroes mask-ones)))
+;; from former attempt, this code is useless for now:
 
-(defun bit-mask (number &optional (size 64))
-  "Return bit-vector bit-mask for `number' that can be used to clear bitvectors to insert
-  `number' in them as bit-vector representations.  Example:
-   (bit-mask 2 8)            ==> #*11111100
-   (integer->bit-vector 2 8) ==> #*00000010 "
-  (bit-not (bit-mask-padding number size)))
+;; (defun bit-mask-padding (number &optional (size 64))
+;;   (let* ((bit-length (integer-length number))
+;; 	 (mask-zeroes
+;; 	  (make-array (- size bit-length) :element-type 'bit :initial-element 0))
+;; 	 (mask-ones
+;; 	  (make-array bit-length :element-type 'bit :initial-element 1)))
+;;     (concatenate 'bit-vector mask-zeroes mask-ones)))
 
+;; (defun bit-mask (number &optional (size 64))
+;;   "Return bit-vector bit-mask for `number' that can be used to clear bitvectors to insert
+;;   `number' in them as bit-vector representations.  Example:
+;;    (bit-mask 2 8)            ==> #*11111100
+;;    (integer->bit-vector 2 8) ==> #*00000010 "
+;;   (bit-not (bit-mask-padding number size)))
 
-;; TODO: (bit-vector -1) = (integer->bit-vector 3)
-;; check if this will be an issue
-(defun integer->bit-vector (number &optional (size 64))
-  "Convert integer to bit-vector representation of fixed `size'. Only works
-with _positive_ integers"
-  (declare (fixnum size))
-  (let* ((bit-string (format nil "~b" number))
-	 (bit-length (length bit-string))
-	 (prepend-zeros
-	  (progn
-	    ;; if this assert signals, the bit-vector representation of n is bigger than
-	    ;; the size of the target bit-vector we want to create
-	    ;; (assert (>= size bit-length))
-	    (make-array (- size bit-length) :element-type 'bit :initial-element 0)))
-	 (result-bit-vector (make-array bit-length :element-type 'bit )))
-    (loop for char across bit-string
-       for i from 0 
-       :when (char= char #\1)
-       :do (setf (aref result-bit-vector i) 1))
-    (concatenate 'bit-vector prepend-zeros result-bit-vector)))
+;; ;; TODO: (bit-vector -1) = (integer->bit-vector 3)
+;; ;; check if this will be an issue
+;; (defun integer->bit-vector (number &optional (size 64))
+;;   "Convert integer to bit-vector representation of fixed `size'. Only works
+;; with _positive_ integers"
+;;   (declare (fixnum size))
+;;   (let* ((bit-string (format nil "~b" number))
+;; 	 (bit-length (length bit-string))
+;; 	 (prepend-zeros
+;; 	  (progn
+;; 	    ;; if this assert signals, the bit-vector representation of n is bigger than
+;; 	    ;; the size of the target bit-vector we want to create
+;; 	    ;; (assert (>= size bit-length))
+;; 	    (make-array (- size bit-length) :element-type 'bit :initial-element 0)))
+;; 	 (result-bit-vector (make-array bit-length :element-type 'bit )))
+;;     (loop for char across bit-string
+;;        for i from 0 
+;;        :when (char= char #\1)
+;;        :do (setf (aref result-bit-vector i) 1))
+;;     (concatenate 'bit-vector prepend-zeros result-bit-vector)))
 
-;; implementation idea from edgar-rft
-(defun bit-vector->integer (bit-vector)
-  "Convert bit-vector to _positive_ integer."
-  (reduce #'(lambda (first-bit second-bit)
-	      (+ (* first-bit 2) second-bit))
-	  bit-vector))
+;; ;; implementation idea from edgar-rft
+;; (defun bit-vector->integer (bit-vector)
+;;   "Convert bit-vector to _positive_ integer."
+;;   (reduce #'(lambda (first-bit second-bit)
+;; 	      (+ (* first-bit 2) second-bit))
+;; 	  bit-vector))
 
+;; ;; superseded by the cl:integer-length !
+;; (defun bits-in-number (number)
+;;   "Return the bits needed to represent this number"
+;;   (declare (fixnum number))
+;;   (if (= number 0) ;; dodging division-by-zero
+;;       1
+;;       (floor (1+ (log number 2)))))
 
-;; superseded by the cl:integer-length !
-(defun bits-in-number (number)
-  "Return the bits needed to represent this number"
-  (declare (fixnum number))
-  (if (= number 0) ;; dodging division-by-zero
-      1
-      (floor (1+ (log number 2)))))
+;; (defun bytes-in-number (number)
+;;   (ceiling (bits-in-number number)
+;; 	   8))
 
-(defun bytes-in-number (number)
-  (ceiling (bits-in-number number)
-	   8))
 
 (defun ends-with-bits? (target-number match-number &optional (bits (integer-length match-number)))
-  "Returns true if `target-number' ends the`match-number', where both will be compared against
-bit by bit.
+  "Returns true if `target-number' numerical bits representation ends with `match-number's numerical 
+bits represenation. 
 
 For example (ends-with-bytes ==> #x400500 #x500 true), even though #x400500 = 4195584 \=
 1280 = #x500.
 
 The `bits' argument can be used if only n-bits should be compared. By default all the bits needed
-to represent `match-number' will be used."
+to represent `match-number' will be used.
+
+The original purpose of this function is to help find a bit pattern in memory, by scanning through
+it."
   (declare ((unsigned-byte 64) match-number target-number)
 	   (fixnum bits))
   (= (ldb (byte bits 0) target-number)
      (ldb (byte bits 0) match-number)))
-
-;; obsoleted by ENDS-WITH-BITS?
-;; (defun ends-with-bytes? (target-number match-number)
-;;   "Returns true if `target-number' ends the`match-number', where both will be compared against
-;; byte by byte.
-
-;; For example (ends-with-bytes ==> #x400500 #x500 true), even though #x400500 = 4195584 \=
-;; 1280 = #x500"
-;;   ;; TODO: test if big scans go faster if we skip the assert! Just profile it all, it takes up
-;;   ;; a huge amount of time
-;;   ;; (assert (and (<= target-number (expt 2 64))
-;;   ;;              (<= match-number (expt 2 64))))
-;;   (let* ((bit-v1 (integer->bit-vector target-number))
-;; 	 (match-bytes-bit-vector (integer->bit-vector match-number))
-;; 	 (match-bytes-mask (bit-mask-padding match-number))
-;; 	 (masked-match-num (bit-and bit-v1 match-bytes-mask)))
-;;     (equal masked-match-num
-;; 	   match-bytes-bit-vector)))
-
 
 ;; TODO (UPDATE: not so important, we care about the [heap] only for now.)  continue
 ;; implementation (defun get-address-range (maps-string-lines &key (memory-segment
@@ -538,17 +523,18 @@ already filtered, addresses provided from `:address-list'"
 
 (defun pokedata (byte-offset data &key (pid *pid*)
 				    (print-errno-description? t)
-				    (write-bits (integer-length data)))
-  "Only `pokedata' the `write-bits' bits of `data' at the address `byte-offset'. i.e. data = #xabcd,
+				    (write-n-bits (integer-length data)))
+  "Only `pokedata' the `write-n-bits' bits of `data' at the address `byte-offset'. i.e. data = #xabcd,
 and default write-bits (integer-length data) = 16 Bits, will only replace the first 2
-bytes with #xab #xcd instead of the whole 64-bit double word, at address `byte-offset'.
+bytes, of the value at (pokedata byte-offset ..) with #xab #xcd instead of the whole
+64-bit double word, at address `byte-offset'.
 
 Remember ptrace(PTRACE_PEEKDATA,..) only allows to set full (64bit on x86_64) words at a
 time, so this function takes care to only set the amount of bits you want."
   (let* ((peeked-data (peekdata byte-offset pid nil nil)))
     ;; this directly sets the bits in peeked-data to data
-    (print write-bits)
-    (setf (ldb (byte write-bits 0) peeked-data) data)
+    (print write-n-bits)
+    (setf (ldb (byte write-n-bits 0) peeked-data) data)
     (pokedata-full-addr byte-offset peeked-data pid print-errno-description?)))
 
 
