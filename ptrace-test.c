@@ -50,14 +50,13 @@ int tracer_do(void) {
   int status;
   printf("Parent called: %d\n", getpid());
   waitpid(child, &status, 0); // waiting for the child to finish
-  // TODO: PEEKDATA reads from the tracee's memory, PEEKUSER reads from the tracee's "user" data
   // PEEKUSER: read memory from offset, offset is typically word alligned
   int x = ptrace(PTRACE_PEEKUSER, child, 0);
   int y = ptrace(PTRACE_PEEKUSER, child, 1);
   int z = ptrace(PTRACE_PEEKUSER, child, 2);
   int w = ptrace(PTRACE_PEEKUSER, child, 3);
 
-  // GETREGS reads from, usually, general purpose registers (SET..) sets them
+  // GETREGS reads from, usually, general purpose registers (SETREGS..) sets them
   printf("  peek: %d %d %d %d\n", x, y ,z, w);
 
   printf("Child termination status: %d\n", status);

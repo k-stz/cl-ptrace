@@ -50,13 +50,12 @@
 ;; sao location: /usr/include/x86_64-linux-gnu/sys/ptrace.h
 
 ;; error occured?
-
 ;; ptrace returning -1 might indicate that an error, has happened (or the return value is
 ;; indeed -1). This is when we check *errno* which will be '0' on "Success". But due to
 ;; cffi we have the problem that the return value of ptrace gets translated to Lisp. -1 is
 ;; represented as #xffffffffffffffff, so we instead will test against that return value. Tests
 ;; indicated that this is semantically correct
-;; The problem araised from using the ptrace return type :unsigned-long instead of :long
+;; The problem arose from using the ptrace return type :unsigned-long instead of :long
 ;; which would indeed return -1, but bogus for some other values read with peekdata.
 (defcfun "ptrace" :unsigned-long
   ;;here the multiple arguments follow:
@@ -210,7 +209,7 @@
   regs)
 
 
-;; TODO extend SETF to replace this
+;; TODO extend SETF to replace this?
 (defun set-user-register (user-regs-struct register new-value)
   (setf  (foreign-slot-value user-regs-struct '(:struct user-regs-struct) register)
 	 new-value))

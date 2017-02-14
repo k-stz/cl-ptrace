@@ -1,11 +1,11 @@
 // including header files,
 // is sematically the same as posting the contents of its belonging file here. #include is
-// a preprocessor directive that takes care of that for us, it searches for a the given
+// a preprocessor directive that takes care of that for us, it searches for a given
 // argument header in a standard list of system directories.  You can add directories to
 // this list with the -I option while compiling the source code
 // On my machine the files can be found in /usr/include for example sys/user.h is in
 // /usr/include/sys/user.h
-// on another in /usr/include/x86_64-linux-gnu/sys/ptrace.h
+// on another machine in /usr/include/x86_64-linux-gnu/sys/ptrace.h
 
 #include <sys/ptrace.h>
 #include <sys/reg.h>

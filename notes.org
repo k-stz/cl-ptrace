@@ -25,9 +25,10 @@
   =ptrace(PTRACE_TRACEME, ..)= to initiate being traced by the parent.
 
 * How does =ptrace()= work
-  whenever ptrace is called it _first locks the kernel_ (TODO: why), just before
-  returning it unlocks the kernel. Depending on the request different things happen
-  in between the locks. What follows is an overview of the requests behaviour
+  whenever ptrace is called it _first locks the kernel_ (I assume to mutex other ptrace
+  calls or anything else compromising the trace attempt), just before returning it unlocks
+  the kernel. Depending on the request different things happen in between the locks. What
+  follows is an overview of the requests behaviour
 
 ** =PTRACE_TRACEME=
    Any signals (except SIGKILL) either delived from outside or from *exec* calls made by
@@ -248,7 +249,7 @@
    Is basically the problem we're trying to solve. `find-match-address-partial'[fn:4] tries
    to fix this problem.
 
-** TODO Problem Size
+** Problem Size
    
    The real world example involves an address range of 200 Million. Just `peekdata' over
    such a range, byte-wise, takes a long time
@@ -427,7 +428,7 @@ searches for it over an address range that is used as index to memory with `peek
 
 * gcc
 
-** TODO =gcc -g=
+** =gcc -g=
    "with this option the compiler and linker will generate and retain symbol information
    in the executable itself"
    For example loading the executable with =gdb= allows to associate the sourcecode files
@@ -753,7 +754,9 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    This changes `flagg' for every subsequent instruction! As we change it directly
    in its memory location!
 
-   TODO: in what memory portion is flagg stored
+   The location of a variable in memory depends whether it's content are created at
+   runtime (heap, mmap), it is static (BSS) or known at compile time (data, text) finally
+   some languages, like Lisp, make the location of a variable difficult to figure out
    TODO: test if changing it in a register will write the changed value back
          to memory? This might be an issue of modyfing the register, like
 	 rip where changes change effect only on the next instruction... Think
@@ -828,7 +831,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   <anon2> and you need to start from the instruction pointer of course	   
   <k-stz> anon: thanks
   
-** TODO udis86
+** udis86
    https://github.com/jonwil/unlinker/tree/master/udis86
    I read that the format needs to be XML somewhere.. so its looking bad already
 ** operating mode (assembly)
@@ -912,11 +915,10 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   ;; :int = return-value
 #+END_SRC
 
-** TODO How can we create bindings for a function when all we did is load the binary shared object?
+** How can we create bindings for a function when all we did is load the binary shared object?
    The binary *.so file indeed contains all the metadata necessary to refer to by the
    functions name to the machinecode therein!
 
-   TODO:
    The command line tool =nm= lets us see the symbols of an object file, the output of,
    for example =nm libtest.so= returns among other:
    #+BEGIN_SRC shell
