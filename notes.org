@@ -1039,3 +1039,94 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    peeked address is #400500 then you will find the byte order in question
    at byte 500 and the following!
    
+
+* Cheat Engine
+  cl-ptrace can be used to hack games just like a cheat engine. There are some methods
+  that can be used. In the following I will list what works, or what I want to try next.
+
+** Sieve Addresses method
+   Just like scanning a savefile for the "player money" value, we can simply
+   scan the memory of the process by doing (find-value-address <current-money>)
+   we can filter all addresses that might store the money value.
+   Then we can resume the game, get some money, or lose it, and search again
+   but this time over the sieved out values.
+
+   Now if those values match we have a strong inkling that those addresse might store
+   our money value and we can either do more tests, narrowing down the addresses or
+   go ahead and try to inject the money we want with (pokedata ..) and see if it
+   changes ingame.
+   
+*** Problems with address sieving: huge Adress range
+    1. The Addressspace of modern Compmuter is huge (expt 2 64), simply looping over such,
+       huge space, without executing any execution, takes unfeasable amount of time.
+       (multiple years)
+       
+*** Solution: Narrow down Address range
+    We can narrow down the address range because if we take memory segments into
+    consideration. For example most runtime data is allocated on the heap, who's memory
+    range can be read out from the /proc/<pid>/maps file. (some, because mmap will
+    write bigger allocation, by default, to the memory mapping segment)
+    This already reduced the problem size by plenty orders of magnitude.
+
+*** Problem data representation
+    Searching for a player health value like "300 Hp" we need to consider that
+    if the machine uses :little-endian, then the bytes will be layed out in
+    reverse order: 300 = #x12c, hence memory: 0c 12
+
+    That's the smaller issue, the bigger is that the value might be represented implicitly
+    through other variables. Like instead of the programmer writting
+    int health = 300; The code might be, String health = "300"; and on calling the string
+    is parsed and added to. This might look strange, but it is a actual method used by
+    programmers to hackproof there code!
+
+    Now we also might consider the implementation of the game itself, where the player,
+    and his stats are static variables, that are only declared on execution. Then
+    The values would reside in the BSS-Segment, which can't just be readout from
+    /proc/<pid>/maps file directly. We have to guess which memory range it might contain.
+    Also it could be in the data segment, if the Hero starts out with =static int health =
+    10;= health.
+
+*** Solution: keep book of an entiry address region between states
+    This is a bit involved, we will save the entire address region values. Then
+    continue the game and without triggering a money change. Then stop the game
+    again and filter out all addresses that have changed. We can repeat this,
+    and eventually introduce some money changes. We could then check if the
+    the address values now changed by the proper magnitude: If the player loses
+    10 health points, we might scan if the absolute of the (- old-value new-value)
+    is 10.
+    This might still fail, as programmers might store the value as an binary
+    inverse and together with a factor.
+    The solution might then just be to either keep on trail and error (perhaps
+    with ASLR enabled etc)
+    The idea is if we find a needle in the haystack, neighbor values might
+    be part of the datastructure representing the player stats, money, items
+    etc.
+
+*** Solution: singlestep, instruction refering to address
+    Finally, I haven't tried if this is feasible. We could singlestep through a portion
+    of the program where a certain change takes place to a value we care about.
+    For example the player is 2 pixels apart from falling on spikes. We now know
+    that somewhere along the way there is going to be an instruction that reads
+    out the health value from the process memory and puts it in a register. To
+    perform the arithmetic. We can then use the memory-address used to find the
+    address in question!
+    This would require to get at the disassembly easily, either by disassembling
+    on the fly, or using the instruction pointer to find the functions refered to
+    in the executable binary! Perhaps some =nm ..= function value is being referred
+    to
+    
+*** Advanced: Anti-Hacking method deployed
+    Some programms might try to guard against code injection by various methods, of which
+    some may be too involved for the cracker/hacker bother trying to bypass it.
+
+    For example, the program might checksum its core, or parts of it, with a seperate
+    thread, every now and then, and guard against code injection this way (for example
+    crashing the program on a registerd failed checksum).
+
+    The Hacker might find the checksum routine and feed it some bogus values to
+    satisfy it, or perhaps directly crop out the checksum routine itself. To guard against
+    that the checksum system might then fetch its values from some cloudserver, that
+    raises the effort to hack the program.
+    
+    
+    
