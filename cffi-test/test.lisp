@@ -402,7 +402,7 @@
 
 ;; NEXT-TODO can't get /proc/<pid>/maps pathname column entires!
 (defun parse-proc-pid-maps (&optional (pid *pid*))
-  "Return list of Strings containing the line entries of /proc/<pid>/maps"
+  "Return a list of plists with GETFable columns of /proc/pid/maps"
   (let (maps-line-strings)
     (setf maps-line-strings
 	  (with-open-file (maps-stream (get-maps-path pid) :direction :input)
@@ -414,9 +414,13 @@
     (loop for line in maps-line-strings collect 
 	 (with-input-from-string (string-stream line)
 	   (destructuring-bind (address-range permissions offset dev inode &optional pathname)
-	       (loop :repeat 6 collect (read-word-to-string string-stream))
-	     (print (list address-range permissions offset dev inode pathname)))
-	   ))))
+	       (loop for i from 1 to 6
+		  :if (< i 6) 
+		  :collect (read-word-to-string string-stream)
+		  :else
+		          ;; quick hack "         /some/path/etc" -> "/some/path/etc
+		  :collect (remove #\Space (read-line string-stream nil nil)))
+	     (print (list :address-range address-range :perimission permissions :offset offset :dev dev :inode inode :pathname pathname))) ))))
 
 (defun read-word-to-string (stream)
   (let ((char-list '()))
