@@ -394,20 +394,42 @@
        (singlestep *pid* nil)))
 
 
-(defun get-maps-path (pid)
+(defun get-maps-path (&optional (pid *pid*))
   (concatenate 'string
 	       "/proc/"
 	       (format nil "~a" pid)
 	       "/maps"))
 
-
+;; NEXT-TODO can't get /proc/<pid>/maps pathname column entires!
 (defun parse-proc-pid-maps (&optional (pid *pid*))
   "Return list of Strings containing the line entries of /proc/<pid>/maps"
-  (with-open-file (maps-stream (get-maps-path pid) :direction :input)
-    ;; condition of type END-OF-FILE
-    (loop for text = (read-line maps-stream nil nil) 
-       while text ;; nil
-	 collect text)))
+  (let (maps-line-strings)
+    (setf maps-line-strings
+	  (with-open-file (maps-stream (get-maps-path pid) :direction :input)
+	    ;; condition of type END-OF-FILE
+	    (loop for text = (read-line maps-stream nil nil) 
+	       while text ;; nil
+	       collect text)))
+    
+    (loop for line in maps-line-strings collect 
+	 (with-input-from-string (string-stream line)
+	   (destructuring-bind (address-range permissions offset dev inode &optional pathname)
+	       (loop :repeat 6 collect (read-word-to-string string-stream))
+	     (print (list address-range permissions offset dev inode pathname)))
+	   ))))
+
+(defun read-word-to-string (stream)
+  (let ((char-list '()))
+    (loop
+       for char = (read-char stream nil nil) do
+	 (cond ((null char)
+		(return))
+	       ((or (char= char #\Tab)
+		    (char= char #\Space))
+		(return))
+	       (t
+		(push char char-list))))
+    (coerce (reverse char-list) 'string)))
 
 
 ;; from former attempt, this code is useless for now:
@@ -573,3 +595,15 @@ Return mismatching inputs, or true if all's right"
 	t
 	(progn (format t "Failed for inputs:~%")
 	       fail-input))))
+
+;; NEXT-TODO read out /proc/<pid>/mem using `with-open-file'+`file-position'+address
+;; ranges from /proc/<pid>/maps!
+
+(defun get-mem-path (&optional (pid *pid*))
+  "Return the path to /proc/<pid>/mem"
+  (concatenate 'string
+	       "/proc/"
+	       (format nil "~a" pid)
+	       "/mem"))
+
+
