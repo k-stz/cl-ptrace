@@ -401,7 +401,7 @@
 	       "/maps"))
 
 ;; NEXT-TODO can't get /proc/<pid>/maps pathname column entires!
-(defun parse-proc-pid-maps (&optional (pid *pid*))
+(defun proc-pid-maps-list (&optional (pid *pid*))
   "Return a list of plists with GETFable columns of /proc/pid/maps"
   (let (maps-line-strings)
     (setf maps-line-strings
@@ -420,7 +420,20 @@
 		  :else
 		          ;; quick hack "         /some/path/etc" -> "/some/path/etc
 		  :collect (remove #\Space (read-line string-stream nil nil)))
-	     (print (list :address-range address-range :perimission permissions :offset offset :dev dev :inode inode :pathname pathname))) ))))
+	     (list :address-range address-range
+		   :permission permissions
+		   :offset offset
+		   :dev dev
+		   :inode inode
+		   :pathname pathname))))))
+
+(defun permission-readable? (permission-string)
+  "Takes a string like 'rw-p' and returns true if 'r' is set "
+  (char= #\r (aref permission-string 0)))
+
+(defun address-range-list (proc-pid-maps-line)
+  ;; TODO make it return (list start-address end-address
+  (getf proc-pid-maps-line :address-range))
 
 (defun read-word-to-string (stream)
   (let ((char-list '()))
