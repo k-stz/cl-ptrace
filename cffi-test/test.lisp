@@ -363,7 +363,7 @@
 
 
 ;; well this is useless, it corresponds with /proc/<pid>/maps but just
-;; for the first two address ranges. 
+;; TODO: doesn't seem to work properly
 (defun find-readable-memory (from-num to-num &optional (pid *pid*))
   (let ((first-readable nil)
 	(last-readable from-num)
@@ -379,10 +379,12 @@
 	     (when start-set?
 	       (setf start-set? nil)
 	       (setf last-readable address)
-	       (format t "readable: ~(~x~) - ~(~x~)~%" first-readable last-readable))))
+	       (format t "Hex:     readable: ~(~10,x~) - ~(~10,x~)~%" first-readable last-readable)
+	       (format t "Decimal: readable: ~10,d - ~10,d~%" first-readable to-num))))
     ;; left the loop, now either no readable found, or no unreadable found yet
     (when start-set?
-      (format t "readable: ~(~x~) - ~(~x~)~%" first-readable to-num))))
+      (format t "Hex:     readable: ~(~10,x~) - ~(~10,x~)~%" first-readable to-num)
+      (format t "Decimal: readable: ~10,d - ~10,d~%" first-readable to-num))))
 
 
 (defun print-n-peekdata-instructions (n)
@@ -401,7 +403,7 @@
 	       "/maps"))
 
 ;; NEXT-TODO can't get /proc/<pid>/maps pathname column entires!
-(defun proc-pid-maps-list (&optional (pid *pid*))
+(defun parse-proc-pid-maps (&optional (pid *pid*))
   "Return a list of plists with GETFable columns of /proc/pid/maps"
   (let (maps-line-strings)
     (setf maps-line-strings
@@ -427,13 +429,33 @@
 		   :inode inode
 		   :pathname pathname))))))
 
-(defun permission-readable? (permission-string)
+(defun permission-readable? (proc-pid-maps-line)
   "Takes a string like 'rw-p' and returns true if 'r' is set "
-  (char= #\r (aref permission-string 0)))
+  (let ((permission-string (getf proc-pid-maps-line :permission)))
+    (char= #\r (aref permission-string 0))))
 
 (defun address-range-list (proc-pid-maps-line)
   ;; TODO make it return (list start-address end-address
-  (getf proc-pid-maps-line :address-range))
+  (let ((address-range (getf proc-pid-maps-line :address-range))
+	start-address
+	end-address)
+    (multiple-value-bind (left-address index-end) (parse-integer address-range
+								 :radix 16
+								 :junk-allowed t)
+      (setf start-address left-address)
+      (setf end-address
+	    (parse-integer
+	     ;; 1+ is starting the substring after the hyphen
+	     ;; 0400000-50000
+	     ;;        ^ this, after the '040000' part has been parsed
+	     (subseq address-range (1+ index-end))
+	     :radix 16)))
+    (list start-address end-address)))
+
+(defun address-range-length (address-range)
+  "Return the number of addresses in given `address-range'"
+  (abs (- (first address-range)
+	  (second address-range))))
 
 (defun read-word-to-string (stream)
   (let ((char-list '()))
@@ -518,9 +540,9 @@ The `bits' argument can be used if only n-bits should be compared. By default al
 to represent `match-number' will be used.
 
 The original purpose of this function is to help find a bit pattern in memory, by scanning through
-it."
+it.
   (declare ((unsigned-byte 64) match-number target-number)
-	   (fixnum bits))
+	   (fixnum bits))"
   (= (ldb (byte bits 0) target-number)
      (ldb (byte bits 0) match-number)))
 
