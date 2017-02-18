@@ -1,3 +1,5 @@
+;; TODO remove package reduncancy once .asd file loading works
+
 (asdf:load-system :cffi)
 
 (defpackage :cffi-user
@@ -30,16 +32,22 @@
 ;; (defcfun "ptrace" int ((__ptrace_request :enum)))
 
 ;; testing with self made libraries:
-(define-foreign-library libtest
-  ;; none of these work..
-    (t (:default "/home/k-stz/sol_sanctum/cl-ptrace/bin/libtest")))
+
+;; TODO make it asdf load path relative, lookup how archsynthesis does it
+
+;; (define-foreign-library libtest
+;;   ;; none of these work..
+;;   (t (:default (namestring (merge-pathnames (asdf/system:system-source-directory :cl-ptrace)
+;; 				      "bin/libtest")))))
+
+
 
 ;; libtest must be a *.so files (shared object files) !
 ;; tricking it into loading it anyway raises the signal: "(...) cannot dynamically load
 ;; executable"
-(use-foreign-library libtest)
+;; (use-foreign-library libtest)
 
-(defcfun "foo" :long (x :long))
+;; (defcfun "foo" :long (x :long))
 
 (defctype pid-t :long)
 
@@ -109,7 +117,8 @@
 
 
 
-(defvar null-value (null-pointer))
+(eval-when (:COMPILE-TOPLEVEL :LOAD-TOPLEVEL :EXECUTE)
+  (defvar null-value (null-pointer)))
 (defconstant +NULL+ null-value)
 
 
@@ -362,8 +371,19 @@
 	 (singlestep *pid* nil))))
 
 
+
+
+(defun print-n-peekdata-instructions (n)
+  (loop for i upto n
+     for rip = (rip-address) do
+       (format t "rip: ~x ~x~%"
+	       rip
+	       (peekdata rip *pid* nil))
+       (singlestep *pid* nil)))
+
+;;; /proc/<pid>/maps operations:
+
 ;; well this is useless, it corresponds with /proc/<pid>/maps but just
-;; TODO: doesn't seem to work properly
 (defun find-readable-memory (from-num to-num &optional (pid *pid*))
   (let ((first-readable nil)
 	(last-readable from-num)
@@ -379,22 +399,10 @@
 	     (when start-set?
 	       (setf start-set? nil)
 	       (setf last-readable address)
-	       (format t "Hex:     readable: ~(~10,x~) - ~(~10,x~)~%" first-readable last-readable)
-	       (format t "Decimal: readable: ~10,d - ~10,d~%" first-readable to-num))))
+	       (format t "Hex:     readable: ~(~10,x~) - ~(~10,x~)~%" first-readable last-readable))))
     ;; left the loop, now either no readable found, or no unreadable found yet
     (when start-set?
-      (format t "Hex:     readable: ~(~10,x~) - ~(~10,x~)~%" first-readable to-num)
-      (format t "Decimal: readable: ~10,d - ~10,d~%" first-readable to-num))))
-
-
-(defun print-n-peekdata-instructions (n)
-  (loop for i upto n
-     for rip = (rip-address) do
-       (format t "rip: ~x ~x~%"
-	       rip
-	       (peekdata rip *pid* nil))
-       (singlestep *pid* nil)))
-
+      (format t "Hex:     readable: ~(~10,x~) - ~(~10,x~)~%" first-readable to-num))))
 
 (defun get-maps-path (&optional (pid *pid*))
   (concatenate 'string
@@ -402,7 +410,6 @@
 	       (format nil "~a" pid)
 	       "/maps"))
 
-;; NEXT-TODO can't get /proc/<pid>/maps pathname column entires!
 (defun parse-proc-pid-maps (&optional (pid *pid*))
   "Return a list of plists with GETFable columns of /proc/pid/maps"
   (let (maps-line-strings)
@@ -435,7 +442,6 @@
     (char= #\r (aref permission-string 0))))
 
 (defun address-range-list (proc-pid-maps-line)
-  ;; TODO make it return (list start-address end-address
   (let ((address-range (getf proc-pid-maps-line :address-range))
 	start-address
 	end-address)
@@ -471,62 +477,8 @@
     (coerce (reverse char-list) 'string)))
 
 
-;; from former attempt, this code is useless for now:
+;;; /end /proc/<pid>/maps operations
 
-;; (defun bit-mask-padding (number &optional (size 64))
-;;   (let* ((bit-length (integer-length number))
-;; 	 (mask-zeroes
-;; 	  (make-array (- size bit-length) :element-type 'bit :initial-element 0))
-;; 	 (mask-ones
-;; 	  (make-array bit-length :element-type 'bit :initial-element 1)))
-;;     (concatenate 'bit-vector mask-zeroes mask-ones)))
-
-;; (defun bit-mask (number &optional (size 64))
-;;   "Return bit-vector bit-mask for `number' that can be used to clear bitvectors to insert
-;;   `number' in them as bit-vector representations.  Example:
-;;    (bit-mask 2 8)            ==> #*11111100
-;;    (integer->bit-vector 2 8) ==> #*00000010 "
-;;   (bit-not (bit-mask-padding number size)))
-
-;; ;; TODO: (bit-vector -1) = (integer->bit-vector 3)
-;; ;; check if this will be an issue
-;; (defun integer->bit-vector (number &optional (size 64))
-;;   "Convert integer to bit-vector representation of fixed `size'. Only works
-;; with _positive_ integers"
-;;   (declare (fixnum size))
-;;   (let* ((bit-string (format nil "~b" number))
-;; 	 (bit-length (length bit-string))
-;; 	 (prepend-zeros
-;; 	  (progn
-;; 	    ;; if this assert signals, the bit-vector representation of n is bigger than
-;; 	    ;; the size of the target bit-vector we want to create
-;; 	    ;; (assert (>= size bit-length))
-;; 	    (make-array (- size bit-length) :element-type 'bit :initial-element 0)))
-;; 	 (result-bit-vector (make-array bit-length :element-type 'bit )))
-;;     (loop for char across bit-string
-;;        for i from 0 
-;;        :when (char= char #\1)
-;;        :do (setf (aref result-bit-vector i) 1))
-;;     (concatenate 'bit-vector prepend-zeros result-bit-vector)))
-
-;; ;; implementation idea from edgar-rft
-;; (defun bit-vector->integer (bit-vector)
-;;   "Convert bit-vector to _positive_ integer."
-;;   (reduce #'(lambda (first-bit second-bit)
-;; 	      (+ (* first-bit 2) second-bit))
-;; 	  bit-vector))
-
-;; ;; superseded by the cl:integer-length !
-;; (defun bits-in-number (number)
-;;   "Return the bits needed to represent this number"
-;;   (declare (fixnum number))
-;;   (if (= number 0) ;; dodging division-by-zero
-;;       1
-;;       (floor (1+ (log number 2)))))
-
-;; (defun bytes-in-number (number)
-;;   (ceiling (bits-in-number number)
-;; 	   8))
 
 
 (defun ends-with-bits? (target-number match-number &optional (bits (integer-length match-number)))
@@ -545,13 +497,6 @@ it.
 	   (fixnum bits))"
   (= (ldb (byte bits 0) target-number)
      (ldb (byte bits 0) match-number)))
-
-;; TODO (UPDATE: not so important, we care about the [heap] only for now.)  continue
-;; implementation (defun get-address-range (maps-string-lines &key (memory-segment
-;; :data-segment)) "Memory Segment can be either explicit [heap], [stack], [vdso], etc
-;; or. :data-segment" (lisp map-string-lines))
-
-;; (defvar *maps-string-lines* nil)
 
 (defun find-match-address-full (value from-address to-address &optional (pid *pid*))
   (loop for address from from-address to to-address
@@ -599,6 +544,18 @@ time, so this function takes care to only set the amount of bits you want."
 
 
 
+
+;; NEXT-TODO read out /proc/<pid>/mem using `with-open-file'+`file-position'+address
+;; ranges from /proc/<pid>/maps!
+(defun get-mem-path (&optional (pid *pid*))
+  "Return the path to /proc/<pid>/mem"
+  (concatenate 'string
+	       "/proc/"
+	       (format nil "~a" pid)
+	       "/mem"))
+
+
+
 ;; some test functions
 
 (defconstant +200m+ 200000000) ;; the problem size we need to deal with efficiently
@@ -634,15 +591,3 @@ Return mismatching inputs, or true if all's right"
 	t
 	(progn (format t "Failed for inputs:~%")
 	       fail-input))))
-
-;; NEXT-TODO read out /proc/<pid>/mem using `with-open-file'+`file-position'+address
-;; ranges from /proc/<pid>/maps!
-
-(defun get-mem-path (&optional (pid *pid*))
-  "Return the path to /proc/<pid>/mem"
-  (concatenate 'string
-	       "/proc/"
-	       (format nil "~a" pid)
-	       "/mem"))
-
-
