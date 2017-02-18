@@ -12,7 +12,9 @@ process hacking through value injection"
   :serial t	
   :components
   ((:file "cffi-test/package")
-   (:file "cffi-test/test")
+   (:file "cffi-test/cl-ptrace")
+   (:file "cffi-test/proc-pid-dir")
+   (:file "cffi-test/utils")
    ;; ":module" solves the "src in subdirectories" problem nicely!
    ;; TODO decide where to put things
    ;; (:module "1-chapter/"

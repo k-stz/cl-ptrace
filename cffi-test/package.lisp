@@ -3,6 +3,6 @@
 ;; or compiled
 (in-package "COMMON-LISP-USER")
 
-(defpackage :cffi-user
+(defpackage :cl-ptrace
   (:use :common-lisp :cffi))
 

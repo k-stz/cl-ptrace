@@ -1,11 +1,11 @@
-;; TODO remove package reduncancy once .asd file loading works
+;; TODO remove package redundancy once .asd file loading works
 
 (asdf:load-system :cffi)
 
-(defpackage :cffi-user
+(defpackage :cl-ptrace
   (:use :common-lisp :cffi))
 
-(in-package :cffi-user)
+(in-package :cl-ptrace)
 
 ;; This describes how to load the library _into the Lisp image_ !
 (define-foreign-library libc
@@ -27,37 +27,14 @@
 (use-foreign-library libc) ;; after this point "libc" is loaded in the Lisp image!!!
 
 
-;; following the cffi tutorial for now and testing libcurl
-
-;; (defcfun "ptrace" int ((__ptrace_request :enum)))
-
-;; testing with self made libraries:
-
-;; TODO make it asdf load path relative, lookup how archsynthesis does it
-
-;; (define-foreign-library libtest
-;;   ;; none of these work..
-;;   (t (:default (namestring (merge-pathnames (asdf/system:system-source-directory :cl-ptrace)
-;; 				      "bin/libtest")))))
-
-
-
-;; libtest must be a *.so files (shared object files) !
-;; tricking it into loading it anyway raises the signal: "(...) cannot dynamically load
-;; executable"
-;; (use-foreign-library libtest)
-
-;; (defcfun "foo" :long (x :long))
-
 (defctype pid-t :long)
-
 
 ;; long int ptrace(enum __ptrace_request request, pid_t pid,
 ;;                 void *addr, void *data)
 
 ;; sao location: /usr/include/x86_64-linux-gnu/sys/ptrace.h
 
-;; error occured?
+;; error occurred?
 ;; ptrace returning -1 might indicate that an error, has happened (or the return value is
 ;; indeed -1). This is when we check *errno* which will be '0' on "Success". But due to
 ;; cffi we have the problem that the return value of ptrace gets translated to Lisp. -1 is
@@ -75,19 +52,19 @@
 (defconstant +SIGCONT+ 18)
 (defconstant +SIGSTOP+ 19)
 
-;; Now we cann also do a kill -9 <pid> simply with (kill <pid> 9)
+;; Now we can also do a kill -9 <pid> simply with (kill <pid> 9)
 (defcfun "kill" :int (pid-t :int) (signal :int))
 
 ;; "Indicate that the process making this request should be traced.
 ;; All signals received by this process can be intercepted by its
 ;; parent, and its parent can use the other `ptrace' requests."
 (defconstant +PTRACE-traceme+ 0)
-;; returs the _word_ in the process's text/data/user space at address ADDR (2nd argument to ptrace)
+;; returns the _word_ in the process's text/data/user space at address ADDR (2nd argument to ptrace)
 ;; the word size
 ;; Remember: the `word' size is architecture dependent! On x86_64 it is 64bits!
 ;;           so you ought to provide it ptrace a 8 byte container!
-;; "Linux does not have seprate text and data address spaces".
-;; peektext and peekdata are equivalent request on linux!!
+;; "Linux does not have separate text and data address spaces".
+;; peektext and peekdata are equivalent request on Linux!!
 (defconstant +PTRACE-peektext+ 1)
 (defconstant +PTRACE-peekdata+ 2) 
 (defconstant +PTRACE-peekuser+ 3)
@@ -116,7 +93,10 @@
 (defconstant +PTRACE-syscall+ 24)
 
 
-
+;; because loading the .asd file, (defconstant ) is
+;; doesn't see the value `null-value' which is defvar'd here.
+;; so we make sure it is already available from whatever level
+;; defconstant wants to have it
 (eval-when (:COMPILE-TOPLEVEL :LOAD-TOPLEVEL :EXECUTE)
   (defvar null-value (null-pointer)))
 (defconstant +NULL+ null-value)
@@ -136,14 +116,12 @@
     (format t "attached to process PID: ~a ~%" pid))
   pid)
 
-;; add some datastructure to capture the state of a process, such as if it is already
+;; add some data structure to capture the state of a process, such as if it is already
 ;; traced, or ptrace returns a signal accordingly somehow if we try to detach from an
 ;; non-traced process?
 (defun detach-from (&optional (pid *pid*))
   (ptrace +ptrace-detach+ pid +null+ +null+))
 
-(defun am-i-root? ()
-  (= (sb-posix:getuid) 0))
 
 ;; from /usr/include/x86_64-linux-gnu/sys/ptrace.h (sao)
 ;; struct user_regs_struct  // x86_64 specific registers  !
@@ -218,7 +196,7 @@
   regs)
 
 
-;; TODO extend SETF to replace this?
+;; You might want to extend SETF to replace this
 (defun set-user-register (user-regs-struct register new-value)
   (setf  (foreign-slot-value user-regs-struct '(:struct user-regs-struct) register)
 	 new-value))
@@ -247,8 +225,8 @@
 			  (orig_rax)
 			  (rip "instruction pointer")
 			  (cs)
-			  ;; the most useful flaggs see notes.org
-			  (eflags "flags used for results of operations and cpu control")
+			  ;; the most useful flags see notes.org
+			  (eflags "flags used for results of operations and CPU control")
 			  (rsp "Stack Pointer to last item pushed on stack; grows to lower addresses")
 			  (ss)
 			  (fs_base)
@@ -258,7 +236,7 @@
 			  (fs)     
 			  (gs))
      :do
-     ;; ~( x ~) <- downcase hex numbers directive!, #xFF -> #xff
+     ;; ~( x ~) <- down case hex numbers directive!, #xFF -> #xff
        (format t "~8a:~(~20x~)   ~a~%" 
 	       (car register)
 	       (foreign-slot-value regs '(:struct user-regs-struct) (car register))
@@ -270,9 +248,6 @@
   (with-foreign-object (regs '(:struct user-regs-struct))
     (getregs pid regs) ;; this implicitly sets `regs', which is bad lisp style (TODO)!
     (print-user-regs-struct regs)))
-
-(defun hex-print (number &optional (destination t))
-  (format destination "~(~x~)~%" number))
 
 (defun rip-address (&optional (pid *pid*))
   ;; btw (let ((regs *regs*)) ) doesn't work, modifying `regs' will modify `*regs*'
@@ -352,16 +327,30 @@
     (ptrace-successful? ptrace-return-value print-errno-description?)))
 
 
-#+sbcl
-(defun endianess ()
-  (if (find :little-endian *features*)
-      :little-endian
-      :big-endian))
+;; use this version from the repl
+(defun pokedata (byte-offset data &key (pid *pid*)
+				    (print-errno-description? t)
+				    (write-n-bits (integer-length data)))
+  "Only `pokedata' the `write-n-bits' bits of `data' at the address `byte-offset'. i.e. data = #xabcd,
+and default write-bits (integer-length data) = 16 Bits, will only replace the first 2
+bytes, of the value at (pokedata byte-offset ..) with #xab #xcd instead of the whole
+64-bit double word, at address `byte-offset'.
 
-;; on #+sbcl (machine-type) will return the architecture!
-;; (machine-type) => "X86-6 4"
+Remember ptrace(PTRACE_PEEKDATA,..) only allows to set full (64bit on x86_64) words at a
+time, so this function takes care to only set the amount of bits you want."
+  (let* ((peeked-data (peekdata byte-offset pid nil nil)))
+    ;; this directly sets the bits in peeked-data to data
+    (print write-n-bits)
+    (setf (ldb (byte write-n-bits 0) peeked-data) data)
+    (pokedata-full-addr byte-offset peeked-data pid print-errno-description?)))
 
+
+
+
+;;The idea was to find a game loop by running this multiple times:
 (defun find-instruction-loop ()
+  "Singlestep through the tracee and print the list
+of addresses when encountering a loop."
   (let  ((anchor-rip (rip-address))
 	 (i -1)) 
     (singlestep)
@@ -381,109 +370,10 @@
 	       (peekdata rip *pid* nil))
        (singlestep *pid* nil)))
 
-;;; /proc/<pid>/maps operations:
-
-;; well this is useless, it corresponds with /proc/<pid>/maps but just
-(defun find-readable-memory (from-num to-num &optional (pid *pid*))
-  (let ((first-readable nil)
-	(last-readable from-num)
-	(start-set? nil))
-    (loop for address from from-num to to-num  
-       for peeked-data = (peekdata address pid nil nil) do
-	 (if (ptrace-successful? peeked-data nil)
-	     ;; success
-	     (when (not start-set?)
-	       (setf first-readable address) 
-	       (setf start-set? t))
-	     ;; not readable
-	     (when start-set?
-	       (setf start-set? nil)
-	       (setf last-readable address)
-	       (format t "Hex:     readable: ~(~10,x~) - ~(~10,x~)~%" first-readable last-readable))))
-    ;; left the loop, now either no readable found, or no unreadable found yet
-    (when start-set?
-      (format t "Hex:     readable: ~(~10,x~) - ~(~10,x~)~%" first-readable to-num))))
-
-(defun get-maps-path (&optional (pid *pid*))
-  (concatenate 'string
-	       "/proc/"
-	       (format nil "~a" pid)
-	       "/maps"))
-
-(defun parse-proc-pid-maps (&optional (pid *pid*))
-  "Return a list of plists with GETFable columns of /proc/pid/maps"
-  (let (maps-line-strings)
-    (setf maps-line-strings
-	  (with-open-file (maps-stream (get-maps-path pid) :direction :input)
-	    ;; condition of type END-OF-FILE
-	    (loop for text = (read-line maps-stream nil nil) 
-	       while text ;; nil
-	       collect text)))
-    
-    (loop for line in maps-line-strings collect 
-	 (with-input-from-string (string-stream line)
-	   (destructuring-bind (address-range permissions offset dev inode &optional pathname)
-	       (loop for i from 1 to 6
-		  :if (< i 6) 
-		  :collect (read-word-to-string string-stream)
-		  :else
-		          ;; quick hack "         /some/path/etc" -> "/some/path/etc
-		  :collect (remove #\Space (read-line string-stream nil nil)))
-	     (list :address-range address-range
-		   :permission permissions
-		   :offset offset
-		   :dev dev
-		   :inode inode
-		   :pathname pathname))))))
-
-(defun permission-readable? (proc-pid-maps-line)
-  "Takes a string like 'rw-p' and returns true if 'r' is set "
-  (let ((permission-string (getf proc-pid-maps-line :permission)))
-    (char= #\r (aref permission-string 0))))
-
-(defun address-range-list (proc-pid-maps-line)
-  (let ((address-range (getf proc-pid-maps-line :address-range))
-	start-address
-	end-address)
-    (multiple-value-bind (left-address index-end) (parse-integer address-range
-								 :radix 16
-								 :junk-allowed t)
-      (setf start-address left-address)
-      (setf end-address
-	    (parse-integer
-	     ;; 1+ is starting the substring after the hyphen
-	     ;; 0400000-50000
-	     ;;        ^ this, after the '040000' part has been parsed
-	     (subseq address-range (1+ index-end))
-	     :radix 16)))
-    (list start-address end-address)))
-
-(defun address-range-length (address-range)
-  "Return the number of addresses in given `address-range'"
-  (abs (- (first address-range)
-	  (second address-range))))
-
-(defun read-word-to-string (stream)
-  (let ((char-list '()))
-    (loop
-       for char = (read-char stream nil nil) do
-	 (cond ((null char)
-		(return))
-	       ((or (char= char #\Tab)
-		    (char= char #\Space))
-		(return))
-	       (t
-		(push char char-list))))
-    (coerce (reverse char-list) 'string)))
-
-
-;;; /end /proc/<pid>/maps operations
-
-
 
 (defun ends-with-bits? (target-number match-number &optional (bits (integer-length match-number)))
   "Returns true if `target-number' numerical bits representation ends with `match-number's numerical 
-bits represenation. 
+bits representation. 
 
 For example (ends-with-bytes ==> #x400500 #x500 true), even though #x400500 = 4195584 \=
 1280 = #x500.
@@ -526,68 +416,4 @@ already filtered, addresses provided from `:address-list'"
 	 collect address)))
 
 
-(defun pokedata (byte-offset data &key (pid *pid*)
-				    (print-errno-description? t)
-				    (write-n-bits (integer-length data)))
-  "Only `pokedata' the `write-n-bits' bits of `data' at the address `byte-offset'. i.e. data = #xabcd,
-and default write-bits (integer-length data) = 16 Bits, will only replace the first 2
-bytes, of the value at (pokedata byte-offset ..) with #xab #xcd instead of the whole
-64-bit double word, at address `byte-offset'.
 
-Remember ptrace(PTRACE_PEEKDATA,..) only allows to set full (64bit on x86_64) words at a
-time, so this function takes care to only set the amount of bits you want."
-  (let* ((peeked-data (peekdata byte-offset pid nil nil)))
-    ;; this directly sets the bits in peeked-data to data
-    (print write-n-bits)
-    (setf (ldb (byte write-n-bits 0) peeked-data) data)
-    (pokedata-full-addr byte-offset peeked-data pid print-errno-description?)))
-
-
-
-
-;; NEXT-TODO read out /proc/<pid>/mem using `with-open-file'+`file-position'+address
-;; ranges from /proc/<pid>/maps!
-(defun get-mem-path (&optional (pid *pid*))
-  "Return the path to /proc/<pid>/mem"
-  (concatenate 'string
-	       "/proc/"
-	       (format nil "~a" pid)
-	       "/mem"))
-
-
-
-;; some test functions
-
-(defconstant +200m+ 200000000) ;; the problem size we need to deal with efficiently
-
-(defun test (test-fn inverse-fn &optional (problem-size 300000) (compare-fn #'=))
-  "Test if test-fn and its inverse are correct over inputs from 0 to  `problem-size'.
-Return mismatching inputs, or true if all's right"
-  (let (fail-input)
-    (setf fail-input
-	  (loop for i upto problem-size
-	     :unless (funcall compare-fn
-			      i
-			      (funcall inverse-fn
-				       (funcall test-fn i)))
-	     collect i))
-    (if (null fail-input)
-	t
-	(progn (format t "Failed for inputs:~%")
-	       fail-input))))
-
-(defun test-fn-equal (fn-1 fn-2 &optional (problem-size 30000) (equal-test-fn #'=))
-  "Test if two functions return the same value from 0 to `problem-size' using
-  `equal-test-fn' to compare the results"
-  (declare (function fn-1 fn-2 equal-test-fn)
-	   (fixnum problem-size))
-  (let ((fail-input
-	 (loop for i upto problem-size
-	    :unless (funcall equal-test-fn
-			     (funcall fn-1 i)
-			     (funcall fn-2 i))
-	    collect i)))
-    (if (null fail-input)
-	t
-	(progn (format t "Failed for inputs:~%")
-	       fail-input))))
