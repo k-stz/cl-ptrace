@@ -110,3 +110,17 @@
 	       (format nil "~a" pid)
 	       "/mem"))
 
+
+;; TODO put into datastructure, such that the starting address will map to the index '0'
+(defun snapshot-memory-range (from-address to-address &optional (pid *pid*))
+  (with-open-file (mem-stream (get-mem-path pid) :direction :input :element-type '(unsigned-byte 8))
+    (file-position mem-stream from-address)
+    (let ((snapshot-memory-array (make-array (1+ (- to-address from-address)))))
+      (loop for mem-byte :from from-address :to to-address
+	 for array-index from 0
+	 :do
+	       (print (peekdata mem-byte pid nil nil))
+
+	   (setf (aref snapshot-memory-array array-index)
+		 (peekdata mem-byte pid nil nil)))
+          snapshot-memory-array)))
