@@ -110,11 +110,14 @@
 	       (format nil "~a" pid)
 	       "/mem"))
 
+;; This will store the values of a memory range at a the time. That's what is implied
+;; by "snapshot" this won't be used to retrieve up-to-date values or to even set
+;; any value. This should be treated as readonly object after the sltos have been set
 (defclass memory-range-snapshot ()
-  ((start-memory-address :initarg 'start-memory-address)
-   (end-memory-address :initarg 'end-memory-address)
-   (pid)
-   (snapshot-memory-array :initarg 'snapshot-memory-array)))
+  ((start-memory-address :initarg :start-memory-address)
+   (end-memory-address :initarg :end-memory-address)
+   (pid :initarg :pid)
+   (snapshot-memory-array :initarg :snapshot-memory-array)))
 
 (defun make-memory-range (snapshot-memory-array start-address end-address &optional (pid *pid*))
   (make-instance 'memory-range-snapshot
@@ -124,9 +127,14 @@
 		 :snapshot-memory-array snapshot-memory-array))
 
 
-;; NEXT-TODO: continue this
-;; (defmethod aref-mem ((obj memory-range-snapshot) index)
-;;   (aref (slot-value obj 'snapshot-memory-array)))
+;; TODO: seems to work, but do some more tests
+;; TODO: add declaration or slot type size of snapshot array length being of type '(unsigned-byte 64)
+(defgeneric aref-mem (memory-range-snapshot address))
+(defmethod aref-mem ((obj memory-range-snapshot) address)
+  (with-slots (snapshot-memory-array start-memory-address) obj
+    (aref snapshot-memory-array
+    	    (- address start-memory-address )))
+  )
 
 ;; TODO put into datastructure, such that the starting address will map to the index '0'
 (defun snapshot-memory-range (from-address to-address &optional (pid *pid*))
@@ -140,4 +148,4 @@
 
 	   (setf (aref snapshot-memory-array array-index)
 		 (peekdata mem-byte pid nil nil)))
-          snapshot-memory-array)))
+      (make-memory-range snapshot-memory-array from-address to-address pid))))
