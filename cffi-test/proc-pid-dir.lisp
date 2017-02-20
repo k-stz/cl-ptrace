@@ -110,6 +110,23 @@
 	       (format nil "~a" pid)
 	       "/mem"))
 
+(defclass memory-range-snapshot ()
+  ((start-memory-address :initarg 'start-memory-address)
+   (end-memory-address :initarg 'end-memory-address)
+   (pid)
+   (snapshot-memory-array :initarg 'snapshot-memory-array)))
+
+(defun make-memory-range (snapshot-memory-array start-address end-address &optional (pid *pid*))
+  (make-instance 'memory-range-snapshot
+		 :start-memory-address start-address
+		 :end-memory-address end-address
+		 :pid pid
+		 :snapshot-memory-array snapshot-memory-array))
+
+
+;; NEXT-TODO: continue this
+;; (defmethod aref-mem ((obj memory-range-snapshot) index)
+;;   (aref (slot-value obj 'snapshot-memory-array)))
 
 ;; TODO put into datastructure, such that the starting address will map to the index '0'
 (defun snapshot-memory-range (from-address to-address &optional (pid *pid*))
