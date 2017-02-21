@@ -113,7 +113,7 @@
   ((start-memory-address :initarg :start-memory-address)
    (end-memory-address :initarg :end-memory-address)
    (pid :initarg :pid)
-   (snapshot-memory-array :initarg :snapshot-memory-array)))
+   (snapshot-memory-array :initarg :snapshot-memory-array :accessor snapshot-memory-array)))
 
 (defgeneric get-memory-range (memory-range-snapshot))
 (defmethod get-memory-range ((obj memory-range-snapshot))

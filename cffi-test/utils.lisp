@@ -14,6 +14,17 @@
       :little-endian
       :big-endian))
 
+#+sbcl
+;; This might be useful to free heap if we're close to running out due
+;; to huge address-range-snapshot generations etc
+;; use `(room)' to control the heap size. On SBCL it even
+;; gives explicit size information about particular objects. For example
+;; after allocating a memory-range-snapshot object I got the entry:
+;;   3,679,024 bytes for     1,240 simple-array-unsigned-byte-64 objects.
+(defun initiate-full-gc ()
+  (sb-ext:gc :full t))
+
+
 ;; on #+sbcl (machine-type) will return the architecture!
 ;; (machine-type) => "X86-64"
 
