@@ -72,7 +72,7 @@
 	    (parse-integer
 	     ;; 1+ is starting the substring after the hyphen
 	     ;; 0400000-50000
-	     ;;        ^ this, after the '040000' part has been parsed
+	     ;;        ^ this hyphen, after the '040000' part has been parsed
 	     (subseq address-range (1+ index-end))
 	     :radix 16)))
     (list start-address end-address)))
@@ -99,10 +99,6 @@
 ;;; /end /proc/<pid>/maps operations
 
 
-
-
-;; NEXT-TODO read out /proc/<pid>/mem using `with-open-file'+`file-position'+address
-;; ranges from /proc/<pid>/maps!
 (defun get-mem-path (&optional (pid *pid*))
   "Return the path to /proc/<pid>/mem"
   (concatenate 'string
@@ -119,7 +115,19 @@
    (pid :initarg :pid)
    (snapshot-memory-array :initarg :snapshot-memory-array)))
 
-(defun make-memory-range (snapshot-memory-array start-address end-address &optional (pid *pid*))
+(defgeneric get-memory-range (memory-range-snapshot))
+(defmethod get-memory-range ((obj memory-range-snapshot))
+  (with-slots (start-memory-address end-memory-address) obj
+    (list start-memory-address end-memory-address)))
+
+(defmethod print-object ((obj memory-range-snapshot) stream)
+  (let ((memory-range (get-memory-range obj)))
+    (format stream "#<MS:[~(~x~)-~(~x~)]>"
+	    (first memory-range)
+	    (second memory-range))))
+
+;; don't call directly, use `snapshot-memory-range' instead!
+(defun instance-memory-range (snapshot-memory-array start-address end-address &optional (pid *pid*))
   (make-instance 'memory-range-snapshot
 		 :start-memory-address start-address
 		 :end-memory-address end-address
@@ -129,23 +137,25 @@
 
 ;; TODO: seems to work, but do some more tests
 ;; TODO: add declaration or slot type size of snapshot array length being of type '(unsigned-byte 64)
+;;       do some renaming and perhaps hide some functions that should never be used
+;;       on their own but to created snapshots of memory-ranges
 (defgeneric aref-mem (memory-range-snapshot address))
 (defmethod aref-mem ((obj memory-range-snapshot) address)
   (with-slots (snapshot-memory-array start-memory-address) obj
     (aref snapshot-memory-array
-    	    (- address start-memory-address )))
-  )
+    	    (- address start-memory-address ))))
 
-;; TODO put into datastructure, such that the starting address will map to the index '0'
+
+
 (defun snapshot-memory-range (from-address to-address &optional (pid *pid*))
   (with-open-file (mem-stream (get-mem-path pid) :direction :input :element-type '(unsigned-byte 8))
     (file-position mem-stream from-address)
-    (let ((snapshot-memory-array (make-array (1+ (- to-address from-address)))))
+    
+    (let ((snapshot-memory-array (make-array (1+ (- to-address from-address))
+					     :element-type '(unsigned-byte 64))))
       (loop for mem-byte :from from-address :to to-address
 	 for array-index from 0
 	 :do
-	       (print (peekdata mem-byte pid nil nil))
-
 	   (setf (aref snapshot-memory-array array-index)
 		 (peekdata mem-byte pid nil nil)))
       (make-memory-range snapshot-memory-array from-address to-address pid))))
