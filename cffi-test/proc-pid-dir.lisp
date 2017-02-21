@@ -127,7 +127,8 @@
 	    (second memory-range))))
 
 ;; don't call directly, use `snapshot-memory-range' instead!
-(defun instance-memory-range (snapshot-memory-array start-address end-address &optional (pid *pid*))
+(defun make-memory-range-snapshot
+    (snapshot-memory-array start-address end-address &optional (pid *pid*))
   (make-instance 'memory-range-snapshot
 		 :start-memory-address start-address
 		 :end-memory-address end-address
@@ -139,8 +140,10 @@
 ;; TODO: add declaration or slot type size of snapshot array length being of type '(unsigned-byte 64)
 ;;       do some renaming and perhaps hide some functions that should never be used
 ;;       on their own but to created snapshots of memory-ranges
-(defgeneric aref-mem (memory-range-snapshot address))
-(defmethod aref-mem ((obj memory-range-snapshot) address)
+(defgeneric aref-mem-snapshot (memory-range-snapshot address))
+(defmethod aref-mem-snapshot ((obj memory-range-snapshot) address)
+  ;; This just maps calls like (aref-mem-snapshot obj <start-address>) to internally
+  ;; (aref obj.array 0)
   (with-slots (snapshot-memory-array start-memory-address) obj
     (aref snapshot-memory-array
     	    (- address start-memory-address ))))
@@ -158,4 +161,4 @@
 	 :do
 	   (setf (aref snapshot-memory-array array-index)
 		 (peekdata mem-byte pid nil nil)))
-      (make-memory-range snapshot-memory-array from-address to-address pid))))
+      (make-memory-range-snapshot snapshot-memory-array from-address to-address pid))))
