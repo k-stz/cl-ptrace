@@ -113,7 +113,8 @@
   ((start-memory-address :initarg :start-memory-address)
    (end-memory-address :initarg :end-memory-address)
    (pid :initarg :pid)
-   (snapshot-memory-array :initarg :snapshot-memory-array :accessor snapshot-memory-array)))
+   (snapshot-memory-array :initarg :snapshot-memory-array :accessor snapshot-memory-array
+			  :type (array (unsigned-byte 64) 1))))
 
 (defgeneric get-memory-range (memory-range-snapshot))
 (defmethod get-memory-range ((obj memory-range-snapshot))
@@ -126,39 +127,41 @@
 	    (first memory-range)
 	    (second memory-range))))
 
-;; don't call directly, use `snapshot-memory-range' instead!
-(defun make-memory-range-snapshot
-    (snapshot-memory-array start-address end-address &optional (pid *pid*))
-  (make-instance 'memory-range-snapshot
-		 :start-memory-address start-address
-		 :end-memory-address end-address
-		 :pid pid
-		 :snapshot-memory-array snapshot-memory-array))
 
 
-;; TODO: seems to work, but do some more tests
 ;; TODO: add declaration or slot type size of snapshot array length being of type '(unsigned-byte 64)
 ;;       do some renaming and perhaps hide some functions that should never be used
 ;;       on their own but to created snapshots of memory-ranges
-(defgeneric aref-mem-snapshot (memory-range-snapshot address))
-(defmethod aref-mem-snapshot ((obj memory-range-snapshot) address)
-  ;; This just maps calls like (aref-mem-snapshot obj <start-address>) to internally
-  ;; (aref obj.array 0)
+(defgeneric snapshot-peekdata (memory-range-snapshot address))
+(defmethod snapshot-peekdata ((obj memory-range-snapshot) address)
+  ;; This just maps calls like (aref-mem-snapshot obj <start-address>+n) to internally
+  ;; (aref obj.array 0+n)
   (with-slots (snapshot-memory-array start-memory-address) obj
+    (declare (type (vector (unsigned-byte 64)) snapshot-memory-array)
+	     ((unsigned-byte 64) start-memory-address address))
     (aref snapshot-memory-array
-    	    (- address start-memory-address ))))
+	  (- address start-memory-address))))
 
 
 
-(defun snapshot-memory-range (from-address to-address &optional (pid *pid*))
-  (with-open-file (mem-stream (get-mem-path pid) :direction :input :element-type '(unsigned-byte 8))
-    (file-position mem-stream from-address)
-    
-    (let ((snapshot-memory-array (make-array (1+ (- to-address from-address))
-					     :element-type '(unsigned-byte 64))))
-      (loop for mem-byte :from from-address :to to-address
-	 for array-index from 0
-	 :do
-	   (setf (aref snapshot-memory-array array-index)
-		 (peekdata mem-byte pid nil nil)))
-      (make-memory-range-snapshot snapshot-memory-array from-address to-address pid))))
+(defun make-snapshot-memory-range (from-address to-address &optional (pid *pid*))
+  (labels ;; don't call directly, use `snapshot-memory-range' instead!
+      ((make-snapshot-instance
+	   (snapshot-memory-array start-address end-address &optional (pid *pid*))
+	 (make-instance 'memory-range-snapshot
+			:start-memory-address start-address
+			:end-memory-address end-address
+			:pid pid
+			:snapshot-memory-array snapshot-memory-array)))
+
+    (with-open-file (mem-stream (get-mem-path pid) :direction :input :element-type '(unsigned-byte 8))
+      (file-position mem-stream from-address)
+      
+      (let ((snapshot-memory-array (make-array (1+ (- to-address from-address))
+					       :element-type '(unsigned-byte 64))))
+	(loop for mem-byte :from from-address :to to-address
+	   for array-index from 0
+	   :do
+	     (setf (aref snapshot-memory-array array-index)
+		   (peekdata mem-byte pid nil nil)))
+	(make-snapshot-instance snapshot-memory-array from-address to-address pid)))))
