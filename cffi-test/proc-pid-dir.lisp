@@ -165,3 +165,8 @@
 	     (setf (aref snapshot-memory-array array-index)
 		   (peekdata mem-byte pid nil nil)))
 	(make-snapshot-instance snapshot-memory-array from-address to-address pid)))))
+
+(defmacro loop-snapshot ((address-var memory-range-snapshot) &body body)
+  `(with-slots (start-memory-address end-memory-address) ,memory-range-snapshot
+     (loop for ,address-var from start-memory-address to end-memory-address
+	  ,@body)))
