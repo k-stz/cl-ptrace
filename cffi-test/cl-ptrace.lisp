@@ -48,9 +48,11 @@
 
 (defcfun "waitpid" :int (pid-t :int) (status :pointer) (options :int))
 
-;; TODO where are they implemented, also in a .h file?
+;; you can query the signal enum mapping with the shell command "kill -l" !
+(defconstant +SIGKILL+ 9) ;; Exactly as in "kill -9 <pid>"
 (defconstant +SIGCONT+ 18)
-(defconstant +SIGSTOP+ 19)
+(defconstant +SIGSTOP+ 19 "Stop process")
+(defconstant +SIGTSTP+ 20 "Stop typed at terminal[sic]")
 
 ;; Now we can also do a kill -9 <pid> simply with (kill <pid> 9)
 (defcfun "kill" :int (pid-t :int) (signal :int))

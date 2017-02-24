@@ -117,6 +117,29 @@
 
 
 
+* Linux Signals (sending to Processes)
+  Signals can be send to a process using a command like  =kill <signal> <pid>=
+
+  (see =man 7 signal=)
+
+** Signal Disposition
+  Each signal has a default _dispositions_ that determine how a process will react when
+  the signal is delivered to it. (change disposition with function like =sigaction()=)
+
+  Some default dispositions:
+
+  | Term | Default action is to terminate the process    |
+  | Core | terminate process and dump core               |
+  | stop | stop the process                              |
+  | con  | continue process _if_ it is currently stopped |
+
+  "Disposition is a per-process attribute (...) In a multithreaded application the
+  disposition of the signal is the same for all threads in the process"" 
+
+** Process and Threads
+   A signal may be generated for a process as a whole or for a specific thread. For
+   example SIGSEGV (invalid memory reference) is thread specific
+  
 * The Process
 
 ** Memory layout (linux)
