@@ -106,6 +106,16 @@
 	       (format nil "~a" pid)
 	       "/mem"))
 
+(defun read-proc-mem-byte (address &optional (pid *pid*))
+  "Reads `address' from pid memory directly from /proc/pid/mem. 
+
+This opens and closes the stream on each invokation, making it useful to inspect actual
+current value under `address'"
+  (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8))
+    (file-position str address)
+    (read-byte str)))
+
+
 ;; This will store the values of a memory range at a the time. That's what is implied
 ;; by "snapshot" this won't be used to retrieve up-to-date values or to even set
 ;; any value. This should be treated as readonly object after the sltos have been set
@@ -144,7 +154,10 @@
 
 
 
-(defun make-snapshot-memory-range (from-address to-address &optional (pid *pid*))
+(defun make-snapshot-memory-range (&key from-address to-address address-range (pid *pid*))
+  (when address-range
+    (setf from-address (first address-range)
+	  to-address (second address-range)))
   (labels ;; don't call directly, use `snapshot-memory-range' instead!
       ((make-snapshot-instance
 	   (snapshot-memory-array start-address end-address &optional (pid *pid*))
@@ -166,7 +179,16 @@
 		   (peekdata mem-byte pid nil nil)))
 	(make-snapshot-instance snapshot-memory-array from-address to-address pid)))))
 
+;; TODO make macro hygienic
 (defmacro loop-snapshot ((address-var memory-range-snapshot) &body body)
   `(with-slots (start-memory-address end-memory-address) ,memory-range-snapshot
      (loop for ,address-var from start-memory-address to end-memory-address
 	  ,@body)))
+
+(defun find-mismatches (memory-range-snapshot &optional (pid *pid*))
+  "Returns list of all addresses of `snapshot' whose entries mismatch with 
+the (peekdata addr pid ..) entires, at the same address."
+  (loop-snapshot (address memory-range-snapshot)
+     when (not (= (peekdata address pid nil nil)
+		  (snapshot-peekdata memory-range-snapshot address)))
+     collect address))

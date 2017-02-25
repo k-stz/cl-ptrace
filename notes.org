@@ -16,7 +16,7 @@
   #+END_SRC
 
   *request* decides what to be done
-  *Pid* - Pid of the _traced_ process
+  *Pid* - Pid of the _traced_ process OR thread
   *Addr* offset in the _user space_
   *data* will be written to, if instructed to do so (depending on request)
 
@@ -107,6 +107,42 @@
    
    
 
+* Threads vs Process regarding ptrace
+  In a multithreaded application a singel =ptrace()= call can only attach to a single
+  thread at a time, never the whole process!
+
+  This means that if we prace() a thread of a process. We might peekdata a particular
+  address and at the same time the memory pointed to could be changed by another thread
+  that shares it! This is where we want to know all the threads of a process, so we can
+  either just SIGSTOP them all, or see who share the same memory regions and might
+  be responsible for some changes
+
+** find the Threads of a process /proc/pid/task
+   To get a visual overview use =pstree= It will show you a tree of processes by pids
+   where the {curly brackets leaves} indicate the _child threads_ of the nodes process!
+
+   /proc/pid/task has entries for all the threads in the process. The name of each
+   directory is even the *tid* (thread ID) for each process.
+   The thread directories have much in common with the layout of the /proc/pid/.
+   You can inspect then use the files herein to see which resources are indeed shared
+   between the threads.
+
+   Making it visual again:
+   This means that if we take a node from the =pstree= output and inspect the associated
+   pid /proc/pid/ then the task/ dir will be the successor nodes/leaves of the
+   process/thread!
+
+** altering addresses of a stoped thread
+   Since we can only ptrace particular threads, we might find the subsequent calls to
+   peekdata will yield chaning values on some addresses. This is due to some other thread
+   that is still runing and has access to the same memory segment and changing it.
+
+   We might then either send SIGSTOPs to all the threads of a process or we can find the
+   culprit thread (in an attempt to gain more knowledge about the program itself) by
+   inspecting the /status file of each task. We might find some threads are sleeping
+   and hence innocent of memory tampering.
+
+   
 * A process issues a system calls
   When a process wants to invoke a system call, it puts the arguments to system calls in
   registers =rdi rsi rdx rcx r8 r9= -in that order- and calls the soft interrupt[fn:1] 0x80 (TODO:

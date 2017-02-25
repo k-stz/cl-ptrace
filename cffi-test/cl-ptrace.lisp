@@ -109,20 +109,27 @@
 
 ;; WORKS, when Lisp is run as root!!!
 (defun attach-to (&optional (pid *pid*))
-  (with-foreign-object (status :int)
-    (print "ptrace ptrace-attach..")
-    (ptrace +PTRACE-ATTACH+ pid +NULL+ +NULL+)
-    (print "waitpid..")
-    (waitpid pid status 0)
-    (format t "waitpid status: ~a~%" (mem-ref status :int))
-    (format t "attached to process PID: ~a ~%" pid))
-  pid)
+  (print "ptrace ptrace-attach..")
+  (let ((ptrace-return-value
+	 (ptrace +PTRACE-ATTACH+ pid +NULL+ +NULL+)))
+    (if (ptrace-successful? ptrace-return-value)
+	(with-foreign-object (status :int)
+	  (print "waitpid..")
+	  (waitpid pid status 0)
+	  (format t "waitpid status: ~a~%" (mem-ref status :int))
+	  (format t "attached to process PID: ~a ~%" pid)
+	  pid)
+	;; attaching failed?
+	ptrace-return-value)))
 
 ;; add some data structure to capture the state of a process, such as if it is already
 ;; traced, or ptrace returns a signal accordingly somehow if we try to detach from an
 ;; non-traced process?
 (defun detach-from (&optional (pid *pid*))
-  (ptrace +ptrace-detach+ pid +null+ +null+))
+  (let ((ptrace-return-value
+	 (ptrace +ptrace-detach+ pid +null+ +null+)))
+    (ptrace-successful? ptrace-return-value)
+    ptrace-return-value))
 
 
 ;; from /usr/include/x86_64-linux-gnu/sys/ptrace.h (sao)
