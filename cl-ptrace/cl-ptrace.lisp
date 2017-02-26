@@ -408,31 +408,44 @@ it.
        collect address))
 
 
+;; move to util.lisp ?
+(defun integer-byte-length (number)
+  "How many bytes are needed to represent the number `number'"
+  (ceiling (integer-length number)
+	   8))
+
 (defun find-value-address (value &key (pid *pid*)
 				   (from-address #x0)
 				   (to-address #x0)
 				   (address-list nil)
-				   (address-range nil))
+				   (address-range nil)
+				   (byte-padding t))
   "Returns a list of addresses for which (peekdata address ..) will return a number ending
 with the bits representing `value'.
 
 Will either search addresses :from-address to `:to-address', or a list of, for example
 already filtered, addresses provided from `:address-list'"
-  (if (not (null address-list))
-      (loop for address in address-list
-	 :when (ends-with-bits? ;; (peekdata address pid nil nil)
-		(ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
-		value)
-	 collect address)
-      (progn
-	(when address-range
-	  (setf from-address (first address-range)
-		to-address (second address-range)))
-	(loop for address from from-address to to-address
+  (let ((search-bits
+	 (if byte-padding
+	     (* 8 (integer-byte-length value))
+	     (integer-length value))))
+    (if (not (null address-list))
+	(loop for address in address-list
 	   :when (ends-with-bits? ;; (peekdata address pid nil nil)
 		  (ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
-		  value)
-	   collect address))))
+		  value
+		  search-bits)
+	   collect address)
+	(progn
+	  (when address-range
+	    (setf from-address (first address-range)
+		  to-address (second address-range)))
+	  (loop for address from from-address to to-address
+	     :when (ends-with-bits? ;; (peekdata address pid nil nil)
+		    (ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
+		    value
+		    search-bits)
+	     collect address)))))
 
 (defun find-nearby (value address &optional (search-distance 1000) (pid *pid*))
   "Search for `value' around the `address' by `search-distance' addresses.
@@ -447,6 +460,52 @@ nearby each other in memory."
 		(if (> to-address #xffffffffffffffff)
 		    #xffffffffffffffff
 		    to-address))))
-    (print address-range)
     (find-value-address value :address-range address-range :pid pid)))
 
+;; some test heuristic searches
+
+(defun find-value-heuristic-1 (value address-range nearby-values-list &optional (search-distance 1000) (pid *pid*))
+  "Returns a list where the first entry is the address where `value' was found
+and the rest is a sum for each of the nearby-values found around that address.
+
+For example: an entry like (7536124 2 1) indicates that `value' was found at address 7536124
+and that first value in the `nearby-values-list' was found 2-times in the nearby and the second
+value 1-time (length of the nearby-values-list ist hence 2)."
+  (let ((address-values-list
+	 (find-value-address value :address-range address-range :pid pid)))
+    (if (null address-values-list)
+	(format t "the value ~a wasn't found in the address-range: ~a ~%" value address-range)
+	(loop for suspect-value-address in address-values-list
+	   :collect
+	   ;; the inner loop returns a list where each element is a list
+	   ;; of the found nearby-values
+	     (cons suspect-value-address
+		   (how-many-nearby-found
+		    (list :suspect-value-address suspect-value-address
+			  (loop for nearby-value in nearby-values-list
+			     collect
+			       (list :nearby-value nearby-value
+				     (find-nearby nearby-value suspect-value-address search-distance))))))))))
+
+;; uses the output of `find-value-heuristic-1'
+(defun how-many-nearby-found (suspect-address-values-list)
+  (let ((nearby-value-lists (caddr suspect-address-values-list)))
+    (loop for entries in nearby-value-lists
+       :collect
+	 (length (third entries)))))
+
+(defun found-one-of-each-heuristic-1 (value-heuristic-1-list)
+  (loop for entry in value-heuristic-1-list
+     :when (not (find 0 entry))
+       :collect entry))
+
+
+;; TEST, to mapcar over readable-address-ranges!
+(defparameter heuristic-fn
+  (lambda (address-range)
+    (print
+     (found-one-of-each-heuristic-1
+      (find-value-heuristic-1 660 address-range
+			      (list 177 156 227 172 22 500 179) ; some example nearby-values
+			      1000 ; search-distance
+			      )))))
