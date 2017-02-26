@@ -500,12 +500,25 @@ value 1-time (length of the nearby-values-list ist hence 2)."
        :collect entry))
 
 
-;; TEST, to mapcar over readable-address-ranges!
+;; TEST, to mapcar  over readable-address-ranges!
 (defparameter heuristic-fn
   (lambda (address-range)
     (print
      (found-one-of-each-heuristic-1
-      (find-value-heuristic-1 660 address-range
-			      (list 177 156 227 172 22 500 179) ; some example nearby-values
-			      1000 ; search-distance
+      (find-value-heuristic-1 538677 address-range
+			      (list 499 10) ; some example nearby-values
+			      100 ; search-distance
 			      )))))
+
+;; NEXT-TODO
+;; pretaining rogue legacy tests:
+;; IT WORKED,
+;; sieved addresses that worked last time, of which the _first worked
+;; (139839378843988)_, the full list is:
+;; (139839378843988 139840088137784 1398400877322 80 139840088436792
+;;  		   139840088162360 139840087707704)
+;; TODO find the address region, write 
+
+;; all but the first region belong to a memory segment that maps to
+;; /home/k-stz/.local/share/Steam/steamapps/common/Rogue Legacy/System.Xml.dll
+;; note that poking hasn't been tested on those yet!

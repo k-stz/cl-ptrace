@@ -192,3 +192,11 @@ the (peekdata addr pid ..) entires, at the same address."
      when (not (= (peekdata address pid nil nil)
 		  (snapshot-peekdata memory-range-snapshot address)))
      collect address))
+
+(defun find-address-region (address address-region-list)
+  "Return the address-region where `address' is contained."
+  (loop for address-region in address-region-list
+     for from-address = (first address-region)
+     for to-address = (second address-region)
+     :when (<= from-address address to-address)
+     :do (return address-region)))
