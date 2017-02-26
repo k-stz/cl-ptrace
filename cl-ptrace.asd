@@ -11,10 +11,10 @@ process hacking through value injection"
   :depends-on (:cffi)
   :serial t	
   :components
-  ((:file "cffi-test/package")
-   (:file "cffi-test/cl-ptrace")
-   (:file "cffi-test/proc-pid-dir")
-   (:file "cffi-test/utils")
+  ((:file "cl-ptrace/package")
+   (:file "cl-ptrace/cl-ptrace")
+   (:file "cl-ptrace/proc-pid-dir")
+   (:file "cl-ptrace/utils")
    ;; ":module" solves the "src in subdirectories" problem nicely!
    ;; TODO decide where to put things
    ;; (:module "1-chapter/"

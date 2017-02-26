@@ -132,6 +132,11 @@
    pid /proc/pid/ then the task/ dir will be the successor nodes/leaves of the
    process/thread!
 
+   =top -H -p <pid>=
+   _Is most useful_ as it shows all the threads of the process and, with their tid and
+   there status and periodically updating!
+   
+   
 ** altering addresses of a stoped thread
    Since we can only ptrace particular threads, we might find the subsequent calls to
    peekdata will yield chaning values on some addresses. This is due to some other thread
@@ -142,6 +147,27 @@
    inspecting the /status file of each task. We might find some threads are sleeping
    and hence innocent of memory tampering.
 
+*** Multithreaded App ptrace-attach != kill -sigstop
+
+    Given a multithreaded application with the threads, who all share the same address-space
+    foo-thread
+    bar-thread
+    qux-thread
+
+    And the process running our ptrace calls (in this case a single threaded process):
+    tracer-thread
+
+    If we ptrace(PTRACE_ATTACH ..) to foo-thread, we make tracer-thread another parent of
+    foo-thread. In accordance with ptrace' documentation, a SIGSTOP is send, that stops
+    the thread. But this SIGSTOP send by tracer-thread _only stops foo-thread_ not any
+    other thread!
+    
+    But if we send a _SIGSTOP to foo-thread directly_, _i.e. not through the means of the_
+    _attach ptrace call_, then the whole process, and its threads foo- and bar-thread are
+    stopped.
+
+    This is an instance where the peculiarity of ptrace becoming a makeshift foster home
+    for threads has to be taken into account.    
    
 * A process issues a system calls
   When a process wants to invoke a system call, it puts the arguments to system calls in

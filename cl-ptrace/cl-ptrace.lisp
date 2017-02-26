@@ -349,7 +349,12 @@ Remember ptrace(PTRACE_PEEKDATA,..) only allows to set full (64bit on x86_64) wo
 time, so this function takes care to only set the amount of bits you want."
   (let* ((peeked-data (peekdata byte-offset pid nil nil)))
     ;; this directly sets the bits in peeked-data to data
-    (print write-n-bits)
+    ;; TODO: the default behaviour should be to always write the bits plus a padding leading
+    ;; 0's so it always fills the last byte.
+    ;; this is important as with the #x12 =binary> 10010 so that a write to a byte like
+    ;; 11111111 would be 11110010, instead of just 00010010 (it must be very rare for a program
+    ;; to read n-bits as data rather than the whole byte
+    (format t "bits to write: ~a ~%" write-n-bits)
     (setf (ldb (byte write-n-bits 0) peeked-data) data)
     (pokedata-full-addr byte-offset peeked-data pid print-errno-description?)))
 
@@ -406,7 +411,8 @@ it.
 (defun find-value-address (value &key (pid *pid*)
 				   (from-address #x0)
 				   (to-address #x0)
-				   (address-list nil))
+				   (address-list nil)
+				   (address-range nil))
   "Returns a list of addresses for which (peekdata address ..) will return a number ending
 with the bits representing `value'.
 
@@ -418,11 +424,29 @@ already filtered, addresses provided from `:address-list'"
 		(ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
 		value)
 	 collect address)
-      (loop for address from from-address to to-address
-	 :when (ends-with-bits? ;; (peekdata address pid nil nil)
-		(ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
-		value)
-	 collect address)))
+      (progn
+	(when address-range
+	  (setf from-address (first address-range)
+		to-address (second address-range)))
+	(loop for address from from-address to to-address
+	   :when (ends-with-bits? ;; (peekdata address pid nil nil)
+		  (ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
+		  value)
+	   collect address))))
 
-
+(defun find-nearby (value address &optional (search-distance 1000) (pid *pid*))
+  "Search for `value' around the `address' by `search-distance' addresses.
+This can be used search using the heuristic of related data being next to, or
+nearby each other in memory."
+  (let* ((from-address (- address search-distance))
+	 (to-address (+ address search-distance))
+	 (address-range
+	  ;; doing some clamping to 0 and unsigned-byte 64 max size for
+	  ;; the address range
+	  (list (if (> 0 from-address) 0 from-address)
+		(if (> to-address #xffffffffffffffff)
+		    #xffffffffffffffff
+		    to-address))))
+    (print address-range)
+    (find-value-address value :address-range address-range :pid pid)))
 
