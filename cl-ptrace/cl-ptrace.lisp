@@ -337,6 +337,7 @@
 
 
 ;; use this version from the repl
+;; TODO, you cant write just '0' to an address!
 (defun pokedata (byte-offset data &key (pid *pid*)
 				    (print-errno-description? t)
 				    (write-n-bits (integer-length data)))
@@ -503,12 +504,11 @@ value 1-time (length of the nearby-values-list ist hence 2)."
 ;; TEST, to mapcar  over readable-address-ranges!
 (defparameter heuristic-fn
   (lambda (address-range)
-    (print
-     (found-one-of-each-heuristic-1
-      (find-value-heuristic-1 538677 address-range
-			      (list 499 10) ; some example nearby-values
-			      100 ; search-distance
-			      )))))
+    (found-one-of-each-heuristic-1
+     (find-value-heuristic-1 15000 address-range
+			     (list 275 200) ; some example nearby-values
+			     100 ; search-distance
+			     ))))
 
 ;; NEXT-TODO
 ;; pretaining rogue legacy tests:
@@ -522,3 +522,38 @@ value 1-time (length of the nearby-values-list ist hence 2)."
 ;; all but the first region belong to a memory segment that maps to
 ;; /home/k-stz/.local/share/Steam/steamapps/common/Rogue Legacy/System.Xml.dll
 ;; note that poking hasn't been tested on those yet!
+
+(defparameter brute-force-fn
+  (lambda (address-range)
+    (find-value-address 204 :address-range address-range)))
+
+
+;; using bruteforce the value was foudn in memory region
+;;  7f9858078000-7f98580f8000 rw-p 00000000 00:00 0  ;; LINE NUMBER WAS 453
+
+;; which was surrounded by blocks of the form:
+;; 7f98422fe000-7f98424fe000 rw-s 27d94f000 00:06 9772                      /dev/nvidiactl
+;; 7f98424fe000-7f9842e00000 rw-p 00000000 00:00 0 
+;; 7f9842e6f000-7f98432f0000 rw-p 00000000 00:00 0 
+;; 7f98432f1000-7f9843600000 r--p 00000000 08:02 17173440                   /home/k-stz/.local/share/Steam/steamapps/common/Rogue Legacy/System.Xml.dll
+;; 7f9843600000-7f9843700000 rw-p 00000000 00:00 0 
+;; 7f984377c000-7f98437fc000 rw-p 00000000 00:00 0 
+;; 7f98437ff000-7f9843800000 ---p 00000000 00:00 0 
+;; 7f9843800000-7f9844000000 rw-p 00000000 00:00 0 
+;; 7f9844000000-7f9848000000 rw-s 00000000 00:05 520673                     /memfd:pulseaudio (deleted)
+;; 7f9848000000-7f984c000000 rw-s 00000000 00:05 17543                      /memfd:pulseaudio (deleted)
+;; 7f984c000000-7f9850000000 rw-s 00000000 00:05 518835                     /memfd:pulseaudio (deleted)
+;; 7f9850000000-7f9854000000 rw-s 00000000 00:05 518835                     /memfd:pulseaudio (deleted)
+;; 7f9854000000-7f9854021000 rw-p 00000000 00:00 0 
+;; 7f9854021000-7f9858000000 ---p 00000000 00:00 0 
+;; 7f9858078000-7f98580f8000 rw-p 00000000 00:00 0 
+;; 7f98580fc000-7f985817c000 rw-p 00000000 00:00 0 
+;; 7f985817f000-7f98581a8000 r-xp 00000000 08:02 17173443                   /home/k-stz/.local/share/Steam/steamapps/common/Rogue Legacy/lib64/libmojoshader.so
+;; 7f98581a8000-7f98583a7000 ---p 00029000 08:02 17173443                   /home/k-stz/.local/share/Steam/steamapps/common/Rogue Legacy/lib64/libmojoshader.so
+;; 7f98583a7000-7f98583a9000 rw-p 00028000 08:02 17173443                   /home/k-stz/.local/share/Steam/steamapps/common/Rogue Legacy/lib64/libmojoshader.so
+;; 7f98583a9000-7f9858bc1000 rw-p 00000000 00:00 0 
+;; 7f9858bc1000-7f9858bc2000 ---p 00000000 00:00 0 
+;; 7f9858bc2000-7f9858cc2000 rw-p 00000000 00:00 0 
+;; 7f9858cc2000-7f9858cc3000 ---p 00000000 00:00 0 
+;; 7f9858cc3000-7f98594c3000 rw-p 00000000 00:00 0 
+;; 7f98594c3000-7f9859554000 r-xp 00000000 08:02 5795444                    /usr/lib/libvorbisenc.so.2.0.11

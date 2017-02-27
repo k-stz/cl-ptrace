@@ -63,3 +63,8 @@ Return mismatching inputs, or true if all's right"
 	t
 	(progn (format t "Failed for inputs:~%")
 	       fail-input))))
+
+(defun flatten (structure)
+  (cond ((null structure) nil)
+        ((atom structure) (list structure)s)
+        (t (mapcan #'flatten structure))))

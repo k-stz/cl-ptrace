@@ -29,16 +29,19 @@
 	       (format nil "~a" pid)
 	       "/maps"))
 
-(defun parse-proc-pid-maps (&optional (pid *pid*))
+(defun parse-proc-pid-maps (&optional (pid *pid*) &key parse-this-file-instead)
   "Return a list of plists with GETFable columns of /proc/pid/maps"
-  (let (maps-line-strings)
+  (let (maps-line-strings
+	(file-to-parse
+	 (if parse-this-file-instead
+	     parse-this-file-instead
+	     (get-maps-path pid))))
     (setf maps-line-strings
-	  (with-open-file (maps-stream (get-maps-path pid) :direction :input)
+	  (with-open-file (maps-stream file-to-parse :direction :input)
 	    ;; condition of type END-OF-FILE
 	    (loop for text = (read-line maps-stream nil nil) 
 	       while text ;; nil
 	       collect text)))
-    
     (loop for line in maps-line-strings collect 
 	 (with-input-from-string (string-stream line)
 	   (destructuring-bind (address-range permissions offset dev inode &optional pathname)
@@ -55,10 +58,21 @@
 		   :inode inode
 		   :pathname pathname))))))
 
+
 (defun permission-readable? (proc-pid-maps-line)
   "Takes a string like 'rw-p' and returns true if 'r' is set "
   (let ((permission-string (getf proc-pid-maps-line :permission)))
     (char= #\r (aref permission-string 0))))
+
+
+;; Takes the output from `parse-proc-pid-maps' and createds a
+;; list of memory regions that are all readable
+(defun get-readable-memory-regions (proc-pid-maps-string-list)
+  "Return a list of all readable address ranges from a parsed /proc/pid/maps
+file. `proc-pid-maps-string-list' should be the output of `parse-proc-pid-maps'"
+  (loop for line in proc-pid-maps-string-list
+     when (permission-readable? line)
+     collect (address-range-list line)))
 
 (defun address-range-list (proc-pid-maps-line)
   (let ((address-range (getf proc-pid-maps-line :address-range))
