@@ -120,14 +120,17 @@ file. `proc-pid-maps-string-list' should be the output of `parse-proc-pid-maps'"
 	       (format nil "~a" pid)
 	       "/mem"))
 
-(defun read-proc-mem-byte (address &optional (pid *pid*))
+(defun read-proc-mem-byte (address &key (pid *pid*) (hex-print? t))
   "Reads `address' from pid memory directly from /proc/pid/mem. 
 
 This opens and closes the stream on each invokation, making it useful to inspect actual
 current value under `address'"
   (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8))
     (file-position str address)
-    (read-byte str)))
+    (let ((byte (read-byte str)))
+      (when hex-print?
+	(hex-print byte))
+      byte)))
 
 
 ;; This will store the values of a memory range at a the time. That's what is implied
