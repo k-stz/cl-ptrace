@@ -7,13 +7,13 @@
 (defun hex-print (number &optional (destination t))
   (format destination "~(~x~)~%" number))
 
-(defun hex (number &optional (destination t))
-  (princ destination "~(~x~)" number))
+;; (defun hex (number &optional (destination t))
+;;   (princ destination "~(~x~)" number))
 
-(defun print-byte-region (from-address to-address &optional pid)
-  (mapcar #'hex
-	  (loop for address :from from-address :to to-address collect
-	       (read-proc-mem-byte address :hex-print? nil))))
+;; (defun print-byte-region (from-address to-address &optional pid)
+;;   (mapcar #'hex
+;; 	  (loop for address :from from-address :to to-address collect
+;; 	       (read-proc-mem-byte address :hex-print? nil))))
 
 #+sbcl
 (defun endianess ()
@@ -73,5 +73,5 @@ Return mismatching inputs, or true if all's right"
 
 (defun flatten (structure)
   (cond ((null structure) nil)
-        ((atom structure) (list structure)s)
+        ((atom structure) (list structure))
         (t (mapcan #'flatten structure))))
