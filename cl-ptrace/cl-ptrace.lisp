@@ -265,14 +265,18 @@
     (getregs pid regs)
     (foreign-slot-value regs '(:struct user-regs-struct) 'rip)))
 
-(defun singlestep (&optional (pid *pid*) (print-instruction-pointer? t))
+(defun singlestep (&optional (pid *pid*) (print-instruction-pointer? t)
+		                         (peekdata-from-rip-address? t))
   (ptrace +ptrace-singlestep+ pid +null+ +null+)
   (waitpid pid +null+ 0)
   (when print-instruction-pointer?
       (with-foreign-object (regs '(:struct user-regs-struct))
 	(getregs pid regs) ;; regs gets set here pass-by-reference style
 	(format t "rip: ~x" 
-		(foreign-slot-value regs '(:struct user-regs-struct) 'rip)))))
+		(foreign-slot-value regs '(:struct user-regs-struct) 'rip))))
+  ;; (when peekdata-from-rip-address?
+  ;;   (print-n-peekdata-instructions 1))
+  )
 
 (defun allocate-user-regs ()
   ;; free with (foreign-free ..)
@@ -281,17 +285,20 @@
 (defvar *regs* (allocate-user-regs)) ;; don't run multiple times!
 
 (defun step-loop (&optional (pid *pid*))
-  (loop 
-     :with input :do
-     (print-user-regs-struct-from-pid pid)
-     (format t "(s)tep (q)uit~%")
-     (setf input (read))
-     (case input
-       (s (singlestep pid))
-       (q (return) ;; return from this loop
-	  )
-       (t ;; but nobody came
-	))))
+  (let ((print-regs t))
+    (loop 
+       :with input :do
+       (print-user-regs-struct-from-pid pid)
+       (format t "(s)tep (q)uit r(i)p-peekdata ~%")
+       (setf input (read))
+       (case input
+	 (s (singlestep pid)
+	    (setf print-regs t))
+	 (i (peekdata (rip-address pid) pid t t))
+	 (q (return) ;; return from this loop
+	    )
+	 (t ;; but nobody came
+	  )))))
 
  
 ;; TODO: (1) tracee will stop whenever a signal is delivered. Test this, and how to
@@ -377,13 +384,13 @@ of addresses when encountering a loop."
 
 
 
-(defun print-n-peekdata-instructions (n)
-  (loop for i upto n
-     for rip = (rip-address) do
+(defun print-n-peekdata-instructions (n &optional (pid *pid*))
+  (loop for i below n
+     for rip = (rip-address pid) do
        (format t "rip: ~x ~x~%"
 	       rip
-	       (peekdata rip *pid* nil))
-       (singlestep *pid* nil)))
+	       (peekdata rip pid nil))
+       (singlestep pid nil)))
 
 
 (defun ends-with-bits? (target-number match-number &optional (bits (integer-length match-number)))
