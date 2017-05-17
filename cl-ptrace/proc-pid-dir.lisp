@@ -133,6 +133,18 @@ current value under `address'"
       byte)))
 
 
+(defun write-proc-mem-byte (address new-byte &key (pid *pid*))
+  "Careful, this writes a `new-byte' to the process memory address of the process
+designated by `pid'.
+This can be used to write to any process memory, without having to trace or even
+SIGSTOP it."
+  (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :output
+		       :if-exists :appendx)
+    (file-position str address)
+    (write-byte new-byte str)))
+
+
+
 ;; This will store the values of a memory range at a the time. That's what is implied
 ;; by "snapshot" this won't be used to retrieve up-to-date values or to even set
 ;; any value. This should be treated as readonly object after the sltos have been set

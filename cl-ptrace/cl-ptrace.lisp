@@ -87,7 +87,9 @@
 (defconstant +PTRACE-attach+ 16)
 
 
-(defconstant +ptrace-seize+ #x4205
+(defconstant +ptrace-seize+ #x4206
+  ;; peek/poke will only work though after the process has been SIGSTOP'ed!
+  ;; afterwards SIGCONT won't work, you have to `DETACH-FROM' the process again!
   "Like PTRACE_ATTACH, but do not force tracee to trap and do not affect signal or group stop state.")
 
 (defconstant +PTRACE-detach+ 17)

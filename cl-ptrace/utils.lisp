@@ -7,9 +7,6 @@
 (defun hex-print (number &optional (destination t))
   (format destination "~(~x~)~%" number))
 
-;; (defun hex (number &optional (destination t))
-;;   (princ destination "~(~x~)" number))
-
 ;; (defun print-byte-region (from-address to-address &optional pid)
 ;;   (mapcar #'hex
 ;; 	  (loop for address :from from-address :to to-address collect
