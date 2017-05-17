@@ -387,12 +387,13 @@ of addresses when encountering a loop."
 
 
 (defun print-n-peekdata-instructions (n &optional (pid *pid*))
+  (format t "rip-address : peekdata-instruction~%")
   (loop for i below n
      for rip = (rip-address pid) do
-       (format t "rip: ~x ~x~%"
+       (format t "rip: ~x ~16,x~%"
 	       rip
-	       (peekdata rip pid nil))
-       (singlestep pid nil)))
+	       (peekdata rip pid nil nil))
+       (singlestep pid nil nil)))
 
 
 (defun ends-with-bits? (target-number match-number &optional (bits (integer-length match-number)))
