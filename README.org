@@ -1,0 +1,12 @@
+* About
+  Bindings to the ptrace() Linux system call, used to hack processes by altering the
+  process' memory.
+
+* Videos
+  The following Youtube video series shows the code in action, all the while covering the
+  What, Why and How of Process Hacking and related concepts.
+
+  Hopefully not cutting short on entertainment! ;)
+
+  Link:
+  https://www.youtube.com/watch?v=PuGgCOyBMyc&index=1&list=PLBgJcoaU2hl-JnoVOzjYB5qk_PfYjPm-I
