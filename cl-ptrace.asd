@@ -7,7 +7,7 @@
 process hacking through value injection"
   :version "0.1"
   :author "k-stz"
-  ;; :licence "MIT" ;; TODO
+  :licence "MIT"
   :depends-on (:cffi)
   :serial t	
   :components
