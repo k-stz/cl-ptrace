@@ -2,6 +2,8 @@
   Bindings to the ptrace() Linux system call, used to hack processes by altering the
   process' memory.
 
+  Should just work on 64bit CPUs!
+  
 * Videos
   The following Youtube video series shows the code in action, all the while covering the
   What, Why and How of Process Hacking and related concepts.
