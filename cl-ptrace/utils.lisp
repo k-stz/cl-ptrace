@@ -1,6 +1,6 @@
 (in-package :cl-ptrace)
 
-
+#+sbcl
 (defun am-i-root? ()
   (= (sb-posix:getuid) 0))
 

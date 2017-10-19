@@ -12,3 +12,6 @@
 
   Link:
   https://www.youtube.com/watch?v=PuGgCOyBMyc&index=1&list=PLBgJcoaU2hl-JnoVOzjYB5qk_PfYjPm-I
+
+* Common Lisp Implementation 
+  cl-ptrace was tested on sbcl and ccl, but should only work on 64bit CPUs as of now
