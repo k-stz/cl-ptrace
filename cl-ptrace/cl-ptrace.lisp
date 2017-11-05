@@ -108,7 +108,6 @@
 
 (defvar *pid* 0 "The process id that functions refer to when non specified") ;; 
 
-
 ;; WORKS, when Lisp is run as root!!!
 (defun attach-to (&optional (pid *pid*))
   (print "ptrace ptrace-attach..")
@@ -123,6 +122,16 @@
 	  pid)
 	;; attaching failed?
 	ptrace-return-value)))
+
+(defun countdown (seconds)
+  "Sleep for given `seconds' with textual feedback for each second 'counting down'. Can
+be used to issue some commands after a certain amount of time, while handling input on another
+Program."
+  (loop for sec from seconds downto 1 do
+       (format t "~a...~%" sec)
+       (sleep 1))
+  (format t "ACTION!"))
+
 
 ;; add some data structure to capture the state of a process, such as if it is already
 ;; traced, or ptrace returns a signal accordingly somehow if we try to detach from an
@@ -279,6 +288,18 @@
   ;; (when peekdata-from-rip-address?
   ;;   (print-n-peekdata-instructions 1))
   )
+
+(defun singlestep-peek-from-rip (n-instructions &optional (pid *pid*))
+  (let* ((rip-peekdata (peekdata (rip-address) pid t nil))
+	 (instructions-array (make-array n-instructions))
+	 rip-address)
+    (loop for nth-instruction from 0 below n-instructions do
+	 (setf rip-address (rip-address pid)
+	       rip-peekdata (peekdata rip-address pid nil nil))
+	 (setf (aref instructions-array nth-instruction)
+	       (list rip-address rip-peekdata))
+	 (singlestep pid nil nil))
+    instructions-array))
 
 (defun allocate-user-regs ()
   ;; free with (foreign-free ..)

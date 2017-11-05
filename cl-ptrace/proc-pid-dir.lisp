@@ -65,7 +65,7 @@
     (char= #\r (aref permission-string 0))))
 
 
-;; Takes the output from `parse-proc-pid-maps' and createds a
+;; Takes the output from `parse-proc-pid-maps' and creates a
 ;; list of memory regions that are all readable
 (defun get-readable-memory-regions (proc-pid-maps-string-list)
   "Return a list of all readable address ranges from a parsed /proc/pid/maps
@@ -182,7 +182,10 @@ SIGSTOP it."
 	  (- address start-memory-address))))
 
 
-
+;; TODO: currently the snapshot stores under each address the entire WORD `PEEKDATA'
+;; returns. That means for each single address 8 bytes are stored. Use
+;; (read-proc-mem-byte) to create the snapshot, and then let (snapshot-peekdata ..) mimic
+;; the behaviour of reading 8 bytes in a row!
 (defun make-snapshot-memory-range (&key from-address to-address address-range (pid *pid*))
   (when address-range
     (setf from-address (first address-range)

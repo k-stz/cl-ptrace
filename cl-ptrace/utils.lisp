@@ -72,3 +72,4 @@ Return mismatching inputs, or true if all's right"
   (cond ((null structure) nil)
         ((atom structure) (list structure))
         (t (mapcan #'flatten structure))))
+
