@@ -64,6 +64,16 @@
   (let ((permission-string (getf proc-pid-maps-line :permission)))
     (char= #\r (aref permission-string 0))))
 
+(defun get-heap-address-range (&optional (pid *pid*))
+  (loop for line in (parse-proc-pid-maps pid) :do
+       (when
+	   (string= "[heap]"
+		    (getf line :pathname))
+	 (return (progn
+		   (hex-print
+		    (address-range-list line))
+		   (address-range-list line))))
+     :finally (error "Process maps file has no [heap] entry. PID: ~a" pid)))
 
 ;; Takes the output from `parse-proc-pid-maps' and creates a
 ;; list of memory regions that are all readable
