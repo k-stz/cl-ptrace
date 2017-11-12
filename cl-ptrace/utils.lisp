@@ -7,6 +7,25 @@
 (defun hex-print (number &optional (destination t))
   (format destination "~(~x~)~%" number))
 
+
+(defun address-list-peek-to-array (mismatches &optional (pid *pid*))
+  "Takes a list of addresses and saves there PEEKDATA output to an
+array."
+  (let ((array (make-array (length mismatches))))
+    (loop for address in mismatches
+       :for index from 0 do
+	 (setf (aref array index)
+	       (peekdata address pid nil nil)))
+    array))
+
+(defun stop-time (&optional (pid *pid*))
+  "Sends a SIGSTOP to all the threads of a process."
+  (kill pid +sigstop+))
+
+(defun cont-time (&optional (pid *pid*))
+  "Sends a SIGCONT to all the threads of a process."
+  (kill pid +sigcont+))
+
 ;; (defun print-byte-region (from-address to-address &optional pid)
 ;;   (mapcar #'hex
 ;; 	  (loop for address :from from-address :to to-address collect
@@ -21,7 +40,7 @@
 #+sbcl
 ;; This might be useful to free heap if we're close to running out due
 ;; to huge address-range-snapshot generations etc
-;; use `(room)' to control the heap size. On SBCL it even
+;; use `(room)' to check the heap size. On SBCL it even
 ;; gives explicit size information about particular objects. For example
 ;; after allocating a memory-range-snapshot object I got the entry:
 ;;   3,679,024 bytes for     1,240 simple-array-unsigned-byte-64 objects.
