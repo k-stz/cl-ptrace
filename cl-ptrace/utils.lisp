@@ -7,7 +7,6 @@
 (defun hex-print (number &optional (destination t))
   (format destination "~(~x~)~%" number))
 
-
 (defun address-list->peekdata-list (address-list &optional (pid *pid*))
   (loop for address in address-list
        :collect (peekdata address pid nil nil)))

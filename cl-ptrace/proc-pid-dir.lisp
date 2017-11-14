@@ -29,7 +29,7 @@
 	       (format nil "~a" pid)
 	       "/maps"))
 
-(defun parse-proc-pid-maps (&optional (pid *pid*) &key parse-this-file-instead)
+(defun parse-proc-pid-maps (&optional (pid *pid*) (parse-this-file-instead nil))
   "Return a list of plists with GETFable columns of /proc/pid/maps"
   (let (maps-line-strings
 	(file-to-parse
@@ -149,10 +149,20 @@ designated by `pid'.
 This can be used to write to any process memory, without having to trace or even
 SIGSTOP it."
   (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :output
-		       :if-exists :appendx)
+		       :if-exists :append)
     (file-position str address)
     (write-byte new-byte str)))
 
+
+(defun print-proc-mem-table (address-list &optional (number-of-rows 10) (pid *pid*))
+  (let ((row 1))
+    (loop for address in address-list
+       :do
+	 (format t "~(~x~)" (read-proc-mem-byte address :pid pid :hex-print? nil))
+	 (when (= row number-of-rows)
+	   (terpri) ;; new-line
+	   (setf row 1))
+	 (incf row))))
 
 
 ;; This will store the values of a memory range at a the time. That's what is implied
