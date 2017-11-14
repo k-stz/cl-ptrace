@@ -8,15 +8,58 @@
   (format destination "~(~x~)~%" number))
 
 
-(defun address-list-peek-to-array (mismatches &optional (pid *pid*))
-  "Takes a list of addresses and saves there PEEKDATA output to an
-array."
-  (let ((array (make-array (length mismatches))))
-    (loop for address in mismatches
-       :for index from 0 do
-	 (setf (aref array index)
-	       (peekdata address pid nil nil)))
-    array))
+(defun address-list->peekdata-list (address-list &optional (pid *pid*))
+  (loop for address in address-list
+       :collect (peekdata address pid nil nil)))
+
+;; (defun address-list->peekdata-array (address-list &optional (pid *pid*))
+;;   "Takes a list of addresses and saves there PEEKDATA output to an
+;; array."
+;;   (let ((array (make-array (length address-list))))
+;;     (loop for address in address-list
+;;        :for index from 0 do
+;; 	 (setf (aref array index)
+;; 	       (peekdata address pid nil nil)))
+;;     array))
+
+(defun count-address-data-match (address-list peekdata-list
+				 &optional (count-matching? t) (pid *pid*))
+  "Counts how many times the addresses in `address-list' point to the same
+data (peekdata address ..) as the elements `peekdata-list' of the same index. 
+
+Counts mismatches instead if `count-matching?' = nil!
+
+Used in conjunction with the snapshot method on the first list ofmismatches from
+`find-mismatches'. "
+  (assert (= (length address-list)
+	     (length peekdata-list)))
+  (loop for address in address-list for data in peekdata-list
+     :count
+     ;; decides here if always count matches or mismatches, using equivalency
+       (equalp (= (peekdata address pid nil nil)
+		  data)
+	       count-matching?)))
+
+(defun collect-address-data-match (address-list peekdata-list
+				   &optional (collect-matching-p t) (pid *pid*))
+  "Collects the addresses in `address-list' if they point to the same
+data (peekdata address ..) as elements `peekdata-list' of the same index.
+
+Collect mismatches instead if `collect-matching' = nil!
+
+Note: Used in conjunction with the snapshot method."
+  
+  (assert (= (length address-list)
+	     (length peekdata-list)))
+  (loop for address in address-list for data in peekdata-list
+     :when
+     ;; equivalency
+       (equalp (= (peekdata address pid nil nil)
+		  data)
+	       collect-matching-p)
+     :collect address))
+
+
 
 (defun stop-time (&optional (pid *pid*))
   "Sends a SIGSTOP to all the threads of a process."
