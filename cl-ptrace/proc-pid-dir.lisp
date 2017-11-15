@@ -154,15 +154,35 @@ SIGSTOP it."
     (write-byte new-byte str)))
 
 
-(defun print-proc-mem-table (address-list &optional (number-of-rows 10) (pid *pid*))
-  (let ((row 1))
+(defun print-proc-mem-table (address-list &optional (number-of-rows 30) (spacing 1) (pid *pid*))
+  (format  t "***PID: ~6a ~3a ~3a***~%"
+	   pid number-of-rows spacing)
+  (let ((row 1)
+	(spaces (make-string spacing :initial-element #\Space)))
     (loop for address in address-list
        :do
 	 (format t "~(~x~)" (read-proc-mem-byte address :pid pid :hex-print? nil))
+	 (format t "~a" spaces)
 	 (when (= row number-of-rows)
 	   (terpri) ;; new-line
-	   (setf row 1))
-	 (incf row))))
+	   (setf row 0))
+	 (incf row)))
+  (terpri))
+
+(defun print-proc-mem-table (address-list &optional (number-of-rows 30) (spacing 1) (pid *pid*))
+  (format  t "***PID: ~6a ~3a ~3a***~%"
+	   pid number-of-rows spacing)
+  (let ((row 1)
+	(spaces (make-string spacing :initial-element #\Space)))
+    (loop for address in address-list
+       :do
+	 (format t "~(~x~)" (read-proc-mem-byte address :pid pid :hex-print? nil))
+	 (format t "~a" spaces)
+	 (when (= row number-of-rows)
+	   (terpri) ;; new-line
+	   (setf row 0))
+	 (incf row)))
+  (terpri))
 
 
 ;; This will store the values of a memory range at a the time. That's what is implied
@@ -173,7 +193,7 @@ SIGSTOP it."
    (end-memory-address :initarg :end-memory-address)
    (pid :initarg :pid)
    (snapshot-memory-array :initarg :snapshot-memory-array :accessor snapshot-memory-array
-			  :type (array (unsigned-byte 64) 1))))
+			  :type (array (unsigned-byte 8) 1))))
 
 (defgeneric get-memory-range (memory-range-snapshot))
 (defmethod get-memory-range ((obj memory-range-snapshot))
@@ -188,15 +208,21 @@ SIGSTOP it."
 
 
 
-;; TODO: add declaration or slot type size of snapshot array length being of type '(unsigned-byte 64)
-;;       do some renaming and perhaps hide some functions that should never be used
-;;       on their own but to created snapshots of memory-ranges
+;; TODO rewrite after neo-make-snapshot-memory-range works (read 8 bytes in a row)
 (defgeneric snapshot-peekdata (memory-range-snapshot address))
 (defmethod snapshot-peekdata ((obj memory-range-snapshot) address)
   ;; This just maps calls like (aref-mem-snapshot obj <start-address>+n) to internally
   ;; (aref obj.array 0+n)
   (with-slots (snapshot-memory-array start-memory-address) obj
     (declare (type (vector (unsigned-byte 64)) snapshot-memory-array)
+	     ((unsigned-byte 64) start-memory-address address))
+    (aref snapshot-memory-array
+	  (- address start-memory-address))))
+
+(defgeneric snapshot-read-byte (memory-range-snapshot address))
+(defmethod snapshot-read-byte ((obj memory-range-snapshot) address)
+  (with-slots (snapshot-memory-array start-memory-address) obj
+    (declare (type (vector (unsigned-byte 8)) snapshot-memory-array)
 	     ((unsigned-byte 64) start-memory-address address))
     (aref snapshot-memory-array
 	  (- address start-memory-address))))
@@ -230,6 +256,41 @@ SIGSTOP it."
 	     (setf (aref snapshot-memory-array array-index)
 		   (peekdata mem-byte pid nil nil)))
 	(make-snapshot-instance snapshot-memory-array from-address to-address pid)))))
+
+
+(defun neo-make-snapshot-memory-range (&key from-address to-address address-range (pid *pid*))
+  (when address-range
+    (setf from-address (first address-range)
+	  to-address (second address-range)))
+  (labels ;; don't call directly, use `snapshot-memory-range' instead!
+      ((make-snapshot-instance
+	   (snapshot-memory-array start-address end-address &optional (pid *pid*))
+	 (make-instance 'memory-range-snapshot
+			:start-memory-address start-address
+			:end-memory-address end-address
+			:pid pid
+			:snapshot-memory-array snapshot-memory-array)))
+
+    (with-open-file (mem-stream (get-mem-path pid) :direction :input :element-type '(unsigned-byte 8))
+      (file-position mem-stream from-address)
+      
+      (let ((snapshot-memory-array (make-array (1+ (- to-address from-address))
+					       :element-type '(unsigned-byte 8))))
+	(loop for mem-byte :from from-address :to to-address
+	   for array-index from 0
+	   :do
+	     (setf (aref snapshot-memory-array array-index)
+		   (read-byte mem-stream)))
+	(make-snapshot-instance snapshot-memory-array from-address to-address pid)))))
+
+
+(defun test-neo-snapshot (memory-range-snapshot)
+  (with-slots (start-memory-address end-memory-address pid) memory-range-snapshot
+    (loop for address from start-memory-address to end-memory-address
+       :always
+	 (= (read-proc-mem-byte address :pid pid :hex-print? nil)
+	    (snapshot-read-byte *neo-snapshot-heap* address)))))
+
 
 ;; TODO make macro hygienic
 (defmacro loop-snapshot ((address-var memory-range-snapshot) &body body)
