@@ -130,6 +130,10 @@ file. `proc-pid-maps-string-list' should be the output of `parse-proc-pid-maps'"
 	       (format nil "~a" pid)
 	       "/mem"))
 
+;; NEXT-TODO: bug, 512 addresses before the unreadable addreses it raises an eror:
+;; couldn't read from #<SB-SYS:FD-STREAM for "file /proc/1265/mem" {1004945083}>:
+;;  Input/output error
+
 (defun read-proc-mem-byte (address &key (pid *pid*) (hex-print? t))
   "Reads `address' from pid memory directly from /proc/pid/mem. 
 
@@ -169,19 +173,29 @@ SIGSTOP it."
 	 (incf row)))
   (terpri))
 
-(defun print-proc-mem-table (address-list &optional (number-of-rows 30) (spacing 1) (pid *pid*))
+(defun print-proc-mem-table (&key address-list address-range (number-of-rows 30) (spacing 1) (pid *pid*))
+  "Print Process memory addresses in a table. If `address-range' provided it is used instead of
+the address-list."
   (format  t "***PID: ~6a ~3a ~3a***~%"
 	   pid number-of-rows spacing)
   (let ((row 1)
 	(spaces (make-string spacing :initial-element #\Space)))
-    (loop for address in address-list
-       :do
-	 (format t "~(~x~)" (read-proc-mem-byte address :pid pid :hex-print? nil))
-	 (format t "~a" spaces)
-	 (when (= row number-of-rows)
-	   (terpri) ;; new-line
-	   (setf row 0))
-	 (incf row)))
+    (flet ((flet-print-memory (address)
+	     (format t "~(~x~)" (read-proc-mem-byte address :pid pid :hex-print? nil))
+	     (format t "~a" spaces)
+	     (when (= row number-of-rows)
+	       (terpri) ;; new-line
+	       (setf row 0))
+	     (incf row)))
+      (if (not address-range)
+	  ;; address-list
+	  (loop for address in address-list
+	     :do
+	       (flet-print-memory address))
+	  ;; address-range
+	  (loop for address from (first address-range) to (second address-range)
+	     :do
+	       (flet-print-memory address)))))
   (terpri))
 
 
@@ -257,7 +271,7 @@ SIGSTOP it."
 		   (peekdata mem-byte pid nil nil)))
 	(make-snapshot-instance snapshot-memory-array from-address to-address pid)))))
 
-
+;; TODO don't use, broken:
 (defun neo-make-snapshot-memory-range (&key from-address to-address address-range (pid *pid*))
   (when address-range
     (setf from-address (first address-range)
@@ -289,7 +303,7 @@ SIGSTOP it."
     (loop for address from start-memory-address to end-memory-address
        :always
 	 (= (read-proc-mem-byte address :pid pid :hex-print? nil)
-	    (snapshot-read-byte *neo-snapshot-heap* address)))))
+	    (snapshot-read-byte memory-range-snapshot address)))))
 
 
 ;; TODO make macro hygienic
