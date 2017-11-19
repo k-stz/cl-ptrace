@@ -10,11 +10,11 @@ int main()
 {
   printf("works\n");
         int file=0;
-        if((file=open("/proc/12950/mem",O_RDONLY)) < -1)
+        if((file=open("/proc/8104/mem",O_RDONLY)) < -1)
                 return 1;
  
-	/* long int index = 0x559d455e4000; */
-	long int index = 0x559c2651fff8 + 3;
+	/* long int index = 0x560851b863e8 + 3; */
+	long int index = -1;
 
         char data[8];
         /* if(read(file,buffer,19) != 19)  return 1; */

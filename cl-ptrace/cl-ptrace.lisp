@@ -1,5 +1,4 @@
 ;; TODO remove package redundancy once .asd file loading works
-
 (asdf:load-system :cffi)
 
 (defpackage :cl-ptrace
@@ -32,9 +31,7 @@
 ;; long int ptrace(enum __ptrace_request request, pid_t pid,
 ;;                 void *addr, void *data)
 
-;; sao location: /usr/include/x86_64-linux-gnu/sys/ptrace.h
-
-;; error occurred?
+;; sao location: /usr/include/x86_64-linux-gnu/sys/ptrace.h;; error occurred?
 ;; ptrace returning -1 might indicate that an error, has happened (or the return value is
 ;; indeed -1). This is when we check *errno* which will be '0' on "Success". But due to
 ;; cffi we have the problem that the return value of ptrace gets translated to Lisp. -1 is
@@ -45,6 +42,34 @@
 (defcfun "ptrace" :unsigned-long
   ;;here the multiple arguments follow:
   (ptrace-request :int) (pid pid-t) (addr :pointer) (data :pointer))
+
+
+#+sbcl ;; osicat-posix to make it portable
+(defun mmap-file (file-path &optional (permission-string "r--p"))
+  "Return SAP, system-area-pointer, to the newly mapped file in the process memory.
+`permission-string' example: \"rw-p\""
+  (let ((permission-logior (permission-string->posix-permission-logior permission-string))
+	(flag (permission-string->flag-private/shared permission-string)))
+    ;; mmap complains with flag 's' for SHARED if stream is just :input
+    (with-open-file (stream file-path :direction :IO :if-exists :append)
+    ;; (with-open-file (stream file-path :direction :input)  
+      (let ((fd (sb-impl::fd-stream-fd stream))
+	    (length (file-length stream))
+	    (sap))
+	;; in case of error: sb-posix:mmap raises error containing the errorstring of errno!
+	(setf sap (sb-posix:mmap nil
+				 length
+				 permission-logior
+				 flag
+				 fd
+				 0))
+	sap))))
+
+;; default to length #x1000 as that's the default virtual-memory-page-size on my system
+(defun munmap (sap &optional (length #x1000))
+  (sb-posix:munmap sap length))
+
+
 
 (defcfun "waitpid" :int (pid-t :int) (status :pointer) (options :int))
 
@@ -388,8 +413,6 @@ time, so this function takes care to only set the amount of bits you want."
     (format t "bits to write: ~a ~%" write-n-bits)
     (setf (ldb (byte write-n-bits 0) peeked-data) data)
     (pokedata-full-addr byte-offset peeked-data pid print-errno-description?)))
-
-
 
 
 ;;The idea was to find a game loop by running this multiple times:

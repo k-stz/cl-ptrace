@@ -1215,3 +1215,82 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
     
     
     
+
+* mmap()
+** Overview
+  =mmap()= allows to map a file (or anything represented by file descriptor) to process
+  memory. Now you can access the contents of the file using pointer arithmetic, without
+  the open(), close() shenanigans. Even cooler: it is even possible to make it so that
+  writting to this memory region changes the mapped file!
+
+** how to use
+
+***   signature:
+  #+BEGIN_SRC C
+    #include <sys/mman.h>
+       
+    void *mmap(void *addr, size_t len, int prot,
+                int flags, int fildes, off_t off);
+
+  #+END_SRC
+
+***   Parameters:
+       
+| *Parameter* | *Description*                                     | SBCL                                 |
+| *addr*      | Address where to map the file into. If '_0_' is   | address 0 is                         |
+|             | provided, then the _OS_ _decides_ it for you.     | =NIL= or                             |
+|             | But you can't choose it eitirely freely either:   | (make-pointer 0)                     |
+|             | it needs to be a multiple of the                  |                                      |
+|             | *virtual memory page size*                        |                                      |
+|             |                                                   |                                      |
+|             |                                                   |                                      |
+| *len*       | length of the file. Again if the _length modulo_  | use =(FILE-LENGTH stream)=           |
+|             | _virtual-memory-page-size_ then it gets rounded   | where =stream= is from               |
+|             | up filling the extra bytes with 0s.               | =(WITH-OPEN-FILE (stream <path>..))= |
+|             |                                                   |                                      |
+| *prot*      | this is the 'rwxp' part of /proc/<pid>/maps.      | =sb-posix:PROT-READ= and             |
+|             | Enums: PROT_READ, .._WRITE,                       | -WRITE, -EXEC respectively           |
+|             |                                                   |                                      |
+| *flags*     | this sets the p and s in 'rwxp'. Where 'p'        | =sb-posix:MAP-PRIVATE=               |
+|             | is MAP_PRIVATE and 's' is MAP_SHARED. Private:    | and =sb-posix:MAP-SHARED=            |
+|             | get a copy of memory region. Shared: changing     |                                      |
+|             | the region, changes it for other processes. TODO: |                                      |
+|             | does it change the underlying (meaning: the file  |                                      |
+|             | represented by the fd represented) file?          |                                      |
+|             |                                                   |                                      |
+|             |                                                   |                                      |
+| *fildes*    | the FILe DEScriptor, the FD                       | =(sb-impl::fd-stream-fd stream)=     |
+|             |                                                   |                                      |
+| *offset*    | offset in the file represented by *fildes*, BUT:  | off_t is signed integer              |
+|             | must also be multiple of virtmem. page size!      |                                      |
+
+*** file descriptor
+    to get at the FD, file descriptor, use
+    #+BEGIN_SRC common-lisp
+      (with-openfile (stream "/path/to/file" :direction :IO :if-exists :append)
+        ;; to get the file-descriptor, finally do:
+        (sb-impl::fd-stream-fd stream)
+        ..)
+    #+END_SRC
+    we set :direction :IO because in case we want to use the shared flag!
+      
+*** Return value
+    mmap() returns the address(pointer) to the beginning of the file
+    otherwise -1 setting errno accordingly
+
+*** shared flag with mmap() files
+    If the shared flag is set in the for the mapped memory region with a permisison string
+    like: rw-s, then the following be behavior takes place.
+
+    Before we write anything to the addresses the SAP points to:
+    1. changing the file, also changes what the SAP changes points to
+    2. writing to the sap address changes the file
+       
+    But _after writing to the sap address_:
+    1. any subsequent file changes don't change what the SAP points to.
+    2. changing the data pointed to by the SAP doesn't change the file
+    
+    so after we write to the file with the SAP and then change the file with
+    another process (for example a text editor) the mmap-region becomes "dirty"
+    and is _no longer in sync_ with the _memory-mapping_ _and_ _the file_ on the disk.
+    

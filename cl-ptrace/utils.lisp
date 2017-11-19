@@ -11,6 +11,40 @@
   (loop for address in address-list
        :collect (peekdata address pid nil nil)))
 
+#+sbcl
+(defun permission-string->posix-permission-logior (permission-string)
+  "Expects a permission-strig of the form \"rwxp\", and returns the
+LOGIOR of the permissions.
+The logior of permission is needed by the syscalls like sb-posix:MMAP."
+  (assert (= (length permission-string) 4))
+  (let ((permission-logior))
+    (setf permission-logior
+	  (apply #'logior
+		 (loop for character across permission-string
+		    :collect (case character
+			       (#\r sb-posix:prot-read)
+			       (#\w sb-posix:prot-write)
+			       (#\x sb-posix:prot-exec)
+			       (#\p 0)
+			       (#\s 0)
+			       (#\- 0)
+			       (t (error "~a is not a valid permisson character." character))))))
+    permission-logior))
+
+#+sbcl
+(defun permission-string->flag-private/shared (permission-string)
+  "Expects a permission-strig of the form \"rwxp\", and returns
+the shared or private flag accordingly."
+  (assert (= (length permission-string) 4))
+  (let ((permission-flag-character (aref permission-string 3) ))
+    (case permission-flag-character
+      (#\s sb-posix:map-shared)
+      (#\p sb-posix:map-private)
+      (#\- (error "Permission-string ~a: you must provide a shared/private option 's' or 'p'"
+		permission-string))
+      (t (error "Permission-string: ~a is not a valid flag character, use 's' or 'p'."
+		permission-string)))))
+
 ;; (defun address-list->peekdata-array (address-list &optional (pid *pid*))
 ;;   "Takes a list of addresses and saves there PEEKDATA output to an
 ;; array."
