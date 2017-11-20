@@ -8,7 +8,7 @@ process hacking through value injection"
   :version "0.1"
   :author "k-stz"
   :licence "MIT"
-  :depends-on (:cffi)
+  :depends-on (:cffi :osicat)
   :serial t	
   :components
   ((:file "cl-ptrace/package")

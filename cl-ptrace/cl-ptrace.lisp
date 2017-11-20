@@ -60,7 +60,6 @@
 
 
 ;; CAN'T MMAP proc/<pid>/mem files!!!
-#+sbcl ;; osicat-posix to make it portable
 (defun mmap-file (file-path &optional (permission-string "r--p"))
   "Return SAP, system-area-pointer, to the newly mapped file in the process memory.
 `permission-string' example: \"rw-p\""
@@ -72,19 +71,18 @@
       (let ((fd (sb-impl::fd-stream-fd stream))
 	    (length (file-length stream))
 	    (sap))
-	;; in case of error: sb-posix:mmap raises error containing the errorstring of errno!
-	(setf sap (sb-posix:mmap nil
-				 length
-				 permission-logior
-				 flag
-				 fd
-				 0))
+	(setf sap (osicat-posix:mmap +null+
+				     length
+				     permission-logior
+				     flag
+				     fd
+				     0))
 	sap))))
 
 
 ;; default to length #x1000 as that's the default virtual-memory-page-size on my system
 (defun munmap (sap &optional (length #x1000))
-  (sb-posix:munmap sap length))
+  (osicat-posix:munmap sap length))
 
 
 

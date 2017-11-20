@@ -1239,9 +1239,9 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 | *Parameter* | *Description*                                     | SBCL                                 |
 | *addr*      | Address where to map the file into. If '_0_' is   | address 0 is                         |
 |             | provided, then the _OS_ _decides_ it for you.     | =NIL= or                             |
-|             | But you can't choose it eitirely freely either:   | (make-pointer 0)                     |
-|             | it needs to be a multiple of the                  |                                      |
-|             | *virtual memory page size*                        |                                      |
+|             | But you can't choose it eitirely freely either:   | =(make-pointer 0)=                   |
+|             | it needs to be a multiple of the                  | UPATE: =osicat-posix:MMAP= doesn't   |
+|             | *virtual memory page size*                        | accept =NIL= use a null ptr instead  |
 |             |                                                   |                                      |
 |             |                                                   |                                      |
 | *len*       | length of the file. Again if the _length modulo_  | use =(FILE-LENGTH stream)=           |
@@ -1282,15 +1282,19 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
     If the shared flag is set in the for the mapped memory region with a permisison string
     like: rw-s, then the following be behavior takes place.
 
-    Before we write anything to the addresses the SAP points to:
     1. changing the file, also changes what the SAP changes points to
     2. writing to the sap address changes the file
        
-    But _after writing to the sap address_:
-    1. any subsequent file changes don't change what the SAP points to.
-    2. changing the data pointed to by the SAP doesn't change the file
+    It helps to imagine that the SHARED flag used in mmap-region, would helps to
+    implementing a text-editor.
+
+**** for some reason couldn't reproduce the following behaviour, thus consider it WRONG for now:   
+    # But _after writing to the sap address_:
+    # 1. any subsequent file changes don't change what the SAP points to.
+    # 2. changing the data pointed to by the SAP doesn't change the file
     
-    so after we write to the file with the SAP and then change the file with
-    another process (for example a text editor) the mmap-region becomes "dirty"
-    and is _no longer in sync_ with the _memory-mapping_ _and_ _the file_ on the disk.
+    # so after we write to the file with the SAP and then change the file with
+    # another process (for example a text editor) the mmap-region becomes "dirty"
+    # and is _no longer in sync_ with the _memory-mapping_ _and_ _the file_ on the disk.
     
+
