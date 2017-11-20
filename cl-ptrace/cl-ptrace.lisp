@@ -51,13 +51,70 @@
 ;;                          const struct iovec *remote_iov,
 ;;                          unsigned long riovcnt,
 ;;                          unsigned long flags);
-;; (defcfun "process_vm_readv" :long
-;;   (local_iov :pointer)
-;;  (liovcnt :unsigned-long)
-;;  (remote_iov :pointer)
-;;  (riovcnt :unsigned-long)
-;;  (flags :unsigned-long))
+;; Where local_iov is a struct from <sys/uio.h>:
+;; struct iovec {
+;;                void  *iov_base;    /* Starting address */
+;;                size_t iov_len;     /* Number of bytes to transfer */
+;;            };
 
+(defctype size-t :unsigned-long)
+(defctype pid-t :long)
+
+(defcstruct iovec
+  (iov-base :pointer) ; starting address, type void!
+  (iov-len size-t)) ; number of bytes to transfer
+
+(defcfun "process_vm_readv" :long
+  (pid pid-t)
+  (local-iovec :pointer)     ; local datastructure to capture remote process memory
+  (local-iovec-count :unsigned-long) ; const struct iovec *local_iov,
+  (remote-iovec :pointer)    ; REMOTE: process specified by PID, data to be transferred
+  (remote-iovec-count :unsigned-long) ; const struct iovec *remote_iov,
+  (flags :unsigned-long))  ; currently unused, must be set to 0
+
+;; NEXT-TODO: MORE TEST!
+(defun process-vm-readv-address-range (tracee-address-range &optional (pid *pid*))
+  "Copy the bytes in tracee-address-range into the tracer process, and return a SAP,
+system area pointer, to it.
+Uses the syscall process_vm_readv."
+  (let ((size-tracee-address-range (address-range-length tracee-address-range))
+	(local-iovec)
+	;; `remote-iov-count' is an array of IOVEC structs, so we can request multiple memory
+	;; regions? Lets work with copying one memory address range for now, so:
+	(remote-iov-count 1)
+	;; `local-iov' describes the local, tracer memory, address where to write it to.
+	;; where the field `iov-len' descibes the size of the buffer and `local-iov-count'
+	;; the number of buffers. We will use one buffer to write it to, not splitting it,
+	;; thus:
+	(local-iov-count 1)
+	;; on success the syscall process-vm-readv returns the amount of read bytes, we
+	;; store them here:
+	(number-of-read-bytes)) 
+    (with-foreign-object (remote-iov '(:struct iovec))
+      ;; creating remote-iov:
+      ;; set iov-base
+      (setf (foreign-slot-value remote-iov '(:struct iovec) 'iov-base)
+	    (make-pointer (first tracee-address-range)))
+      ;; set iov-len
+      (setf (foreign-slot-value remote-iov '(:struct iovec) 'iov-len)
+	    size-tracee-address-range)
+      ;;creating local-iov
+      (setf local-iovec (foreign-alloc '(:struct iovec) :count 1))
+      ;; creates array: char[size-tracee-address-range]
+      ;; local.iov-base
+      (setf (foreign-slot-value local-iovec '(:struct iovec) 'iov-base)
+	    (foreign-alloc :unsigned-char :count size-tracee-address-range))
+      ;; local.iov-len
+      (setf (foreign-slot-value local-iovec '(:struct iovec) 'iov-len)
+	    size-tracee-address-range)
+      (setf number-of-read-bytes
+	    (process-vm-readv pid local-iovec local-iov-count remote-iov remote-iov-count
+			      0))
+      (if (= -1 number-of-read-bytes) ;; syscall returning -1, means error occured:
+	  (strerror)
+	  (format t "process-vm-readv syscall, number of read bytes: ~a" number-of-read-bytes))
+      ;; return pointer to freshly transferred memory:
+      (foreign-slot-value local-iovec '(:struct iovec) 'iov-base))))
 
 ;; CAN'T MMAP proc/<pid>/mem files!!!
 (defun mmap-file (file-path &optional (permission-string "r--p"))
