@@ -44,6 +44,22 @@
   (ptrace-request :int) (pid pid-t) (addr :pointer) (data :pointer))
 
 
+;; #include <sys/uio.h>
+;; ssize_t process_vm_readv(pid_t pid,
+;;                          const struct iovec *local_iov,
+;;                          unsigned long liovcnt,
+;;                          const struct iovec *remote_iov,
+;;                          unsigned long riovcnt,
+;;                          unsigned long flags);
+;; (defcfun "process_vm_readv" :long
+;;   (local_iov :pointer)
+;;  (liovcnt :unsigned-long)
+;;  (remote_iov :pointer)
+;;  (riovcnt :unsigned-long)
+;;  (flags :unsigned-long))
+
+
+;; CAN'T MMAP proc/<pid>/mem files!!!
 #+sbcl ;; osicat-posix to make it portable
 (defun mmap-file (file-path &optional (permission-string "r--p"))
   "Return SAP, system-area-pointer, to the newly mapped file in the process memory.
@@ -52,7 +68,7 @@
 	(flag (permission-string->flag-private/shared permission-string)))
     ;; mmap complains with flag 's' for SHARED if stream is just :input
     (with-open-file (stream file-path :direction :IO :if-exists :append)
-    ;; (with-open-file (stream file-path :direction :input)  
+      ;; (with-open-file (stream file-path :direction :input)  
       (let ((fd (sb-impl::fd-stream-fd stream))
 	    (length (file-length stream))
 	    (sap))
@@ -64,6 +80,7 @@
 				 fd
 				 0))
 	sap))))
+
 
 ;; default to length #x1000 as that's the default virtual-memory-page-size on my system
 (defun munmap (sap &optional (length #x1000))
