@@ -130,6 +130,10 @@ file. `proc-pid-maps-string-list' should be the output of `parse-proc-pid-maps'"
 	       (format nil "~a" pid)
 	       "/mem"))
 
+
+;; _Don't use this in a loop_, it is by a factor of 50 slower than a PEEKDATA call the only
+;; advantage left to use this one is that we don't need to attach to a process thread
+;; prior to using it.
 (defun read-proc-mem-byte (address &key (pid *pid*) (hex-print? t))
   "Reads `address' from pid memory directly from /proc/pid/mem. 
 
@@ -138,12 +142,6 @@ current value under `address'"
   ;; Hack: Even though we just read from memory, if we don't make it an IO-Stream READ-BYTE
   ;; will raise an error I/O-Error when reading memory address 512 byte before the end of
   ;; a readable memory region...
-  ;; TODO: look for a syscall that does this more reliably, and that allows to read data
-  ;; past the `file-position' (signed-byte 64) limit.
-  ;; e.g. (1) peekdata and ldb the bytes - downside need to attach to process -> query process
-  ;;          status, then attach, peekdata, and detach again?
-  ;;      (2) syscall: `process_vm_readv' but it transfers data between processes, allocating it
-  ;;          into the tracer process
   (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :io
 		       :if-exists :append)
     (file-position str address)
@@ -277,10 +275,8 @@ the address-list."
 		   (peekdata mem-byte pid nil nil)))
 	(make-snapshot-instance snapshot-memory-array from-address to-address pid)))))
 
-;; TODO:
-;; try with peekdata output (hex-print (ldb (byte 8 8) #xabcdef1234567895))
-;; try mmap() or process_vm_readv()
-;; don't use, broken:
+;; NEXT-TODO:
+;; implement in terms of or use (process-vm-readv-address-range ..)
 (defun neo-make-snapshot-memory-range (&key from-address to-address address-range (pid *pid*))
   (when address-range
     (setf from-address (first address-range)

@@ -1307,4 +1307,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   looping and reading out address, no output:
   | READ-PROC-MEM-BYTE             | 103 seconds    |
   | (mem-ref readv-c-array)        | 0.041 seconds! |
-  | (ldb (byte 8 0) (peekdata ..)) |                |
+  | (ldb (byte 8 0) (peekdata ..)) | 2.216 secon    |
+
+  ==> don't use read-proc-mem-byte, or implement it
+  in terms of (ldb (byte 8 0) (peekdata ..))

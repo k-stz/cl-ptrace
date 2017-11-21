@@ -72,7 +72,11 @@
   (remote-iovec-count :unsigned-long) ; const struct iovec *remote_iov,
   (flags :unsigned-long))  ; currently unused, must be set to 0
 
-;; NEXT-TODO: MORE TEST!
+
+;; NEXT-TODO: build snapshot start-address = 0 index abstraction on top of it
+;;            see that you provide means to free the pointer, also
+;;            since currently the base-len of the iovec is returned, which is
+;;            just a field in the iovec struct next to the iov-length!
 (defun process-vm-readv-address-range (tracee-address-range &optional (pid *pid*))
   "Copy the bytes in tracee-address-range into the tracer process, and return a SAP,
 system area pointer, to it.
