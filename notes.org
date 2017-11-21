@@ -1298,3 +1298,13 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
     # and is _no longer in sync_ with the _memory-mapping_ _and_ _the file_ on the disk.
     
 
+
+* Performance: PEEKDATA, READ-PROC-MEM-BYTE, readv-c-array
+  problem size: 2.187.264 on laptop
+
+
+  #TODO contine
+  looping and reading out address, no output:
+  | READ-PROC-MEM-BYTE             | 103 seconds    |
+  | (mem-ref readv-c-array)        | 0.041 seconds! |
+  | (ldb (byte 8 0) (peekdata ..)) |                |

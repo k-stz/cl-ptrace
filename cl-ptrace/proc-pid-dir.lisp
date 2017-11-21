@@ -49,7 +49,7 @@
 		  :if (< i 6) 
 		  :collect (read-word-to-string string-stream)
 		  :else
-		          ;; quick hack "         /some/path/etc" -> "/some/path/etc
+		  ;; quick hack "         /some/path/etc" -> "/some/path/etc
 		  :collect (remove #\Space (read-line string-stream nil nil)))
 	     (list :address-range address-range
 		   :permission permissions
@@ -328,6 +328,16 @@ the (peekdata addr pid ..) entires, at the same address."
      when (not (= (peekdata address pid nil nil)
 		  (snapshot-peekdata memory-range-snapshot address)))
      collect address))
+
+
+(defun find-address-region-maps-entry (address &optional (pid *pid*))
+  (flet ((address-in-address-region? (address-region)
+	   (<= (first address-region) address (second address-region))))
+    (loop for line in (parse-proc-pid-maps pid)
+       :when
+	 (address-in-address-region?
+	  (address-range-list line))
+       :do (return line))))
 
 (defun find-address-region (address address-region-list)
   "Return the address-region where `address' is contained."

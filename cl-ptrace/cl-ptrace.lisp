@@ -77,7 +77,10 @@
   "Copy the bytes in tracee-address-range into the tracer process, and return a SAP,
 system area pointer, to it.
 Uses the syscall process_vm_readv."
-  (let ((size-tracee-address-range (address-range-length tracee-address-range))
+  (let ((size-tracee-address-range
+	 ;; 1- because the end-address in the address-range representation is
+	 ;; exclusive
+	 (1- (address-range-length tracee-address-range)))
 	(local-iovec)
 	;; `remote-iov-count' is an array of IOVEC structs, so we can request multiple memory
 	;; regions? Lets work with copying one memory address range for now, so:
