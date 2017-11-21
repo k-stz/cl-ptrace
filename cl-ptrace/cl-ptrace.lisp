@@ -72,56 +72,62 @@
   (remote-iovec-count :unsigned-long) ; const struct iovec *remote_iov,
   (flags :unsigned-long))  ; currently unused, must be set to 0
 
+(defun %alloc-iovec-struct (iovec-base iovec-length)
+  ;; all the data shall be pulled from and written to a single large buffer, so this this
+  ;; is hardcoded with: count = 1 and
+  (let ((iovec-struct (foreign-alloc '(:struct iovec) :count 1)))
+    ;; iovec.iov-base
+    (setf (foreign-slot-value iovec-struct '(:struct iovec) 'iov-base)
+	  (foreign-alloc :unsigned-char :count iovec-base))
+    ;; iovec.iov-len
+    (setf (foreign-slot-value iovec-struct '(:struct iovec) 'iov-len)
+	  iovec-length)
+    iovec-struct))
 
 ;; NEXT-TODO: build snapshot start-address = 0 index abstraction on top of it
 ;;            see that you provide means to free the pointer, also
 ;;            since currently the base-len of the iovec is returned, which is
 ;;            just a field in the iovec struct next to the iov-length!
-(defun process-vm-readv-address-range (tracee-address-range &optional (pid *pid*))
+(defun process-vm-readv-address-range (tracee-address-range &key (pid *pid*))
   "Copy the bytes in tracee-address-range into the tracer process, and return a SAP,
 system area pointer, to it.
-Uses the syscall process_vm_readv."
-  (let ((size-tracee-address-range
-	 ;; 1- because the end-address in the address-range representation is
-	 ;; exclusive
-	 (1- (address-range-length tracee-address-range)))
-	(local-iovec)
-	;; `remote-iov-count' is an array of IOVEC structs, so we can request multiple memory
-	;; regions? Lets work with copying one memory address range for now, so:
-	(remote-iov-count 1)
-	;; `local-iov' describes the local, tracer memory, address where to write it to.
-	;; where the field `iov-len' descibes the size of the buffer and `local-iov-count'
-	;; the number of buffers. We will use one buffer to write it to, not splitting it,
-	;; thus:
-	(local-iov-count 1)
-	;; on success the syscall process-vm-readv returns the amount of read bytes, we
-	;; store them here:
-	(number-of-read-bytes)) 
-    (with-foreign-object (remote-iov '(:struct iovec))
-      ;; creating remote-iov:
+Uses the syscall process_vm_readv.
+Doesn't require ptrace attachment, or stopping the tracee process."
+  (let* ((size-tracee-address-range
+	  ;; 1- because the end-address in the address-range representation is
+	  ;; exclusive
+	  (1- (address-range-length tracee-address-range)))
+	 (local-iovec
+	  (%alloc-iovec-struct size-tracee-address-range
+			       size-tracee-address-range))
+	 ;; `remote-iov-count' is an array of IOVEC structs, so we can request multiple memory
+	 ;; regions, but we'll work with copying one memory address range for now, so:
+	 (remote-iov-count 1)
+	 ;; `local-iov' describes the local, tracer memory, address where to write it to.
+	 ;; where the field `iov-len' descibes the size of the buffer and `local-iov-count'
+	 ;; the number of buffers. We will use one buffer to write it to, not splitting it,
+	 ;; thus:
+	 (local-iov-count 1)
+	 ;; on success the syscall process-vm-readv returns the amount of read bytes, we
+	 ;; store them here:
+	 (number-of-read-bytes)) 
+    (with-foreign-object (remote-iovec '(:struct iovec))
+      ;; creating remote-iovec:
       ;; set iov-base
-      (setf (foreign-slot-value remote-iov '(:struct iovec) 'iov-base)
+      (setf (foreign-slot-value remote-iovec '(:struct iovec) 'iov-base)
 	    (make-pointer (first tracee-address-range)))
       ;; set iov-len
-      (setf (foreign-slot-value remote-iov '(:struct iovec) 'iov-len)
+      (setf (foreign-slot-value remote-iovec '(:struct iovec) 'iov-len)
 	    size-tracee-address-range)
-      ;;creating local-iov
-      (setf local-iovec (foreign-alloc '(:struct iovec) :count 1))
-      ;; creates array: char[size-tracee-address-range]
-      ;; local.iov-base
-      (setf (foreign-slot-value local-iovec '(:struct iovec) 'iov-base)
-	    (foreign-alloc :unsigned-char :count size-tracee-address-range))
-      ;; local.iov-len
-      (setf (foreign-slot-value local-iovec '(:struct iovec) 'iov-len)
-	    size-tracee-address-range)
+
       (setf number-of-read-bytes
-	    (process-vm-readv pid local-iovec local-iov-count remote-iov remote-iov-count
+	    (process-vm-readv pid local-iovec local-iov-count remote-iovec remote-iov-count
 			      0))
       (if (= -1 number-of-read-bytes) ;; syscall returning -1, means error occured:
 	  (strerror)
 	  (format t "process-vm-readv syscall, number of read bytes: ~a" number-of-read-bytes))
       ;; return pointer to freshly transferred memory:
-      (foreign-slot-value local-iovec '(:struct iovec) 'iov-base))))
+      local-iovec)))
 
 ;; CAN'T MMAP proc/<pid>/mem files!!!
 (defun mmap-file (file-path &optional (permission-string "r--p"))
