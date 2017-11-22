@@ -93,7 +93,6 @@ Note: Used in conjunction with the snapshot method."
      :collect address))
 
 
-
 (defun stop-time (&optional (pid *pid*))
   "Sends a SIGSTOP to all the threads of a process."
   (kill pid +sigstop+))

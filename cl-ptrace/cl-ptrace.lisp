@@ -72,7 +72,7 @@
   (remote-iovec-count :unsigned-long) ; const struct iovec *remote_iov,
   (flags :unsigned-long))  ; currently unused, must be set to 0
 
-(defun %alloc-iovec-struct (iov-base iovec-len)
+(defun %alloc-iovec-struct (iov-base iov-len)
   "Allocate and return a the foreign C-struct: `IOVEC' which is needed by the syscall
 process_vm_readv. 
 It's fields show from which address (base-iov) to read how many elements
@@ -87,8 +87,30 @@ For the two uses see the signature of the syscall."
 	  (foreign-alloc :unsigned-char :count iov-base))
     ;; iovec.iov-len
     (setf (foreign-slot-value iovec-struct '(:struct iovec) 'iov-len)
-	  iovec-len)
+	  iov-len)
     iovec-struct))
+
+(defun iovec-get-iov-base (iovec-struct)
+  (foreign-slot-value iovec-struct '(:struct iovec) 'iov-base))
+
+(defun iovec-get-iov-len (iovec-struct)
+  (foreign-slot-value iovec-struct '(:struct iovec) 'iov-len))
+
+(defmacro iov-base-mem-ref (iovec-struct index)
+  (mem-ref (iovec-get-iov-base iovec-struct) :unsigned-char index))
+
+(defun iovec->lisp-array (iovec)
+  ;; cffi:foreign-array-to-lisp creates a simple-vector array, without
+  ;; a specific element type, so we make an own function
+  ;; (foreign-array-to-lisp iov-base
+  ;; 			 (list :array :unsigned-char array-length))
+  (let* ((array-length (1+ (iovec-get-iov-len iovec)))
+	 (array (make-array array-length ))
+	 (iov-base (iovec-get-iov-base iovec)))
+    (loop for index from 0 below array-length do
+	 (setf (aref array index)
+	       (mem-ref iov-base :uint8 index)))
+    array))
 
 ;; because we need to foreign-free all that is foreign-alloc'ated, and the struct has the
 ;; field `base-len', which was foreign-alloc'ated, we use this function to conventietly
@@ -98,7 +120,7 @@ For the two uses see the signature of the syscall."
    (foreign-slot-value iovec-struct '(:struct iovec) 'iov-base))
   (foreign-free iovec-struct))
 
-;; NEXT-TODO: build snapshot start-address = 0 index abstraction on top of it
+;; TODO: build snapshot start-address = 0 index abstraction on top of it
 ;;            see that you provide means to free the pointer, also
 ;;            since currently the base-len of the iovec is returned, which is
 ;;            just a field in the iovec struct next to the iov-length!
@@ -165,7 +187,6 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 				     0))
 	sap))))
 
-
 ;; default to length #x1000 as that's the default virtual-memory-page-size on my system
 (defun munmap (sap &optional (length #x1000))
   (osicat-posix:munmap sap length))
@@ -221,7 +242,6 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 (defconstant +PTRACE-detach+ 17)
 
 (defconstant +PTRACE-syscall+ 24)
-
 
 ;; because loading the .asd file, (defconstant ) is
 ;; doesn't see the value `null-value' which is defvar'd here.
