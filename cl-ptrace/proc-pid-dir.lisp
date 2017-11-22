@@ -277,6 +277,8 @@ the address-list."
 
 ;; NEXT-TODO:
 ;; implement in terms of or use (process-vm-readv-address-range ..)
+;; since process-vm-readv is very fast, it makes sense to always take a snapshot
+;; instead of scanning the memory with peekdata!!
 (defun neo-make-snapshot-memory-range (&key from-address to-address address-range (pid *pid*))
   (when address-range
     (setf from-address (first address-range)

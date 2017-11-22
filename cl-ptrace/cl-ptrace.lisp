@@ -99,6 +99,9 @@ For the two uses see the signature of the syscall."
 (defmacro iov-base-mem-ref (iovec-struct index)
   (mem-ref (iovec-get-iov-base iovec-struct) :unsigned-char index))
 
+
+;; surprisingly scanning over a c-array isn't anywhere slower than a lisp-array
+;; this should be kept in mind before using this function for efficiency reasons
 (defun iovec->lisp-array (iovec)
   ;; cffi:foreign-array-to-lisp creates a simple-vector array, without
   ;; a specific element type, so we make an own function
@@ -412,7 +415,7 @@ Program."
 
 (defun print-user-regs-struct-from-pid (&optional (pid *pid*))
   (with-foreign-object (regs '(:struct user-regs-struct))
-    (getregs pid regs) ;; this implicitly sets `regs', which is bad lisp style (TODO)!
+    (getregs pid regs) ;; this implicitly sets `regs'
     (print-user-regs-struct regs)))
 
 (defun rip-address (&optional (pid *pid*))
@@ -638,6 +641,7 @@ nearby each other in memory."
 		    to-address))))
     (find-value-address value :address-range address-range :pid pid)))
 
+
 ;; some test heuristic searches
 
 (defun find-value-heuristic-1 (value address-range nearby-values-list &optional (search-distance 1000) (pid *pid*))
@@ -676,7 +680,7 @@ value 1-time (length of the nearby-values-list ist hence 2)."
        :collect entry))
 
 
-;; TEST, to mapcar  over readable-address-ranges!
+;; TEST, to mapcar over readable-address-ranges!
 (defparameter heuristic-fn
   (lambda (address-range)
     (found-one-of-each-heuristic-1
@@ -684,51 +688,6 @@ value 1-time (length of the nearby-values-list ist hence 2)."
 			     (list 275 200) ; some example nearby-values
 			     100 ; search-distance
 			     ))))
-
-;; NEXT-TODO
-;; pretaining rogue legacy tests:
-;; IT WORKED,
-;; sieved addresses that worked last time, of which the _first worked
-;; (139839378843988)_, the full list is:
-;; (139839378843988 139840088137784 1398400877322 80 139840088436792
-;;  		   139840088162360 139840087707704)
-;; TODO find the address region, write 
-
-;; all but the first region belong to a memory segment that maps to
-;; /home/k-stz/.local/share/Steam/steamapps/common/Rogue Legacy/System.Xml.dll
-;; note that poking hasn't been tested on those yet!
-
 (defparameter brute-force-fn
   (lambda (address-range)
     (find-value-address 204 :address-range address-range)))
-
-
-;; using bruteforce the value was foudn in memory region
-;;  7f9858078000-7f98580f8000 rw-p 00000000 00:00 0  ;; LINE NUMBER WAS 453
-
-;; which was surrounded by blocks of the form:
-;; 7f98422fe000-7f98424fe000 rw-s 27d94f000 00:06 9772                      /dev/nvidiactl
-;; 7f98424fe000-7f9842e00000 rw-p 00000000 00:00 0 
-;; 7f9842e6f000-7f98432f0000 rw-p 00000000 00:00 0 
-;; 7f98432f1000-7f9843600000 r--p 00000000 08:02 17173440                   /home/k-stz/.local/share/Steam/steamapps/common/Rogue Legacy/System.Xml.dll
-;; 7f9843600000-7f9843700000 rw-p 00000000 00:00 0 
-;; 7f984377c000-7f98437fc000 rw-p 00000000 00:00 0 
-;; 7f98437ff000-7f9843800000 ---p 00000000 00:00 0 
-;; 7f9843800000-7f9844000000 rw-p 00000000 00:00 0 
-;; 7f9844000000-7f9848000000 rw-s 00000000 00:05 520673                     /memfd:pulseaudio (deleted)
-;; 7f9848000000-7f984c000000 rw-s 00000000 00:05 17543                      /memfd:pulseaudio (deleted)
-;; 7f984c000000-7f9850000000 rw-s 00000000 00:05 518835                     /memfd:pulseaudio (deleted)
-;; 7f9850000000-7f9854000000 rw-s 00000000 00:05 518835                     /memfd:pulseaudio (deleted)
-;; 7f9854000000-7f9854021000 rw-p 00000000 00:00 0 
-;; 7f9854021000-7f9858000000 ---p 00000000 00:00 0 
-;; 7f9858078000-7f98580f8000 rw-p 00000000 00:00 0 
-;; 7f98580fc000-7f985817c000 rw-p 00000000 00:00 0 
-;; 7f985817f000-7f98581a8000 r-xp 00000000 08:02 17173443                   /home/k-stz/.local/share/Steam/steamapps/common/Rogue Legacy/lib64/libmojoshader.so
-;; 7f98581a8000-7f98583a7000 ---p 00029000 08:02 17173443                   /home/k-stz/.local/share/Steam/steamapps/common/Rogue Legacy/lib64/libmojoshader.so
-;; 7f98583a7000-7f98583a9000 rw-p 00028000 08:02 17173443                   /home/k-stz/.local/share/Steam/steamapps/common/Rogue Legacy/lib64/libmojoshader.so
-;; 7f98583a9000-7f9858bc1000 rw-p 00000000 00:00 0 
-;; 7f9858bc1000-7f9858bc2000 ---p 00000000 00:00 0 
-;; 7f9858bc2000-7f9858cc2000 rw-p 00000000 00:00 0 
-;; 7f9858cc2000-7f9858cc3000 ---p 00000000 00:00 0 
-;; 7f9858cc3000-7f98594c3000 rw-p 00000000 00:00 0 
-;; 7f98594c3000-7f9859554000 r-xp 00000000 08:02 5795444                    /usr/lib/libvorbisenc.so.2.0.11
