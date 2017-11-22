@@ -72,23 +72,37 @@
   (remote-iovec-count :unsigned-long) ; const struct iovec *remote_iov,
   (flags :unsigned-long))  ; currently unused, must be set to 0
 
-(defun %alloc-iovec-struct (iovec-base iovec-length)
-  ;; all the data shall be pulled from and written to a single large buffer, so this this
+(defun %alloc-iovec-struct (iov-base iovec-len)
+  "Allocate and return a the foreign C-struct: `IOVEC' which is needed by the syscall
+process_vm_readv. 
+It's fields show from which address (base-iov) to read how many elements
+(len-iov). But it is also used to save the data from from another process
+in an array (base-iov), namely len-iov many bytes.
+For the two uses see the signature of the syscall."
+  ;; all the data shall be pulled from and written to a single large buffer, so this
   ;; is hardcoded with: count = 1 and
   (let ((iovec-struct (foreign-alloc '(:struct iovec) :count 1)))
     ;; iovec.iov-base
     (setf (foreign-slot-value iovec-struct '(:struct iovec) 'iov-base)
-	  (foreign-alloc :unsigned-char :count iovec-base))
+	  (foreign-alloc :unsigned-char :count iov-base))
     ;; iovec.iov-len
     (setf (foreign-slot-value iovec-struct '(:struct iovec) 'iov-len)
-	  iovec-length)
+	  iovec-len)
     iovec-struct))
+
+;; because we need to foreign-free all that is foreign-alloc'ated, and the struct has the
+;; field `base-len', which was foreign-alloc'ated, we use this function to conventietly
+;; free it
+(defun %free-iovec-struct (iovec-struct)
+  (foreign-free
+   (foreign-slot-value iovec-struct '(:struct iovec) 'iov-base))
+  (foreign-free iovec-struct))
 
 ;; NEXT-TODO: build snapshot start-address = 0 index abstraction on top of it
 ;;            see that you provide means to free the pointer, also
 ;;            since currently the base-len of the iovec is returned, which is
 ;;            just a field in the iovec struct next to the iov-length!
-(defun process-vm-readv-address-range (tracee-address-range &key (pid *pid*))
+(defun process-vm-readv-into-iovec (tracee-address-range &key (pid *pid*))
   "Copy the bytes in tracee-address-range into the tracer process, and return a SAP,
 system area pointer, to it.
 Uses the syscall process_vm_readv.
@@ -109,7 +123,7 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 	 ;; thus:
 	 (local-iov-count 1)
 	 ;; on success the syscall process-vm-readv returns the amount of read bytes, we
-	 ;; store them here:
+	 ;; store them in:
 	 (number-of-read-bytes)) 
     (with-foreign-object (remote-iovec '(:struct iovec))
       ;; creating remote-iovec:
@@ -121,10 +135,12 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 	    size-tracee-address-range)
 
       (setf number-of-read-bytes
-	    (process-vm-readv pid local-iovec local-iov-count remote-iovec remote-iov-count
+	    (process-vm-readv pid
+			      local-iovec local-iov-count
+			      remote-iovec remote-iov-count
 			      0))
       (if (= -1 number-of-read-bytes) ;; syscall returning -1, means error occured:
-	  (strerror)
+	  (format t "~a~%"(strerror))
 	  (format t "process-vm-readv syscall, number of read bytes: ~a" number-of-read-bytes))
       ;; return pointer to freshly transferred memory:
       local-iovec)))
