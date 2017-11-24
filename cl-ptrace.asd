@@ -14,10 +14,5 @@ process hacking through value injection"
   ((:file "cl-ptrace/package")
    (:file "cl-ptrace/cl-ptrace")
    (:file "cl-ptrace/proc-pid-dir")
-   (:file "cl-ptrace/utils")
-   ;; ":module" solves the "src in subdirectories" problem nicely!
-   ;; TODO decide where to put things
-   ;; (:module "1-chapter/"
-   ;; 	    :components ((:file "hello-triangle")))
-
-   ))
+   (:file "cl-ptrace/snapshot")
+   (:file "cl-ptrace/utils")))

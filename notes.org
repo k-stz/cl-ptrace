@@ -1303,7 +1303,6 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   problem size: 2.187.264 on laptop
 
 
-  #TODO contine
   looping and reading out address, no output:
   | READ-PROC-MEM-BYTE             | 103 seconds    |
   | (mem-ref readv-c-array)        | 0.041 seconds! |
@@ -1311,3 +1310,5 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
   ==> don't use read-proc-mem-byte, or implement it
   in terms of (ldb (byte 8 0) (peekdata ..))
+
+  ==> the syscall process_vm_readv trumps all
