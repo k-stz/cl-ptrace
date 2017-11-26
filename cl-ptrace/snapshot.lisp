@@ -29,11 +29,15 @@
   (remote-iovec-count :unsigned-long) ; const struct iovec *remote_iov,
   (flags :unsigned-long))  ; currently unused, must be set to 0
 
-(defun %alloc-iovec-struct (iov-base iov-len)
-  "Allocate and return a the foreign C-struct: `IOVEC' which is needed by the syscall
+;; for debug reasons, it is filled wheneverr `%alloc-iovec-struct' is called
+;; possibly add more information and use it with (free-snapshot-iovec ..)
+(defvar all-allocated-iovs '())
+
+(defun %alloc-iovec-struct (iov-base-count iov-len)
+  "Allocate and return the foreign C-struct: `IOVEC' which is needed by the syscall
 process_vm_readv. 
 It's fields show from which address (base-iov) to read how many elements
-(len-iov). But it is also used to save the data from from another process
+ (len-iov). But it is also used to save the data from another process
 in an array (base-iov), namely len-iov many bytes.
 For the two uses see the signature of the syscall."
   ;; all the data shall be pulled from and written to a single large buffer, so this
@@ -41,10 +45,11 @@ For the two uses see the signature of the syscall."
   (let ((iovec-struct (foreign-alloc '(:struct iovec) :count 1)))
     ;; iovec.iov-base
     (setf (foreign-slot-value iovec-struct '(:struct iovec) 'iov-base)
-	  (foreign-alloc :unsigned-char :count iov-base))
+	  (foreign-alloc :unsigned-char :count iov-base-count))
     ;; iovec.iov-len
     (setf (foreign-slot-value iovec-struct '(:struct iovec) 'iov-len)
 	  iov-len)
+    (push iovec-struct all-allocated-iovs)
     iovec-struct))
 
 (defun iovec-get-iov-base (iovec-struct)
@@ -76,9 +81,21 @@ For the two uses see the signature of the syscall."
 ;; field `base-len', which was foreign-alloc'ated, we use this function to conventietly
 ;; free it
 (defun %free-iovec-struct (iovec-struct)
-  (foreign-free
-   (foreign-slot-value iovec-struct '(:struct iovec) 'iov-base))
-  (foreign-free iovec-struct))
+  (let ((allocated-pointer
+	 (find-if (lambda (pointer)
+		    (pointer-eq pointer iovec-struct))
+		  all-allocated-iovs)))
+    (if allocated-pointer
+	(progn
+	  (foreign-free iovec-struct)
+	  (setf all-allocated-iovs
+		(remove allocated-pointer
+			all-allocated-iovs)))
+	(progn
+	  (warn
+	   "Pointer: ~a NOT freed!
+Either the Pointer is not part of `all-allocated-iovs', that means that it wasn't
+allocated with the function `%alloc-iovec-struct', Or it was already freed." iovec-struct)))))
 
 ;; TODO: build snapshot start-address = 0 index abstraction on top of it
 ;;            see that you provide means to free the pointer, also
@@ -138,7 +155,7 @@ Doesn't require ptrace attachment, or stopping the tracee process."
    (end-memory-address :initarg :end-memory-address)
    (pid :initarg :pid)
    ;; use to free memory, when memory-range-snapshot is not needed
-   (snapshot-memory-iovec :initarg :snapshot-memory-iovec)
+   (snapshot-memory-iovec :initarg :snapshot-memory-iovec :accessor get-snapshot-iovec)
    (snapshot-memory-c-array :initarg :snapshot-memory-c-array :accessor snapshot-c-array)
    ;; from old implementation:
    (snapshot-memory-array :initarg :snapshot-memory-array :accessor snapshot-memory-array)))
@@ -154,62 +171,17 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 	    (first memory-range)
 	    (second memory-range))))
 
-
-
-;; NEXT TODO rewrite after neo-make-snapshot-memory-range works (read 8 bytes in a row)
-(defgeneric snapshot-peekdata (memory-range-snapshot address))
-(defmethod snapshot-peekdata ((obj memory-range-snapshot) address)
-  ;; This just maps calls like (aref-mem-snapshot obj <start-address>+n) to internally
-  ;; (aref obj.array 0+n)
-  (with-slots (snapshot-memory-array start-memory-address) obj
-    (declare (type (vector (unsigned-byte 64)) snapshot-memory-array)
-	     ((unsigned-byte 64) start-memory-address address))
-    (aref snapshot-memory-array
-	  (- address start-memory-address))))
-
-;; NEXT-TODO 
-;; (defgeneric snapshot-read-byte (memory-range-snapshot address))
-(defmethod neo-snapshot-read-byte ((obj memory-range-snapshot) address)
+(defgeneric snapshot-read-byte (memory-range-snapshot address))
+(defmethod snapshot-read-byte ((obj memory-range-snapshot) address)
   "Return the byte in the memory-snapshot using the address that was referring to its original
 in from the emory region the snapshot copied (from that remote process address space)"
   (with-slots (snapshot-memory-c-array start-memory-address) obj
     (mem-ref snapshot-memory-c-array :unsigned-char (- address start-memory-address))))
 
 
-;; TODO: currently the snapshot stores under each address the entire WORD `PEEKDATA'
-;; returns. That means for each single address 8 bytes are stored. Use
-;; (read-proc-mem-byte) to create the snapshot, and then let (snapshot-peekdata ..) mimic
-;; the behaviour of reading 8 bytes in a row!
-(defun make-snapshot-memory-range (&key from-address to-address address-range (pid *pid*))
-  (when address-range
-    (setf from-address (first address-range)
-	  to-address (second address-range)))
-  (labels ;; don't call directly, use `snapshot-memory-range' instead!
-      ((make-snapshot-instance
-	   (snapshot-memory-array start-address end-address &optional (pid *pid*))
-	 (make-instance 'memory-range-snapshot
-			:start-memory-address start-address
-			:end-memory-address end-address
-			:pid pid
-			:snapshot-memory-array snapshot-memory-array)))
-
-    (with-open-file (mem-stream (get-mem-path pid) :direction :input :element-type '(unsigned-byte 8))
-      (file-position mem-stream from-address)
-      
-      (let ((snapshot-memory-array (make-array (1+ (- to-address from-address))
-					       :element-type '(unsigned-byte 64))))
-	(loop for mem-byte :from from-address :to to-address
-	   for array-index from 0
-	   :do
-	     (setf (aref snapshot-memory-array array-index)
-		   (peekdata mem-byte pid nil nil)))
-	(make-snapshot-instance snapshot-memory-array from-address to-address pid)))))
-
-;; NEXT-TODO:
-;; implement in terms of or use (process-vm-readv-address-range ..)
 ;; since process-vm-readv is very fast, it makes sense to always take a snapshot
 ;; instead of scanning the memory with peekdata!!
-(defun neo-make-snapshot-memory-range (&key from-address to-address address-range (pid *pid*))
+(defun make-snapshot-memory-range (&key from-address to-address address-range (pid *pid*))
   (when address-range
     (setf from-address (first address-range)
 	  to-address (second address-range)))
@@ -226,25 +198,38 @@ in from the emory region the snapshot copied (from that remote process address s
 	   (process-vm-readv-into-iovec (list from-address to-address))))
       (make-snapshot-instance local-iovec from-address to-address pid))))
 
+;; TODO:
+;; calling it multiple times can cause the program to crush and end up in sbcl's ldb
+;; possible calling foreign-free multpletimes on an already freed pointer is not allowed
+;; can be fixed by using the `all-allocated-iovs' list
+(defun free-snapshot-iovec (memory-range-snapshot)
+  "Frees the iovec struct stored in the `memory-range-snapshot' given"
+  (%free-iovec-struct
+   (get-snapshot-iovec memory-range-snapshot)))
 
-(defun test-neo-snapshot (memory-range-snapshot)
-  (with-slots (start-memory-address end-memory-address pid) memory-range-snapshot
-    (loop for address from start-memory-address to end-memory-address
-       :always
-	 (= (read-proc-mem-byte address :pid pid :hex-print? nil)
-	    (snapshot-read-byte memory-range-snapshot address)))))
 
-
-;; TODO make macro hygienic
-(defmacro loop-snapshot ((address-var memory-range-snapshot) &body body)
-  `(with-slots (start-memory-address end-memory-address) ,memory-range-snapshot
-     (loop for ,address-var from start-memory-address to end-memory-address
-	  ,@body)))
+;; used with older implementation of memory-snapshot is useful still, make hygenic
+;; first
+;; (defmacro loop-snapshot ((address-var memory-range-snapshot) &body body)
+;;   `(with-slots (start-memory-address end-memory-address) ,memory-range-snapshot
+;;      (loop for ,address-var from start-memory-address to end-memory-address
+;; 	  ,@body)))
 
 (defun find-mismatches (memory-range-snapshot &optional (pid *pid*))
-  "Returns list of all addresses of `snapshot' whose entries mismatch with 
-the (peekdata addr pid ..) entires, at the same address."
-  (loop-snapshot (address memory-range-snapshot)
-     when (not (= (peekdata address pid nil nil)
-		  (snapshot-peekdata memory-range-snapshot address)))
-     collect address))
+  "Returns a list of all addresses that point to different data than what is saved
+in the `memory-range-snapshot'"
+  (with-slots (start-memory-address end-memory-address) memory-range-snapshot
+    (let* ((live-snapshot
+	    (make-snapshot-memory-range
+	     :address-range (list start-memory-address end-memory-address)
+	     :pid pid))
+	   (mismatch-address-list))
+      (setf mismatch-address-list
+	    (loop :for address :from start-memory-address :below end-memory-address
+	       :when
+	       (not
+		(= (snapshot-read-byte memory-range-snapshot address)
+		   (snapshot-read-byte live-snapshot address)))
+	       :collect address))
+      (free-snapshot-iovec live-snapshot)
+      mismatch-address-list)))
