@@ -163,14 +163,14 @@ SIGSTOP it."
 
 
 (defun print-proc-mem-table (&key address-list address-range (number-of-rows 30) (spacing 1) (pid *pid*))
-  "Print Process memory addresses in a table. If `address-range' provided it is used instead of
+  "Print Process memory addresses in a table. If `address-range' is provided it is used instead of
 the address-list."
   (format  t "***PID: ~6a ~3a ~3a***~%"
 	   pid number-of-rows spacing)
   (let ((row 1)
 	(spaces (make-string spacing :initial-element #\Space)))
     (flet ((flet-print-memory (address)
-	     (format t "~(~x~)" (read-proc-mem-byte address :pid pid :hex-print? nil))
+	     (format t "~(~2x~)" (read-proc-mem-byte address :pid pid :hex-print? nil))
 	     (format t "~a" spaces)
 	     (when (= row number-of-rows)
 	       (terpri) ;; new-line

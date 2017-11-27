@@ -31,7 +31,7 @@
 
 ;; for debug reasons, it is filled whenever `%alloc-iovec-struct' is called
 ;; possibly add more information and use it with (free-snapshot-iovec ..)
-(defvar all-allocated-iovs '())
+(defvar *all-allocated-iovs* '())
 
 (defun %alloc-iovec-struct (iov-base-count iov-len)
   "Allocate and return the foreign C-struct: `IOVEC' which is needed by the syscall
@@ -49,7 +49,7 @@ For the two uses see the signature of the syscall."
     ;; iovec.iov-len
     (setf (foreign-slot-value iovec-struct '(:struct iovec) 'iov-len)
 	  iov-len)
-    (push iovec-struct all-allocated-iovs)
+    (push iovec-struct *all-allocated-iovs*)
     iovec-struct))
 
 (defun iovec-get-iov-base (iovec-struct)
@@ -84,17 +84,17 @@ For the two uses see the signature of the syscall."
   (let ((allocated-pointer
 	 (find-if (lambda (pointer)
 		    (pointer-eq pointer iovec-struct))
-		  all-allocated-iovs)))
+		  *all-allocated-iovs*)))
     (if allocated-pointer
 	(progn
 	  (foreign-free iovec-struct)
-	  (setf all-allocated-iovs
+	  (setf *all-allocated-iovs*
 		(remove allocated-pointer
-			all-allocated-iovs)))
+			*all-allocated-iovs*)))
 	(progn
 	  (warn
 	   "Pointer: ~a NOT freed!
-Either the Pointer is not part of `all-allocated-iovs', that means that it wasn't
+Either the Pointer is not part of `*all-allocated-iovs*', that means that it wasn't
 allocated with the function `%alloc-iovec-struct', Or it was already freed." iovec-struct)))))
 
 ;; TODO: build snapshot start-address = 0 index abstraction on top of it
@@ -247,6 +247,14 @@ in the `memory-range-snapshot'"
 					:pid pid
 					:hex-print? nil))))
 
+(defun snapshot-alist->address-list (snapshot-alist)
+  (loop for address-byte-pair in snapshot-alist
+       :collect (car address-byte-pair)))
+
+;; (defun print-proc-mem-from-snapshot-alist (snapshot-alist)
+;;   (loop for address-byte-pair in snapshot-alist
+;;      :collect (car address-byte-pair)))
+
 (defun filter-snapshot-alist (snapshot-alist &optional (filter-fn #'=) (pid *pid*))
   "Build a new snapshot-alist that satisfies the `filter-function'.
 The `filter-function' takes two inputs:
@@ -272,7 +280,7 @@ then builds a new snapshot-alist from them."
       (filter-snapshot-alist snapshot-alist #'/= pid)))
 
 (defun find-snapshot-alist-matches (snapshot-alist &optional (pid *pid*))
-  (find-alist-mismatches snapshot-alist pid t))
+  (find-snapshot-alist-mismatches snapshot-alist pid t))
 
 (defun find-snapshot-alist-value (value snapshot-alist)
   "Return snapshot-alist of elements whose process-byte value pair matches with `value'."
@@ -287,4 +295,5 @@ then builds a new snapshot-alist from them."
 		 (= key value))
 	     snapshot-alist
 	     :key #'cdr))
+
 
