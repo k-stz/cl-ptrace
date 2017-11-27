@@ -247,28 +247,44 @@ in the `memory-range-snapshot'"
 					:pid pid
 					:hex-print? nil))))
 
-(defun find-alist-value (value snapshot-alist)
-  "Return list addresses pointing to `value', in the snapshot-alist,
-not the live process memory."
-  (loop for address-byte-pair in snapshot-alist
-     :when (= value
-	      (cdr address-byte-pair))
-     ;; collect matching addresses
-     :collect (car address-byte-pair)))
-
-(defun find-alist-mismatches (snapshot-alist &optional (pid *pid*) find-matches-instead?)
-  "Finds all mismatches between the snapshot-alist values and the builds
-a new snapshot-alist from them."
+(defun filter-snapshot-alist (snapshot-alist &optional (filter-fn #'=) (pid *pid*))
+  "Build a new snapshot-alist that satisfies the `filter-function'.
+The `filter-function' takes two inputs:
+1. The snapshot-byte saved in the snapshot-alist
+2. The process-byte currently in the process memory, of the process referred to by `pid'."
   (loop for address-byte-pair in snapshot-alist
      for address = (car address-byte-pair)
      for snapshot-byte = (cdr address-byte-pair)
      for process-byte = (read-proc-mem-byte address :pid pid :hex-print? nil)
      :when
-       (if find-matches-instead?
-	   (= snapshot-byte process-byte)
-	   (not (= snapshot-byte process-byte)))
+       (funcall filter-fn
+		snapshot-byte
+		process-byte)
      :collect
        (cons address process-byte)))
 
-(defun find-alist-matches (snapshot-alist &optional (pid *pid*))
+;; TODO test all of these
+(defun find-snapshot-alist-mismatches (snapshot-alist &optional (pid *pid*) find-matches-instead?)
+  "Finds all mismatches between the snapshot-alist and the process-memory values and
+then builds a new snapshot-alist from them."
+  (if find-matches-instead?
+      (filter-snapshot-alist snapshot-alist #'= pid)
+      (filter-snapshot-alist snapshot-alist #'/= pid)))
+
+(defun find-snapshot-alist-matches (snapshot-alist &optional (pid *pid*))
   (find-alist-mismatches snapshot-alist pid t))
+
+(defun find-snapshot-alist-value (value snapshot-alist)
+  "Return snapshot-alist of elements whose process-byte value pair matches with `value'."
+  (remove-if-not #'(lambda (key)
+		     (= key value))
+		 snapshot-alist
+		 :key #'cdr))
+
+(defun remove-snapshot-alist-value (value snapshot-alist)
+  "Return snapshot-alist of elements whose process-byte value pair matches with `value'."
+  (remove-if #'(lambda (key)
+		 (= key value))
+	     snapshot-alist
+	     :key #'cdr))
+
