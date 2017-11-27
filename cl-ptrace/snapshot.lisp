@@ -229,3 +229,46 @@ in the `memory-range-snapshot'"
 	       :collect address))
       (free-snapshot-iovec live-snapshot)
       mismatch-address-list)))
+
+;;Snapshot list-----------------------------------------------------------------
+
+;; Notes on alists:
+;; alist shouldn't be a problem since we usually will loop through them entirely
+;; when filtering for changes.
+;; Association lists work also because each key is unique (each address is a unique,
+;; single key in the list), in a list like ((a . 1) (a . 2) (b .1)) searching for
+;; the non-unique key 'a' will yield the first occurrence:
+;; (assoc 'a '((a . 1) (a . 2) (b .1))) ==> (A . 1)
+(defun make-snapshot-alist (address-list &optional (pid *pid*))
+  "Takes a list of addresses and returns an alist with elements: (<address> . <byte-pointed-to>)"
+  (loop for address in address-list
+     :collect (cons address
+		    (read-proc-mem-byte address
+					:pid pid
+					:hex-print? nil))))
+
+(defun find-alist-value (value snapshot-alist)
+  "Return list addresses pointing to `value', in the snapshot-alist,
+not the live process memory."
+  (loop for address-byte-pair in snapshot-alist
+     :when (= value
+	      (cdr address-byte-pair))
+     ;; collect matching addresses
+     :collect (car address-byte-pair)))
+
+(defun find-alist-mismatches (snapshot-alist &optional (pid *pid*) find-matches-instead?)
+  "Finds all mismatches between the snapshot-alist values and the builds
+a new snapshot-alist from them."
+  (loop for address-byte-pair in snapshot-alist
+     for address = (car address-byte-pair)
+     for snapshot-byte = (cdr address-byte-pair)
+     for process-byte = (read-proc-mem-byte address :pid pid :hex-print? nil)
+     :when
+       (if find-matches-instead?
+	   (= snapshot-byte process-byte)
+	   (not (= snapshot-byte process-byte)))
+     :collect
+       (cons address process-byte)))
+
+(defun find-alist-matches (snapshot-alist &optional (pid *pid*))
+  (find-alist-mismatches snapshot-alist pid t))
