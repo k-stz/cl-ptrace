@@ -23,13 +23,13 @@
 
 (defcfun "process_vm_readv" :long
   (pid pid-t)
-  (local-iovec :pointer)     ; local datastructure to capture remote process memory
+  (local-iovec :pointer)     ; local data structure to capture remote process memory
   (local-iovec-count :unsigned-long) ; const struct iovec *local_iov,
   (remote-iovec :pointer)    ; REMOTE: process specified by PID, data to be transferred
   (remote-iovec-count :unsigned-long) ; const struct iovec *remote_iov,
   (flags :unsigned-long))  ; currently unused, must be set to 0
 
-;; for debug reasons, it is filled wheneverr `%alloc-iovec-struct' is called
+;; for debug reasons, it is filled whenever `%alloc-iovec-struct' is called
 ;; possibly add more information and use it with (free-snapshot-iovec ..)
 (defvar all-allocated-iovs '())
 
@@ -41,7 +41,7 @@ It's fields show from which address (base-iov) to read how many elements
 in an array (base-iov), namely len-iov many bytes.
 For the two uses see the signature of the syscall."
   ;; all the data shall be pulled from and written to a single large buffer, so this
-  ;; is hardcoded with: count = 1 and
+  ;; is hard-coded with: count = 1 and
   (let ((iovec-struct (foreign-alloc '(:struct iovec) :count 1)))
     ;; iovec.iov-base
     (setf (foreign-slot-value iovec-struct '(:struct iovec) 'iov-base)
@@ -78,7 +78,7 @@ For the two uses see the signature of the syscall."
     array))
 
 ;; because we need to foreign-free all that is foreign-alloc'ated, and the struct has the
-;; field `base-len', which was foreign-alloc'ated, we use this function to conventietly
+;; field `base-len', which was foreign-alloc'ated, we use this function to conveniently
 ;; free it
 (defun %free-iovec-struct (iovec-struct)
   (let ((allocated-pointer
@@ -117,7 +117,7 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 	 ;; regions, but we'll work with copying one memory address range for now, so:
 	 (remote-iov-count 1)
 	 ;; `local-iov' describes the local, tracer memory, address where to write it to.
-	 ;; where the field `iov-len' descibes the size of the buffer and `local-iov-count'
+	 ;; where the field `iov-len' describes the size of the buffer and `local-iov-count'
 	 ;; the number of buffers. We will use one buffer to write it to, not splitting it,
 	 ;; thus:
 	 (local-iov-count 1)
@@ -138,7 +138,7 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 			      local-iovec local-iov-count
 			      remote-iovec remote-iov-count
 			      0))
-      (if (= -1 number-of-read-bytes) ;; syscall returning -1, means error occured:
+      (if (= -1 number-of-read-bytes) ;; syscall returning -1, means error occurred:
 	  (format t "~a~%"(strerror))
 	  (format t "process-vm-readv syscall, number of read bytes: ~a" number-of-read-bytes))
       ;; return pointer to freshly transferred memory:
@@ -173,8 +173,8 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 
 (defgeneric snapshot-read-byte (memory-range-snapshot address))
 (defmethod snapshot-read-byte ((obj memory-range-snapshot) address)
-  "Return the byte in the memory-snapshot using the address that was referring to its original
-in from the emory region the snapshot copied (from that remote process address space)"
+  "Return the byte in the memory-snapshot using the address that was referring to it in
+the original memory region the snapshot copied (from that remote process address space)"
   (with-slots (snapshot-memory-c-array start-memory-address) obj
     (mem-ref snapshot-memory-c-array :unsigned-char (- address start-memory-address))))
 
@@ -198,17 +198,13 @@ in from the emory region the snapshot copied (from that remote process address s
 	   (process-vm-readv-into-iovec (list from-address to-address))))
       (make-snapshot-instance local-iovec from-address to-address pid))))
 
-;; TODO:
-;; calling it multiple times can cause the program to crush and end up in sbcl's ldb
-;; possible calling foreign-free multpletimes on an already freed pointer is not allowed
-;; can be fixed by using the `all-allocated-iovs' list
 (defun free-snapshot-iovec (memory-range-snapshot)
   "Frees the iovec struct stored in the `memory-range-snapshot' given"
   (%free-iovec-struct
    (get-snapshot-iovec memory-range-snapshot)))
 
 
-;; used with older implementation of memory-snapshot is useful still, make hygenic
+;; used with older implementation of memory-snapshot is useful still, make hygienic
 ;; first
 ;; (defmacro loop-snapshot ((address-var memory-range-snapshot) &body body)
 ;;   `(with-slots (start-memory-address end-memory-address) ,memory-range-snapshot

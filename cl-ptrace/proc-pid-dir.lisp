@@ -94,7 +94,7 @@ file. `proc-pid-maps-string-list' should be the output of `parse-proc-pid-maps'"
       (setf start-address left-address)
       (setf end-address
 	    (parse-integer
-	     ;; 1+ is starting the substring after the hyphen
+	     ;; 1+ is starting the sub-string after the hyphen
 	     ;; 0400000-50000
 	     ;;        ^ this hyphen, after the '040000' part has been parsed
 	     (subseq address-range (1+ index-end))
@@ -137,7 +137,7 @@ file. `proc-pid-maps-string-list' should be the output of `parse-proc-pid-maps'"
 (defun read-proc-mem-byte (address &key (pid *pid*) (hex-print? t))
   "Reads `address' from pid memory directly from /proc/pid/mem. 
 
-This opens and closes the stream on each invokation, making it useful to inspect actual
+This opens and closes the stream on each invocation, making it useful to inspect actual
 current value under `address'"
   ;; Hack: Even though we just read from memory, if we don't make it an IO-Stream READ-BYTE
   ;; will raise an error I/O-Error when reading memory address 512 byte before the end of

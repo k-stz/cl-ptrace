@@ -13,7 +13,7 @@
 
 #+sbcl
 (defun permission-string->posix-permission-logior (permission-string)
-  "Expects a permission-strig of the form \"rwxp\", and returns the
+  "Expects a permission-string of the form \"rwxp\", and returns the
 LOGIOR of the permissions.
 The logior of permission is needed by the syscalls like sb-posix:MMAP."
   (assert (= (length permission-string) 4))
@@ -28,7 +28,7 @@ The logior of permission is needed by the syscalls like sb-posix:MMAP."
 			       (#\p 0)
 			       (#\s 0)
 			       (#\- 0)
-			       (t (error "~a is not a valid permisson character." character))))))
+			       (t (error "~a is not a valid permission character." character))))))
     permission-logior))
 
 #+sbcl
@@ -62,7 +62,7 @@ data (peekdata address ..) as the elements `peekdata-list' of the same index.
 
 Counts mismatches instead if `count-matching?' = nil!
 
-Used in conjunction with the snapshot method on the first list ofmismatches from
+Used in conjunction with the snapshot method on the first list of mismatches from
 `find-mismatches'. "
   (assert (= (length address-list)
 	     (length peekdata-list)))

@@ -8,7 +8,7 @@
 
 
 
-* =ptrace()= protoype:
+* =ptrace()= prototype:
   #+BEGIN_SRC c
     #include <sys/ptrace.h>
     long  int ptrace(enum __ptrace_request request, pid_t pid,
@@ -31,7 +31,7 @@
   follows is an overview of the requests behaviour
 
 ** =PTRACE_TRACEME=
-   Any signals (except SIGKILL) either delived from outside or from *exec* calls made by
+   Any signals (except SIGKILL) either delivered from outside or from *exec* calls made by
    the process, causes it to stop and lets the parent decide how to proceed.
    This request only sets a flag that grants permission to trace the process.
    *Important insight*: _All the parameters other than *request* are ignored_!
@@ -65,7 +65,7 @@
    to continue child execution
 
 ** =PTRACE_SYSCALL=
-   will also continue execution of the child, but will stop every syscall invokation the
+   will also continue execution of the child, but will stop every syscall invocation the
    child issues. This can be used to implement "strace".
 
 ** =PTRACE_SINGLESTEP=
@@ -77,7 +77,7 @@
 
 ** =PTRACE_PEEKTEXT PTRACE_PEEKDATA=
    Read a word from the process' memory.
-   apparently they're identical on linux because "Linux does not have separate text and
+   apparently they're identical on Linux because "Linux does not have separate text and
    data address spaces". 
    *addr* is the byte offset from which to read the word[fn:3]
    *data* is ignored
@@ -108,10 +108,10 @@
    
 
 * Threads vs Process regarding ptrace
-  In a multithreaded application a singel =ptrace()= call can only attach to a single
+  In a multithreaded application a single =ptrace()= call can only attach to a single
   thread at a time, never the whole process!
 
-  This means that if we prace() a thread of a process. We might peekdata a particular
+  This means that if we ptrace() a thread of a process. We might peekdata a particular
   address and at the same time the memory pointed to could be changed by another thread
   that shares it! This is where we want to know all the threads of a process, so we can
   either just SIGSTOP them all, or see who share the same memory regions and might
@@ -137,10 +137,10 @@
    there status and periodically updating!
    
    
-** altering addresses of a stoped thread
+** altering addresses of a stopped thread
    Since we can only ptrace particular threads, we might find the subsequent calls to
-   peekdata will yield chaning values on some addresses. This is due to some other thread
-   that is still runing and has access to the same memory segment and changing it.
+   peekdata will yield changing values on some addresses. This is due to some other thread
+   that is still running and has access to the same memory segment and changing it.
 
    We might then either send SIGSTOPs to all the threads of a process or we can find the
    culprit thread (in an attempt to gain more knowledge about the program itself) by
@@ -204,7 +204,7 @@
   
 * The Process
 
-** Memory layout (linux)
+** Memory layout (Linux)
 
 *** Kernel Space and User Mode Space
    The following is on x86, not sure if it still applies to x86_64
@@ -218,7 +218,7 @@
   
   Via *page tables* each address is mapped to physical memory. Since each process has to
   share its virtual address space with the same fixed kernel space, whenever a user mode
-  program tries to touch it a page fault is signaled for example.
+  program tries to touch it a page fault is signalled for example.
 
   But this also means that "kernel code is always addressable, _ready to handle interrupts_
   _or system calls at any time_". So finally to understand the fixed kernel space:
@@ -248,10 +248,10 @@
 
        (sbcl note: when you load libc.so to create bindings to it with cffi, you can see
        that it has been indeed mapped into the memory segment by looking up /proc/<pidof
-       sbcl>/maps because it occures right under the [stack:] portion of addresses !!!)
+       sbcl>/maps because it occurs right under the [stack:] portion of addresses !!!)
 
     3. the Heap (grows upwards to the Memory Mapping segment!)
-       This is where runtime object live! Whenver you create an object with the =new=
+       This is where runtime object live! Whenever you create an object with the =new=
        operator or simply to a c =malloc()=. (So this is where we will focus our ptrace
        process manipulation efforts!)
        
@@ -260,16 +260,16 @@
        to deliver efficiency and speed and avoid fragmentation
 
     4. BSS segment
-       stores the contents declared _uninitilized static global variables_ (static int
+       stores the contents declared _uninitialised static global variables_ (static int
        x;). These might be useful!
 
        (BSS stands for "Basic Service Set" if you must know!)
 
     5. Data segment
        stores the _initialized_ i.e. with definition of declared _static global_
-       _variables_ (meaning in the source code it already is initilized: static int =
-       22;). This also means it is _not anonymous_ mapping to the values in the programs's
-       binary image!! This is also explains why you will find initilizes static variables
+       _variables_ (meaning in the source code it already is initialized: static int =
+       22;). This also means it is _not anonymous_ mapping to the values in the program's
+       binary image!! This is also explains why you will find entices static variables
        in the executable binary file with a hex-editor.
 
     6. Text segment
@@ -286,12 +286,12 @@
     will list symbols from an object files and also to which memory segment they belong!
     
 
-*** ALSR - Adress Space Layout Randomzation
+*** ASLR - Address Space Layout Randomization
     The above memory segments used to start at exactly the same virtual addresses.
     This made them vulnerable to exploits. So nowadays modern operation systems employ
-    ALSR, adding a random offset to these address.
+    ASLR, adding a random offset to these address.
 
-    From what I could gather ALSR is only applied at process initilisation, so far, and
+    From what I could gather ALSR is only applied at process initialisation, so far, and
     doesn't apply at run-time or at process switching. There was a paper on ASLR
     Re-Randomization, but a paper is for the future..
     
@@ -303,10 +303,10 @@
   
 
 *** Getting the memory segment addresses (Linux)
-    So apparently /proc is the userspace interface to process information,
+    So apparently /proc is the user space interface to process information,
     and should be used to read out process information. Functions like
     find_task_by_vpid() and basically all not well documentation syscalls
-    are as a rule of thumb _not_ for userspace.
+    are as a rule of thumb _not_ for user space.
 
     So we will parse /proc/<pid>/maps directly! 
     
@@ -320,7 +320,7 @@
      - saved variables
 
 ** User Area + Contents
-   is a reagion of the process' memory that contains information about:
+   is a region of the process' memory that contains information about:
    - open files
    - current directory
    - signal action
@@ -345,7 +345,7 @@
       faster.
       Test done: using _(ptrace ) directly is roughly _6.3 times faster_
    2. Compare with raw C ptrace scans, if just peekdata is already an overhead than
-      try to readout the whole processmemory range to, disc/array with "pread" or
+      try to readout the whole process memory range to, disc/array with "pread" or
       something like that
    3. try multithreading it (bordeaux-thread). This would be the hardest to implement
       but it would be great to finally have a real reason to use it
@@ -363,7 +363,7 @@
    
 ;; profiling data:
 ;; *from-addr* to *to-addr* is a range of 1-Million addresses. So only about 0.5% of
-;; the realworld problem size we will face with this system.
+;; the real world problem size we will face with this system.
 ;; 5.3 Seconds is too long. (* 5.3 200)
 ;; (time (length (find-match-address-partial #xb7 *from-addr* *to-addr*)))
 ;;
@@ -435,7 +435,7 @@
 ;;   31,844,240 bytes consed
   
 
-;; FINAL COPARISON
+;; FINAL COMPARISON
 
 ;; Evaluation took: `ends-with-bytes'
 ;;   8.732 seconds of real time
@@ -495,7 +495,7 @@ program code.
 Examples - hardware interrupt:
 1. telling the CPU when I/O components are available - instead of a spin lock solution
 2. watchdog circuits - tell the CPU if some hardware component is not working properly
-   these are interrupts are highly critical. Interupts have a priority hierarchy scheme so
+   these are interrupts are highly critical. Interrupts have a priority hierarchy scheme so
    that these kind of interrupts can get handled before others.
 Examples - software interrupt:
 1. system calls!
@@ -516,15 +516,15 @@ searches for it over an address range that is used as index to memory with `peek
 ** =gcc -g=
    "with this option the compiler and linker will generate and retain symbol information
    in the executable itself"
-   For example loading the executable with =gdb= allows to associate the sourcecode files
+   For example loading the executable with =gdb= allows to associate the source-code files
    with the produces assembly. =(gdb) info line 12= for example, will show at what address
    in the process memory those are mapped to.
    Though since we can read out the instruction pointer we can pass that address to gdb
    and get the assembly pointed at !
-   For exmaple:
+   For example:
    =(gdb) disassembly 0x400500= 
    
-* Disable Adress Space Layout Randomzation (ASLR)
+* Disable Address Space Layout Randomization (ASLR)
   On Linux:
   =echo 0 > /proc/sys/kernel/randomize_va_space=
 
@@ -539,7 +539,7 @@ searches for it over an address range that is used as index to memory with `peek
   applied once, on process creation!
 
 
-* functions and headerfiles
+* functions and header files
   To find the header file for a function use the cmd line =man=
 
   For example, in what header file is sbrk(), try
@@ -552,7 +552,7 @@ searches for it over an address range that is used as index to memory with `peek
   #include <unistd.h>. Great!
   
   If you look at =man man= you will find that the second number argument can be
-  used to look up differnt section of the manual. For example "3" refers to Library calls.
+  used to look up different section of the manual. For example "3" refers to Library calls.
 
   So for =abs(num)=, man 2 abs won't find anything, since =abs()= is not a system call
   but =man 3 abs= will be more successful. This is especially useful to know when a name
@@ -569,7 +569,7 @@ searches for it over an address range that is used as index to memory with `peek
   
 * /proc/pid/maps memory layout
   "A file containing the currently mapped memory regions and their access permissions"
-  from =man proc=.  shows the virtuel address space of a process and its protection
+  from =man proc=.  shows the virtual address space of a process and its protection
   (read,write,executable).  See the function in util.c called =find_readable_memory= to
   find the regions corresponding with 'r' as in 'r'eadable For example the first row of
   /proc/pid/maps:
@@ -581,7 +581,7 @@ searches for it over an address range that is used as index to memory with `peek
 |                      |                       |          |        |         |              |
 
 permission, can be changed using the =mprotect= syscall
-When a process violates its memory access then a SIGSEGV (segmentaiton fault) is issued by
+When a process violates its memory access then a SIGSEGV (segmentation fault) is issued by
 the kernel.
 TODO: not sure if permission hinders PTRACE_POKE* in any sense, as it didn't hinder it on
 'w' lacking regions.. might be because I was using a sudo (root privilege sudo command)
@@ -599,16 +599,16 @@ this one is useful for example "[stack]" might be the area containing the dynami
 so if you want to =ptrace()= a particular runtime object, this is where we
 might find them
 
-** pathname and hexaddress in memory:
+** pathname and hex-address in memory:
 you can peek_data the instructions and the search them in the executable, they're usually
 in order. But very important when you search the address you have to consider if you're
 machine uses big- or little-endian. I think most machines use little-endian. Because now
-a peekadress might return: 200b5b058901c083
+a peekdata might return: 200b5b058901c083
 but the address is laid out in memory differently
 PEEKDATA:  200b 5b05 8901 c083 
 in memory: 83c0 0189 055b 0b20
 
-in the hexeditor a word is in fact a halfword it seems, just look at the last entry in the
+in the hex-editor a word is in fact a halfword it seems, just look at the last entry in the
 PEEKDATA row is c083 and in memory it is the leading chunk, we start with the least
 significant portion of a datum (little endian). Because we have broken down the datum in
 in 4x4hex value. We get 4 halfword because 0xffff can represent up to 16⁴ or 2¹⁶ aka 16
@@ -616,23 +616,23 @@ bit (halfword).
 
 The definition of a "word" is not very rigid, but in the literature I use, a word is 32bit,
 double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man page the
-"word" is used and annoted as being architecture dependent.
+"word" is used and annotated as being architecture dependent.
 
 * gdb
 ** useful commands
 
    | print <var>  | print value of var                                      |
-   | print &<var> | print address of var! useful for veryfing with peekdata |
+   | print &<var> | print address of var! useful for verifying with peekdata |
    |              |                                                         |
 
 * assembly
 
 ** syntax
    x86 assembly has two main syntax branches:
-   1. /intel syntax/ - prevalent in the Windows world and
+   1. /Intel syntax/ - prevalent in the Windows world and
    2. /AT&T syntax/ - prevalent in the Linux world, hence the one =gdb= uses
 
-   |                 | AT&T                                  | intel                      | comment |
+   |                 | AT&T                                  | Intel                      | comment |
    | Sigils          | $<immediate value>, %register         | automatic recognition      |         |
    |                 |                                       |                            |         |
    | parameter order | mov <src>, <destination>              | mov <destination>, <src>   | *sigh*  |
@@ -640,14 +640,14 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    | parameter size  | mnemonic suffixes e.g. addl           | register used imply size!  |         |
    |                 |                                       | rax,eax,ax,al are q,l,w,b  |         |
    |                 |                                       |                            |         |
-   | addresses       | disp(base,index,scale)                | all arighmetic expressions |         |
+   | addresses       | disp(base,index,scale)                | all arithmetic expressions |         |
    |                 |                                       | are written in [brackets]  |         |
    |                 | movl mem_location(%ebx, %ecx,4), %eax | mov eax, [ebx + ecx*4 +    |         |
    |                 |                                       | mem_location]              |         |
 
   
 ** display the assembly of any executable
-   Even prints the machinecode assembly mapping!
+   Even prints the machine code assembly mapping!
 
    =objdump -d <program>=
 
@@ -673,27 +673,27 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   | AL  | of the AX access the lower byte (aka first 8 bits |
   | AH  | the higher, 2nd, byte of AX                       |
 
-  you can see this in action when you diassemble 0x400500 the bin/spam binary
+  you can see this in action when you disassemble 0x400500 the bin/spam binary
   by replacing the x type accordingly
 
   | int x             | add $0x1 %eax |                                 |
   | long long x       | add $0x1 %rax |                                 |
-  | short x or char x | add $0x1 %eax | hmm the compiler doesnt care !  |
+  | short x or char x | add $0x1 %eax | hmm the compiler doesn't care !  |
 
 
-  The new registers can be accessed in a similar manner R8 thorugh R15
+  The new registers can be accessed in a similar manner R8 through R15
 
   | R8  | quadword (64bits)    |                                                 |
   | R8D | lower dword (32bits) |                                                 |
   | R8H | higher dword         |                                                 |
   | R8W | lowest word          |                                                 |
-  | R8B | lowest byte          | this is "MASM" (microsoft) style, "Intel style" |
+  | R8B | lowest byte          | this is "MASM" (Microsoft) style, "Intel style" |
   |     |                      | is R8L, note there is no R8H                    |
 
 
   RIP,
   points at the _next instruction_ this might be important to remember when
-  you want immdiate changes while singlestepping!
+  you want immediate changes while single-stepping!
   
   RSP,
   points to last item pushed onto stack, _which grows toward lower addresses_
@@ -701,12 +701,12 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
   RFLAGS, (formed from x86 32bit register EFLAGS, so EFLAGS value can't be used
   directly..?),
-  contains stores flags used for results of operations and for controller the cpu.
+  contains stores flags used for results of operations and for controller the CPU.
   Some of the most useful flags include information on:
   1. operation generated a carry or borrow
   2. last byte was even number of 1's
   3. result was zero
-  4. most significunt bit of result is 1
+  4. most significant bit of result is 1
   5. Overflow on signed operation
 
   FPU - floating point unit,
@@ -718,9 +718,9 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   instruction execute a single command on up to 8 pieces of data. Which might be
   troublesome when finding the instruction, or data, we wish to change.
 
-  Also some "extensions" such as SSE2 SSE3 etc. _include opertions for_pre-fetching_
+  Also some "extensions" such as SSE2 SSE3 etc. _include operations for_pre-fetching_
   _memory_ (for performance reasons) might proof tricky. How can they be recognised?
-  Is this immediately apperent in the instruction name?
+  Is this immediately appellant in the instruction name?
 
 
   a short overview of _some command sets_ and _which registers_ they operate on
@@ -730,7 +730,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   | Technology      | Register size/type | items in parallel |
   | MMX             | 64 MMX             | 8, 4, 2, 1        |
   | SSE2/SSE3/SSSE3 | 64 MMX             | 8, 4, 2, 1        |
-  These are not all, nor fixed. For examle just "SSE" may operate on 64 MMX and 128 XXM!
+  These are not all, nor fixed. For excel just "SSE" may operate on 64 MMX and 128 XXM!
 
   Tools and caveats,
   _Some assemblers reverse source and destination_ (remember how peekdata order of
@@ -742,7 +742,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
    Addressing
    Modes The usual: immediate (literal numbers),direct (content of registers),
-   indirect(use adresses of registers).
+   indirect(use addresses of registers).
 
    Some Opcodes:
    | Opcode | Meaning          |
@@ -762,25 +762,25 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
 ** operating system
 
-   Althogh 64bit system allow addressing 64 bytes, no current CPUs can implement
+   Although 64bit system allow addressing 64 bytes, no current CPUs can implement
    accessing all 16 exabytes 18.446.744.073.709.551.616, how weak is that!
 
    The AMD architecture only _uses the lower 48bits_ of an address, while the
-   bits 48 through 63 must be a copy of bit 47 or the cpu raises an interrupt.
+   bits 48 through 63 must be a copy of bit 47 or the CPU raises an interrupt.
 
    Thus the _address range_ is in effect _0 to 00007fff'ffffffff_
 
    (!) which explains why the stack pointer of user-regs-struct is close to that
    limit (remember the stack pointer grows downwards!):
-   7fff9338e0e0    rsp of this emacs session of the time of writing
+   7fff9338e0e0    rsp of this Emacs session of the time of writing
    7fffffffffff    highest address
 
 
    
 * disassembly hacking
   =(gdb) disas /r main= Shows not only the mnemonics but also the associated process data!!
-  returns the disassembly of the main function. The striking oberservation is the way it
-  is formated regarding the spacing of addresses. It is important to note that different
+  returns the disassembly of the main function. The striking observation is the way it
+  is formatted regarding the spacing of addresses. It is important to note that different
   instruction make up a smaller or bigger instruction size!! (You can tell by the <+xyz>
   column and the process data after
 
@@ -800,10 +800,10 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    0x000000000040051c <+47>:	5d	pop    %rbp
    0x000000000040051d <+48>:	c3	retq   
 
-   The addresses are thus alligned variably! The PUSH operation only needs a single byte!
+   The addresses are thus aligned variably! The PUSH operation only needs a single byte!
 
    As you might notice the first 3 MOV instruction don't seem to have the same
-   opcode. Well first of all there ARE differnt opcode for MOV instructions (see
+   opcode. Well first of all there ARE different opcode for MOV instructions (see
    "Instruction Set Reference"), but in this case the "89" is the opcode for MOV and in
    the <+1> and <+7> line the leading 48 is in fact a _"rex prefix"_ for 64 bit operands and
    registers (%rbp and %rsp are GPRs), that means the the MOV in the <+4> line is a 32bit
@@ -820,21 +820,21 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    0x0000000000400560 <+51>:	89 c6	mov    %eax,%esi
 
    If we want to change the value of the variable flagg, gdb's disas output helpfully puts
-   it there in clear text. Refering to it is a bit tricky. It is moved to EAX in line
-   <+45>. It is refered to with the disp(base,index,scale) address notation. Since it is
+   it there in clear text. Referring to it is a bit tricky. It is moved to EAX in line
+   <+45>. It is referred to with the disp(base,index,scale) address notation. Since it is
    just disp(base) though it is a simply:
 
    0x200afc+%rip = &flagg
 
    But, the what value is %rip? The obvious answer is wrong, it is not 0x40055a like the
    address of the current instruction beginning. But rather _rip points to the next_
-   _instruction_ So whenever you read assembly that wants to use the contets of %rip,
+   _instruction_ So whenever you read assembly that wants to use the content of %rip,
    you need to remember that it refers to the next instruction, after the one it is
-   refered one.
+   referred one.
    
    so to refer to flagg in this example
    (peekdata (+ #x200afc (+ (rip-address) <next-instruction-offset>)))
-   and to change it, call pokedata accordingly
+   and to change it, call POKEDATA accordingly
 
    This changes `flagg' for every subsequent instruction! As we change it directly
    in its memory location!
@@ -843,7 +843,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    runtime (heap, mmap), it is static (BSS) or known at compile time (data, text) finally
    some languages, like Lisp, make the location of a variable difficult to figure out
    TODO: test if changing it in a register will write the changed value back
-         to memory? This might be an issue of modyfing the register, like
+         to memory? This might be an issue of modifying the register, like
 	 rip where changes change effect only on the next instruction... Think
 	 register and their value in assembly program-flow-charts!
    
@@ -853,7 +853,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   numbers so of the 200B5B058901C083, only 6 places count a :least endian representation,
   we have to read instruction in backwards "380C109850B5B002" no, not quite!  the tricky
   thing to know is that little endian pertains _byte_ order so if 1024 is represented as
-  #x400 then in memory it will be layed out as 0 0 4 0 The first two zeros are the first
+  #x400 then in memory it will be laid out as 0 0 4 0 The first two zeros are the first
   byte 4 and 0 is the 2nd byte. We start with the least significant of the #400 namely
   "00" and the then we move to the next byte "04"
   
@@ -861,7 +861,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   200B5B058901C083 represented as bytes
   20 0B 5B 05 89 01 C0 83
   first we can make a surefire cut though! Because #x400503 is the next instruction
-  and it is only 6 hex numbers appart, called peekdata should return some overlapping
+  and it is only 6 hex numbers apart, called peekdata should return some overlapping
   data!
   (peekdata #x400503) ==> 58B00200B5B0589
   
@@ -878,7 +878,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   
   let's keep that (peekdata #x400502) output in mind. It might be an issue of
   representing a number as twos-complement. It should be avoidable by only issuing
-  peekdata at portions the instructionp pointer rip will point to!
+  peekdata at portions the instruction pointer rip will point to!
 
   Moving along, only 6 bytes make up the instruction. But which 6?
   It should be obvious now that those must be the bytes that went missing
@@ -887,8 +887,8 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   And because we use :little-endian, it is in fact
   83 C0 01
   Now which instruction is this??
-  Well after redicovering that I already did a lot of good progress on this same
-  issue some months ago before before my hiatus on this project, calling
+  Well after rediscovering that I already did a lot of good progress on this same
+  issue some months ago before my hiatus on this project, calling
   gdb bin/spam and then (gdb) disas /r main
   lets us see an output of the process data that directly is translated to assembly
   for us!!!
@@ -897,12 +897,12 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   Feeding the above into another disassembler online reveals that
   C0 = EAX
   and 01 = $01
-  ... so the gdb output doesn't seem to intend to mirror the machinecode byte sequence
+  ... so the gdb output doesn't seem to intend to mirror the machine code byte sequence
   and might always put out arguments to some rule order
 
-** disassembly api for lisp
+** disassembly API for lisp
   <k-stz> hey asm newb here, trying to find an api/library that will let me
-          disassemble machinecode. (x86_64 littleendian). so that foo(83 c0 01)
+          disassemble machine code. (x86_64 littleendian). so that foo(83 c0 01)
 	  => add $01 %eax
   <anon0> RTFM, its only 
   <anon1> k-stz: https://github.com/jonwil/unlinker/tree/master/udis86  [00:41]
@@ -920,7 +920,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    https://github.com/jonwil/unlinker/tree/master/udis86
    I read that the format needs to be XML somewhere.. so its looking bad already
 ** operating mode (assembly)
-   What is the operating mode and how can it affect how machinecode will be
+   What is the operating mode and how can it affect how machine code will be
    interpreted by the CPU? Finally how to tell in which operating mode a process
    is, and do I have to perhaps change it?
 
@@ -1002,7 +1002,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
 ** How can we create bindings for a function when all we did is load the binary shared object?
    The binary *.so file indeed contains all the metadata necessary to refer to by the
-   functions name to the machinecode therein!
+   functions name to the machine code therein!
 
    The command line tool =nm= lets us see the symbols of an object file, the output of,
    for example =nm libtest.so= returns among other:
@@ -1023,20 +1023,20 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 ** Pointer and Memory allocation
 
 *** Allocating Memory "Lisp dynamically" and "C dynamically"
-   =with-foreign-object= is sometimes called cynamic allocation in Lisp,
-   because the object created (allocated) therin only has dynamic extent. Dynamic extent
+   =with-foreign-object= is sometimes called dynamic allocation in Lisp,
+   because the object created (allocated) therein only has dynamic extent. Dynamic extent
    in Lisp means that the object lives only in the extend of the (with-foreign-object
-   <body>) body. Much like the =let= bindings of special veriables
+   <body>) body. Much like the =let= bindings of special variables
 
-   =foreign-alloc= on the other hand is _what C calles "dynamic" allocation_. The object
+   =foreign-alloc= on the other hand is _what C calls "dynamic" allocation_. The object
    get allocated to the heap and stay there unless freed by =foreign-free= !!
-   In C these kind of objects are created with =malloc()= and firends.
+   In C these kind of objects are created with =malloc()= and friends.
 
 *** Accessing Foreign Memory
     We should always keep in mind that C imposes the semantic on all data that it is
     really just all arrays. Pointers are represented as arrays as well.
 
-    In Lisp we will derefernence pointers with =mem-aref= and =mem-ref= !! Just like
+    In Lisp we will dereference pointers with =mem-aref= and =mem-ref= !! Just like
     =AREF= those are SETFable places!!
 
     "To decide which one to use, consider whether you would use the array index operator
@@ -1061,7 +1061,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
         (print (mem-ref x-ptr :int)))
     #+END_SRC
 
-** temporary root priviledge for ptrace
+** temporary root privilege for ptrace
    Now because ptrace() is a system call it requires root privilege. To successfully call
    it in lisp requires for lisp to be run as root. There is no other way, _you need to_
    _start the lisp program with root privilege._
@@ -1069,14 +1069,14 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    _runtime_ and turn it back on again. *This only works when the process was started as
    root to begin with!!
 
-   The systemcall to toggle root priviledge is, =seteuid()=
+   The system call to toggle root privilege is, =seteuid()=
 
    #+BEGIN_SRC common-lisp
      ;; This only works if you run the lisp program as root to begin with!
-     ;; turn on root priviledge
+     ;; turn on root privilege
      (sb-posix:seteuid 0)
      ;; do your thang
-     (ptrace-or-another-root-priviledged-call)
+     (ptrace-or-another-root-privileged-call)
      ;; become root again
      (sb-posix:seteuid 1000)
    #+END_SRC
@@ -1107,8 +1107,8 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   0010.
 
 ** Finally what does it matter to this project?
-   (peekdata hexhex-value) => 0x200B17058901C083
-   than in what way is the above layed out in memory,
+   (peekdata hex-value) => 0x200B17058901C083
+   than in what way is the above laid out in memory,
    out of the following
 
    (1) 200B 1705 8901 C083
@@ -1120,7 +1120,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
    _the following has been only tested for bin/spam_
    You can actually find the instructions of bin/spam that you fetched with
-   (peekdata...) if you look at bin/spam with a hexeditor. If the
+   (peekdata...) if you look at bin/spam with a hex-editor. If the
    peeked address is #400500 then you will find the byte order in question
    at byte 500 and the following!
    
@@ -1136,14 +1136,14 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    Then we can resume the game, get some money, or lose it, and search again
    but this time over the sieved out values.
 
-   Now if those values match we have a strong inkling that those addresse might store
+   Now if those values match we have a strong inkling that those addresses might store
    our money value and we can either do more tests, narrowing down the addresses or
    go ahead and try to inject the money we want with (pokedata ..) and see if it
    changes ingame.
    
-*** Problems with address sieving: huge Adress range
-    1. The Addressspace of modern Compmuter is huge (expt 2 64), simply looping over such,
-       huge space, without executing any execution, takes unfeasable amount of time.
+*** Problems with address sieving: huge Address range
+    1. The Address-space of modern Computer is huge (expt 2 64), simply looping over such,
+       huge space, without executing any execution, takes unfeasible amount of time.
        (multiple years)
        
 *** Solution: Narrow down Address range
@@ -1155,14 +1155,14 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
 *** Problem data representation
     Searching for a player health value like "300 Hp" we need to consider that
-    if the machine uses :little-endian, then the bytes will be layed out in
+    if the machine uses :little-endian, then the bytes will be laid out in
     reverse order: 300 = #x12c, hence memory: 0c 12
 
     That's the smaller issue, the bigger is that the value might be represented implicitly
-    through other variables. Like instead of the programmer writting
+    through other variables. Like instead of the programmer writing
     int health = 300; The code might be, String health = "300"; and on calling the string
     is parsed and added to. This might look strange, but it is a actual method used by
-    programmers to hackproof there code!
+    programmers to hack-proof there code!
 
     Now we also might consider the implementation of the game itself, where the player,
     and his stats are static variables, that are only declared on execution. Then
@@ -1171,7 +1171,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
     Also it could be in the data segment, if the Hero starts out with =static int health =
     10;= health.
 
-*** Solution: keep book of an entiry address region between states
+*** Solution: keep book of an entire address region between states
     This is a bit involved, we will save the entire address region values. Then
     continue the game and without triggering a money change. Then stop the game
     again and filter out all addresses that have changed. We can repeat this,
@@ -1183,11 +1183,11 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
     inverse and together with a factor.
     The solution might then just be to either keep on trail and error (perhaps
     with ASLR enabled etc)
-    The idea is if we find a needle in the haystack, neighbor values might
-    be part of the datastructure representing the player stats, money, items
+    The idea is if we find a needle in the haystack, neighbour values might
+    be part of the data structure representing the player stats, money, items
     etc.
 
-*** Solution: singlestep, instruction refering to address
+*** Solution: singlestep, instruction referring to address
     Finally, I haven't tried if this is feasible. We could singlestep through a portion
     of the program where a certain change takes place to a value we care about.
     For example the player is 2 pixels apart from falling on spikes. We now know
@@ -1196,21 +1196,21 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
     perform the arithmetic. We can then use the memory-address used to find the
     address in question!
     This would require to get at the disassembly easily, either by disassembling
-    on the fly, or using the instruction pointer to find the functions refered to
+    on the fly, or using the instruction pointer to find the functions referred to
     in the executable binary! Perhaps some =nm ..= function value is being referred
     to
     
 *** Advanced: Anti-Hacking method deployed
-    Some programms might try to guard against code injection by various methods, of which
+    Some programs might try to guard against code injection by various methods, of which
     some may be too involved for the cracker/hacker bother trying to bypass it.
 
-    For example, the program might checksum its core, or parts of it, with a seperate
+    For example, the program might checksum its core, or parts of it, with a separate
     thread, every now and then, and guard against code injection this way (for example
-    crashing the program on a registerd failed checksum).
+    crashing the program on a registered failed checksum).
 
     The Hacker might find the checksum routine and feed it some bogus values to
     satisfy it, or perhaps directly crop out the checksum routine itself. To guard against
-    that the checksum system might then fetch its values from some cloudserver, that
+    that the checksum system might then fetch its values from some cloud server, that
     raises the effort to hack the program.
     
     
@@ -1221,7 +1221,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   =mmap()= allows to map a file (or anything represented by file descriptor) to process
   memory. Now you can access the contents of the file using pointer arithmetic, without
   the open(), close() shenanigans. Even cooler: it is even possible to make it so that
-  writting to this memory region changes the mapped file!
+  writing to this memory region changes the mapped file!
 
 ** how to use
 
@@ -1239,8 +1239,8 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 | *Parameter* | *Description*                                     | SBCL                                 |
 | *addr*      | Address where to map the file into. If '_0_' is   | address 0 is                         |
 |             | provided, then the _OS_ _decides_ it for you.     | =NIL= or                             |
-|             | But you can't choose it eitirely freely either:   | =(make-pointer 0)=                   |
-|             | it needs to be a multiple of the                  | UPATE: =osicat-posix:MMAP= doesn't   |
+|             | But you can't choose it entirely freely either:   | =(make-pointer 0)=                   |
+|             | it needs to be a multiple of the                  | UPDATE: =osicat-posix:MMAP= doesn't   |
 |             | *virtual memory page size*                        | accept =NIL= use a null ptr instead  |
 |             |                                                   |                                      |
 |             |                                                   |                                      |
@@ -1267,7 +1267,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 *** file descriptor
     to get at the FD, file descriptor, use
     #+BEGIN_SRC common-lisp
-      (with-openfile (stream "/path/to/file" :direction :IO :if-exists :append)
+      (with-open-file (stream "/path/to/file" :direction :IO :if-exists :append)
         ;; to get the file-descriptor, finally do:
         (sb-impl::fd-stream-fd stream)
         ..)
@@ -1279,7 +1279,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
     otherwise -1 setting errno accordingly
 
 *** shared flag with mmap() files
-    If the shared flag is set in the for the mapped memory region with a permisison string
+    If the shared flag is set in the for the mapped memory region with a permission string
     like: rw-s, then the following be behavior takes place.
 
     1. changing the file, also changes what the SAP changes points to
@@ -1306,7 +1306,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   looping and reading out address, no output:
   | READ-PROC-MEM-BYTE             | 103 seconds    |
   | (mem-ref readv-c-array)        | 0.041 seconds! |
-  | (ldb (byte 8 0) (peekdata ..)) | 2.216 secon    |
+  | (ldb (byte 8 0) (peekdata ..)) | 2.216 seconds  |
 
   ==> don't use read-proc-mem-byte, or implement it
   in terms of (ldb (byte 8 0) (peekdata ..))

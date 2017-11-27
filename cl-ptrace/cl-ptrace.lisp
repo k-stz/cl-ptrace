@@ -522,7 +522,7 @@ and the rest is a sum for each of the nearby-values found around that address.
 
 For example: an entry like (7536124 2 1) indicates that `value' was found at address 7536124
 and that first value in the `nearby-values-list' was found 2-times in the nearby and the second
-value 1-time (length of the nearby-values-list ist hence 2)."
+value 1-time (length of the nearby-values-list is hence 2)."
   (let ((address-values-list
 	 (find-value-address value :address-range address-range :pid pid)))
     (if (null address-values-list)
