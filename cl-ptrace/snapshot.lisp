@@ -251,9 +251,17 @@ in the `memory-range-snapshot'"
   (loop for address-byte-pair in snapshot-alist
        :collect (car address-byte-pair)))
 
-;; (defun print-proc-mem-from-snapshot-alist (snapshot-alist)
-;;   (loop for address-byte-pair in snapshot-alist
-;;      :collect (car address-byte-pair)))
+;; TODO: make it interactively more useful
+(defun print-proc-mem-from-snapshot-alist (snapshot-alist &optional (pid *pid*))
+  (format t "(alist-address alist-byte) : live-proc-mem-byte---~%")
+  (loop for address-byte-pair in snapshot-alist
+     for address = (car address-byte-pair)
+     for alist-byte = (cdr address-byte-pair)
+     :do
+       (format t "(~(~x~) ~(~2x~)) - ~(~2x~)~%"
+	       address
+	       alist-byte
+	       (read-proc-mem-byte address :pid pid :hex-print? nil))))
 
 (defun filter-snapshot-alist (snapshot-alist &optional (filter-fn #'=) (pid *pid*))
   "Build a new snapshot-alist that satisfies the `filter-function'.
@@ -271,7 +279,6 @@ The `filter-function' takes two inputs:
      :collect
        (cons address process-byte)))
 
-;; TODO test all of these
 (defun find-snapshot-alist-mismatches (snapshot-alist &optional (pid *pid*) find-matches-instead?)
   "Finds all mismatches between the snapshot-alist and the process-memory values and
 then builds a new snapshot-alist from them."
