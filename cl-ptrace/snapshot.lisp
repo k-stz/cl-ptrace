@@ -167,11 +167,12 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 
 (defmethod print-object ((obj memory-range-snapshot) stream)
   (let ((memory-range (get-memory-range obj)))
-    (format stream "#<MS:[~(~x~)-~(~x~)]>"
-	    (first memory-range)
-	    (second memory-range))))
+    (print-unreadable-object (obj stream :identity t)
+      (format stream "MS:[~(~x~)-~(~x~)]"
+      	    (first memory-range)
+      	    (second memory-range))))
 
-(defgeneric snapshot-read-byte (memory-range-snapshot address))
+  (defgeneric snapshot-read-byte (memory-range-snapshot address)))
 (defmethod snapshot-read-byte ((obj memory-range-snapshot) address)
   "Return the byte in the memory-snapshot using the address that was referring to it in
 the original memory region the snapshot copied (from that remote process address space)"
