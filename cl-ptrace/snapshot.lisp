@@ -319,10 +319,37 @@ then builds a new snapshot-alist from them."
 	 (print (list address snapshot-byte))
 	 (write-proc-mem-byte address snapshot-byte :pid pid)))
 
-(defmacro refresh-snapshot-alist (snapshot-alist &optional (pid *pid*))
+(defmacro refresh-snapshot-alist! (snapshot-alist &optional (pid *pid*))
   "Replaces all the snapshot-alist bytes, with the one currently in the
 process memory referred to by `pid'"
   `(setf ,snapshot-alist
 	 (make-snapshot-alist
 	  (snapshot-alist->address-list ,snapshot-alist)
 	  ,pid)))
+
+(defmacro keep-mismatches! (snapshot-alist-var)
+  "Takes a variable holding a snapshot-alists and filters all addresses out
+that mismatch from the process memory. The result is destructively saved in the
+`snapshot-alist-var'.
+The macro-expanded function returns the new `length' of the snapshot-alist in
+order to avoid huge printed outputs. The length can be used to gauge the effectiveness of
+the filtering."
+  `(progn (setf ,snapshot-alist-var
+		(find-snapshot-alist-mismatches ,snapshot-alist-var))
+	  (length ,snapshot-alist-var)))
+
+(defmacro keep-matches! (snapshot-alist-var)
+  "Takes a variable holding a snapshot-alists only keeps the entries whose content
+match with the process memory. The result is destructively saved in the
+`snapshot-alist-var'.
+The macro-expanded function returns the new `length' of the snapshot-alist in
+order to avoid huge printed outputs. The length can be used to gauge the effectiveness of
+the filtering."
+  `(progn (setf ,snapshot-alist-var
+		(find-snapshot-alist-matches ,snapshot-alist-var))
+	  (length ,snapshot-alist-var)))
+
+;; TODO write a filtering dsl
+;; (defmacro filter! (snapshot-alist compare-fn-sym)
+;; (
+;;   (print (length (filter-snapshot-alist snapshot-alist compare-fn-sym))))

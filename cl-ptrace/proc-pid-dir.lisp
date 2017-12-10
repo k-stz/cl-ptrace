@@ -64,6 +64,11 @@
   (let ((permission-string (getf proc-pid-maps-line :permission)))
     (char= #\r (aref permission-string 0))))
 
+(defun has-pathname? (proc-pid-maps-line)
+  "Returns the pathname of the parsed pid-maps-line, or if there is none, NIL."
+  (getf proc-pid-maps-line :pathname))
+
+
 (defun get-heap-address-range (&optional (pid *pid*))
   (loop for line in (parse-proc-pid-maps pid) :do
        (when
@@ -83,6 +88,12 @@ file. `proc-pid-maps-string-list' should be the output of `parse-proc-pid-maps'"
   (loop for line in proc-pid-maps-string-list
      when (permission-readable? line)
      collect (address-range-list line)))
+
+(defun get-readable-non-pathname-list (proc-pid-maps-string-list)
+  (loop for line in proc-pid-maps-string-list
+     when (and (permission-readable? line)
+	       (not (has-pathname? line)))
+     collect line))
 
 (defun address-range-list (proc-pid-maps-line)
   (let ((address-range (getf proc-pid-maps-line :address-range))
