@@ -264,6 +264,12 @@ in the `memory-range-snapshot'"
 	       alist-byte
 	       (read-proc-mem-byte address :pid pid :hex-print? nil))))
 
+;; TODO make more useful
+(defun print-live (snapshot-alist)
+  (loop (sleep 1)
+     (print-proc-mem-from-snapshot-alist snapshot-alist)))
+
+
 (defun filter-snapshot-alist (snapshot-alist &optional (filter-fn #'=) (pid *pid*))
   "Build a new snapshot-alist that satisfies the `filter-function'.
 The `filter-function' takes two inputs:
@@ -305,3 +311,18 @@ then builds a new snapshot-alist from them."
 	     :key #'cdr))
 
 
+(defun load-snapshot-alist (snapshot-alist &optional (pid *pid*))
+  "Writes the snapshot-alist data to the process memory."
+    (loop for address-byte-pair in snapshot-alist
+     for address = (car address-byte-pair)
+       for snapshot-byte = (cdr address-byte-pair) :do
+	 (print (list address snapshot-byte))
+	 (write-proc-mem-byte address snapshot-byte :pid pid)))
+
+(defmacro refresh-snapshot-alist (snapshot-alist &optional (pid *pid*))
+  "Replaces all the snapshot-alist bytes, with the one currently in the
+process memory referred to by `pid'"
+  `(setf ,snapshot-alist
+	 (make-snapshot-alist
+	  (snapshot-alist->address-list ,snapshot-alist)
+	  ,pid)))
