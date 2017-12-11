@@ -172,7 +172,7 @@ Doesn't require ptrace attachment, or stopping the tracee process."
       	    (first memory-range)
       	    (second memory-range))))
 
-  (defgeneric snapshot-read-byte (memory-range-snapshot address)))
+(defgeneric snapshot-read-byte (memory-range-snapshot address)))
 (defmethod snapshot-read-byte ((obj memory-range-snapshot) address)
   "Return the byte in the memory-snapshot using the address that was referring to it in
 the original memory region the snapshot copied (from that remote process address space)"
@@ -349,7 +349,35 @@ the filtering."
 		(find-snapshot-alist-matches ,snapshot-alist-var))
 	  (length ,snapshot-alist-var)))
 
-;; TODO write a filtering dsl
-;; (defmacro filter! (snapshot-alist compare-fn-sym)
+;; (defmacro filter (snapshot-alist compare-fn-sym)
+;; Example syntax:
+;; (filter! ((*snapshot-alist-var* inc) (*var2* dec)))
+;; expands into
 ;; (
 ;;   (print (length (filter-snapshot-alist snapshot-alist compare-fn-sym))))
+;; NEXT-TODO: CONTINU
+(defmacro filter (&body snapshot-alist-filter-fn-pairs)
+  ;; is every pair a list
+  `(assert (notany #'null (mapcar #'listp ',snapshot-alist-filter-fn-pairs)))
+  `(progn
+     ,@(loop for pair in `,snapshot-alist-filter-fn-pairs
+	 for snapshot-alist-var = (first pair)
+	 for filter-fn = (second pair)
+	 :collect
+	    `(format t "~a -> new length: ~a~%" ',snapshot-alist-var
+	      (length (filter-snapshot-alist ,snapshot-alist-var (function ,filter-fn)))))))
+
+(defmacro filter! (&body snapshot-alist-filter-fn-pairs)
+  ;; is every pair a list
+  `(assert (notany #'null (mapcar #'listp ',snapshot-alist-filter-fn-pairs)))
+  `(progn
+     ,@(loop for pair in `,snapshot-alist-filter-fn-pairs
+	 for snapshot-alist-var = (first pair)
+	 for filter-fn = (second pair)
+	  :collect
+	    
+	    `(progn
+	       (setf ,snapshot-alist-var
+		     (filter-snapshot-alist ,snapshot-alist-var (function ,filter-fn)))
+	       (format t "~a -> new length: ~a~%" ',snapshot-alist-var
+		       (length ,snapshot-alist-var))))))

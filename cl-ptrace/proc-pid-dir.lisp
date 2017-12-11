@@ -161,6 +161,12 @@ current value under `address'"
       	(hex-print byte))
       byte)))
 
+;; TODO: make it return the value as decimal, like READ-PROC-MEM-BYTE
+(defun read-proc-mem-word (address &optional (pid *pid*))
+  (loop for i from (+ address 7) downto address :do
+       (format t "~(~x~)"
+	       (read-proc-mem-byte i :pid pid :hex-print? nil))))
+
 
 (defun write-proc-mem-byte (address new-byte &key (pid *pid*))
   "Careful, this writes a `new-byte' to the process memory address of the process
