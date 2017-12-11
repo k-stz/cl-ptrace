@@ -182,22 +182,21 @@ the original memory region the snapshot copied (from that remote process address
 
 ;; since process-vm-readv is very fast, it makes sense to always take a snapshot
 ;; instead of scanning the memory with peekdata!!
-(defun make-snapshot-memory-range (&key from-address to-address address-range (pid *pid*))
-  (when address-range
-    (setf from-address (first address-range)
-	  to-address (second address-range)))
-  (labels ;; don't call directly, use `snapshot-memory-range' instead!
-      ((make-snapshot-instance
-	   (snapshot-memory-iovec start-address end-address &optional (pid *pid*))
-	 (make-instance 'memory-range-snapshot
-			:start-memory-address start-address
-			:end-memory-address end-address
-			:pid pid
-			:snapshot-memory-iovec snapshot-memory-iovec
-			:snapshot-memory-c-array (iovec-get-iov-base snapshot-memory-iovec))))
-    (let ((local-iovec
-	   (process-vm-readv-into-iovec (list from-address to-address))))
-      (make-snapshot-instance local-iovec from-address to-address pid))))
+(defun make-snapshot-memory-range (address-range &optional (pid *pid*))
+  (let ((from-address (first address-range))
+	(to-address (second address-range)))
+    (labels ;; don't call directly, use `snapshot-memory-range' instead!
+	((make-snapshot-instance
+	     (snapshot-memory-iovec start-address end-address &optional (pid *pid*))
+	   (make-instance 'memory-range-snapshot
+			  :start-memory-address start-address
+			  :end-memory-address end-address
+			  :pid pid
+			  :snapshot-memory-iovec snapshot-memory-iovec
+			  :snapshot-memory-c-array (iovec-get-iov-base snapshot-memory-iovec))))
+      (let ((local-iovec
+	     (process-vm-readv-into-iovec (list from-address to-address))))
+	(make-snapshot-instance local-iovec from-address to-address pid)))))
 
 (defun free-snapshot-iovec (memory-range-snapshot)
   "Frees the iovec struct stored in the `memory-range-snapshot' given"
@@ -218,8 +217,8 @@ in the `memory-range-snapshot'"
   (with-slots (start-memory-address end-memory-address) memory-range-snapshot
     (let* ((live-snapshot
 	    (make-snapshot-memory-range
-	     :address-range (list start-memory-address end-memory-address)
-	     :pid pid))
+	     (list start-memory-address end-memory-address)
+	     pid))
 	   (mismatch-address-list))
       (setf mismatch-address-list
 	    (loop :for address :from start-memory-address :below end-memory-address
