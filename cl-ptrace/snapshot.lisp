@@ -315,8 +315,8 @@ then builds a new snapshot-alist from them."
     (loop for address-byte-pair in snapshot-alist
      for address = (car address-byte-pair)
        for snapshot-byte = (cdr address-byte-pair) :do
-	 (print (list address snapshot-byte))
-	 (write-proc-mem-byte address snapshot-byte :pid pid)))
+	 (write-proc-mem-byte address snapshot-byte :pid pid))
+    (print-proc-mem-from-snapshot-alist snapshot-alist))
 
 (defmacro refresh-snapshot-alist! (snapshot-alist &optional (pid *pid*))
   "Replaces all the snapshot-alist bytes, with the one currently in the
