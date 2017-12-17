@@ -354,13 +354,11 @@ same time. Also prints how many address-byte pairs remain in the filtered
 result. Use `filter!' afterwards, if the result is satisfactory, to bind the
 new `snapshot-alist' to the `snapshot-alist' variable given.
 
-  Example syntax:
-  (filter ((*snapshot-alist-var* <) (*var2* >)))
-  expands into:
-  (PROGN
-    (FORMAT T \"~a -> new length: ~a~%\" '(*SNAPSHOT-ALIST-VAR* <)
-	    (LENGTH
-	     (FILTER-SNAPSHOT-ALIST (*SNAPSHOT-ALIST-VAR* <) #'(*VAR2* >)))))"
+Example syntax:
+ (filter ((*snapshot-alist-var* <) (*var2* >)))
+This will, for the first pair, apply the #'< filter function on *snapshot-alist-var*,
+and return all addresses whose process memory byte is _greater than_ the byte saved in
+the corresponding snapshot-alist-var"
   `(assert (notany #'null (mapcar #'listp ',snapshot-alist-filter-fn-pairs)))
   `(progn
      ,@(loop for pair in `,snapshot-alist-filter-fn-pairs
