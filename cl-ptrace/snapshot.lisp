@@ -348,33 +348,37 @@ the filtering."
 		(find-snapshot-alist-matches ,snapshot-alist-var))
 	  (length ,snapshot-alist-var)))
 
-;; (defmacro filter (snapshot-alist compare-fn-sym)
-;; Example syntax:
-;; (filter! ((*snapshot-alist-var* inc) (*var2* dec)))
-;; expands into
-;; (
-;;   (print (length (filter-snapshot-alist snapshot-alist compare-fn-sym))))
-;; NEXT-TODO: CONTINU
 (defmacro filter (&body snapshot-alist-filter-fn-pairs)
-  ;; is every pair a list
+  "Mini filter DSL to apply multiple filter functions on `snapshot-alists' at the
+same time. Also prints how many address-byte pairs remain in the filtered
+result. Use `filter!' afterwards, if the result is satisfactory, to bind the
+new `snapshot-alist' to the `snapshot-alist' variable given.
+
+  Example syntax:
+  (filter ((*snapshot-alist-var* <) (*var2* >)))
+  expands into:
+  (PROGN
+    (FORMAT T \"~a -> new length: ~a~%\" '(*SNAPSHOT-ALIST-VAR* <)
+	    (LENGTH
+	     (FILTER-SNAPSHOT-ALIST (*SNAPSHOT-ALIST-VAR* <) #'(*VAR2* >)))))"
   `(assert (notany #'null (mapcar #'listp ',snapshot-alist-filter-fn-pairs)))
   `(progn
      ,@(loop for pair in `,snapshot-alist-filter-fn-pairs
-	 for snapshot-alist-var = (first pair)
-	 for filter-fn = (second pair)
-	 :collect
+	  for snapshot-alist-var = (first pair)
+	  for filter-fn = (second pair)
+	  :collect
 	    `(format t "~a -> new length: ~a~%" ',snapshot-alist-var
-	      (length (filter-snapshot-alist ,snapshot-alist-var (function ,filter-fn)))))))
+		     (length (filter-snapshot-alist ,snapshot-alist-var (function ,filter-fn)))))))
 
 (defmacro filter! (&body snapshot-alist-filter-fn-pairs)
-  ;; is every pair a list
+  "See documentation for `filter', the expanded code applies the filter function and also
+binds the result immediately to the snapshot-alist variable given."
   `(assert (notany #'null (mapcar #'listp ',snapshot-alist-filter-fn-pairs)))
   `(progn
      ,@(loop for pair in `,snapshot-alist-filter-fn-pairs
 	 for snapshot-alist-var = (first pair)
 	 for filter-fn = (second pair)
 	  :collect
-	    
 	    `(progn
 	       (setf ,snapshot-alist-var
 		     (filter-snapshot-alist ,snapshot-alist-var (function ,filter-fn)))
