@@ -826,14 +826,16 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
    0x200afc+%rip = &flagg
 
-   But, the what value is %rip? The obvious answer is wrong, it is not 0x40055a like the
+   But, then, what value is %rip? The obvious answer is wrong, it is not 0x40055a like the
    address of the current instruction beginning. But rather _rip points to the next_
-   _instruction_ So whenever you read assembly that wants to use the content of %rip,
+   _instruction_ So whenever you read assembly, that wants to use the content of %rip,
    you need to remember that it refers to the next instruction, after the one it is
-   referred one.
-   
+   referred to.
+
+   (TODO, test this again! isn't rip refering to next instruction and as such it the
+   <next-instruction-offset> should be subtracted from the current rip-address?):
    so to refer to flagg in this example
-   (peekdata (+ #x200afc (+ (rip-address) <next-instruction-offset>)))
+   (peekdata (+ #x200afc (+ (rip-address) <next-instruction-offset>))) 
    and to change it, call POKEDATA accordingly
 
    This changes `flagg' for every subsequent instruction! As we change it directly
@@ -850,10 +852,10 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 ** disassembly doing it all again, a few months after hiatus..
   if (peekdata #x400500) is 200B5B058901C083 and the next instruction is #x400503, then
   the instruction is only #x400500 + 3 bytes long!  One byte can be represented by two hex
-  numbers so of the 200B5B058901C083, only 6 places count a :least endian representation,
-  we have to read instruction in backwards "380C109850B5B002" no, not quite!  the tricky
-  thing to know is that little endian pertains _byte_ order so if 1024 is represented as
-  #x400 then in memory it will be laid out as 0 0 4 0 The first two zeros are the first
+  numbers so of the 200B5B058901C083, only 6 places count, and given endian representation,
+  we have to read instruction in backwards "380C109850B5B002"? No, not quite!  the tricky
+  thing to know, is that little endian pertains _byte_ order so if 1024 is represented as
+  #x400 then in memory it will be laid out as 0 0 0 4 The first two zeros are the first
   byte 4 and 0 is the 2nd byte. We start with the least significant of the #400 namely
   "00" and the then we move to the next byte "04"
   
@@ -861,7 +863,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   200B5B058901C083 represented as bytes
   20 0B 5B 05 89 01 C0 83
   first we can make a surefire cut though! Because #x400503 is the next instruction
-  and it is only 6 hex numbers apart, called peekdata should return some overlapping
+  and it is only 6 hex numbers apart, calling peekdata should return some overlapping
   data!
   (peekdata #x400503) ==> 58B00200B5B0589
   
@@ -880,6 +882,10 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   representing a number as twos-complement. It should be avoidable by only issuing
   peekdata at portions the instruction pointer rip will point to!
 
+  UPDATE: Whenever the leading byte's most significant bit is '1' the number gets
+  interpreted as a negative number because of the two's complement representation.  This
+  can be avoided by requesting the literal bit representation.
+  
   Moving along, only 6 bytes make up the instruction. But which 6?
   It should be obvious now that those must be the bytes that went missing
   with increasing hex-number calls so:
@@ -897,8 +903,9 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   Feeding the above into another disassembler online reveals that
   C0 = EAX
   and 01 = $01
-  ... so the gdb output doesn't seem to intend to mirror the machine code byte sequence
-  and might always put out arguments to some rule order
+  The differing order of arguments in the gdb and the one-to-one order from the online
+  disassembler is due to the syntax style of assembly used. See the "intel syntax" and
+  "at&t syntax" in a table above, with all the other significant differences.
 
 ** disassembly API for lisp
   <k-stz> hey asm newb here, trying to find an api/library that will let me
@@ -923,9 +930,6 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    What is the operating mode and how can it affect how machine code will be
    interpreted by the CPU? Finally how to tell in which operating mode a process
    is, and do I have to perhaps change it?
-
-   
-   
 
 * Instruction Set Reference
   This is quite helpful
@@ -1001,11 +1005,11 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 #+END_SRC
 
 ** How can we create bindings for a function when all we did is load the binary shared object?
-   The binary *.so file indeed contains all the metadata necessary to refer to by the
+   The binary *.so file indeed contains all the metadata necessary to refer to the
    functions name to the machine code therein!
 
    The command line tool =nm= lets us see the symbols of an object file, the output of,
-   for example =nm libtest.so= returns among other:
+   for example, =nm libtest.so= returns among others:
    #+BEGIN_SRC shell
                          w _Jv_RegisterClasses
          00000000000006e5 T main
@@ -1065,7 +1069,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    Now because ptrace() is a system call it requires root privilege. To successfully call
    it in lisp requires for lisp to be run as root. There is no other way, _you need to_
    _start the lisp program with root privilege._
-   For securities sake it you can _use another system call_ to _turn off root privilege at_
+   For securities sake you can _use another system call_ to _turn off root privilege at_
    _runtime_ and turn it back on again. *This only works when the process was started as
    root to begin with!!
 
@@ -1202,7 +1206,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
     
 *** Advanced: Anti-Hacking method deployed
     Some programs might try to guard against code injection by various methods, of which
-    some may be too involved for the cracker/hacker bother trying to bypass it.
+    some may be too involved for the cracker/hacker to bother trying to bypass it.
 
     For example, the program might checksum its core, or parts of it, with a separate
     thread, every now and then, and guard against code injection this way (for example
@@ -1213,9 +1217,6 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
     that the checksum system might then fetch its values from some cloud server, that
     raises the effort to hack the program.
     
-    
-    
-
 * mmap()
 ** Overview
   =mmap()= allows to map a file (or anything represented by file descriptor) to process
