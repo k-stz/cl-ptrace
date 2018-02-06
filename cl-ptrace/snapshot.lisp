@@ -355,7 +355,7 @@ result. Use `filter!' afterwards, if the result is satisfactory, to bind the
 new `snapshot-alist' to the `snapshot-alist' variable given.
 
 Example syntax:
- (filter ((*snapshot-alist-var* <) (*var2* >)))
+ (filter (*snapshot-alist-var* <) (*var2* >))
 This will, for the first pair, apply the #'< filter function on *snapshot-alist-var*,
 and return all addresses whose process memory byte is _greater than_ the byte saved in
 the corresponding snapshot-alist-var"

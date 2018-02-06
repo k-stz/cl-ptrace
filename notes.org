@@ -291,7 +291,7 @@
     This made them vulnerable to exploits. So nowadays modern operation systems employ
     ASLR, adding a random offset to these address.
 
-    From what I could gather ALSR is only applied at process initialisation, so far, and
+    From what I could gather ASLR is only applied at process initialisation, so far, and
     doesn't apply at run-time or at process switching. There was a paper on ASLR
     Re-Randomization, but a paper is for the future..
     
