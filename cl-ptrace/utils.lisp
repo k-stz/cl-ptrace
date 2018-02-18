@@ -97,9 +97,20 @@ Note: Used in conjunction with the snapshot method."
   "Sends a SIGSTOP to all the threads of a process."
   (kill pid +sigstop+))
 
+(defun stop (&optional (pid *pid*))
+  (stop-time)
+  (sleep 1)
+  (attach-to pid))
+
 (defun cont-time (&optional (pid *pid*))
   "Sends a SIGCONT to all the threads of a process."
   (kill pid +sigcont+))
+
+(defun cont (&optional (pid *pid*))
+  (detach-from pid)
+  (cont-time))
+
+
 
 ;; (defun print-byte-region (from-address to-address &optional pid)
 ;;   (mapcar #'hex

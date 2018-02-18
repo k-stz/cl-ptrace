@@ -179,6 +179,22 @@ SIGSTOP it."
     (file-position str address)
     (write-byte new-byte str)))
 
+(defun write-proc-mem-word (address new-word &key (pid *pid*))
+  (let ((bytes-to-write (integer-byte-length new-word)))
+    (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :output
+			 :if-exists :append)
+      (file-position str address)
+      (let ((0b (ldb (byte 8 0) new-word))
+	    (1b (ldb (byte 8 8) new-word))
+	    (2b (ldb (byte 8 16) new-word))
+	    (3b (ldb (byte 8 24) new-word))
+	    (4b (ldb (byte 8 32) new-word))
+	    (5b (ldb (byte 8 40) new-word))
+	    (6b (ldb (byte 8 48) new-word))
+	    (7b (ldb (byte 8 56) new-word)))
+	(write-sequence (list 0b 1b 2b 3b 4b 5b 6b 7b) str :end bytes-to-write))))
+    (read-proc-mem-word address pid))
+
 
 (defun print-proc-mem-table (&key address-list address-range (number-of-rows 30) (spacing 1) (pid *pid*))
   "Print Process memory addresses in a table. If `address-range' is provided it is used instead of
