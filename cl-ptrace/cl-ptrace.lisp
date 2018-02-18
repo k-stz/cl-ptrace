@@ -459,12 +459,6 @@ it.
        collect address))
 
 
-;; move to util.lisp ?
-(defun integer-byte-length (number)
-  "How many bytes are needed to represent the number `number'"
-  (ceiling (integer-length number)
-	   8))
-
 (defun find-value-address (value &key (pid *pid*)
 				   (from-address #x0)
 				   (to-address #x0)

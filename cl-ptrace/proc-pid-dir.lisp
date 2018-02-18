@@ -179,7 +179,10 @@ SIGSTOP it."
     (file-position str address)
     (write-byte new-byte str)))
 
-(defun write-proc-mem-word (address new-word &key (pid *pid*))
+(defun write-proc-mem-word (address new-word &key (pid *pid*) (write-full-word? nil))
+  "Writes the `new-word' to address, use `write-full-word?' to always write 8 bytes
+regardless of leading zeros. Such that an new-word=#xabcd will write #x0000000000abcd,
+instead of just #abcd and leaving the leading bytes as they where."
   (let ((bytes-to-write (integer-byte-length new-word)))
     (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :output
 			 :if-exists :append)
@@ -192,7 +195,10 @@ SIGSTOP it."
 	    (5b (ldb (byte 8 40) new-word))
 	    (6b (ldb (byte 8 48) new-word))
 	    (7b (ldb (byte 8 56) new-word)))
-	(write-sequence (list 0b 1b 2b 3b 4b 5b 6b 7b) str :end bytes-to-write))))
+	(write-sequence (list 0b 1b 2b 3b 4b 5b 6b 7b) str
+			:end (if write-full-word?
+				 8
+				 bytes-to-write)))))
     (read-proc-mem-word address pid))
 
 

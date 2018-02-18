@@ -110,6 +110,18 @@ Note: Used in conjunction with the snapshot method."
   (detach-from pid)
   (cont-time))
 
+;; move to util.lisp ?
+(defun integer-byte-length (number)
+  "How many bytes are needed to represent the number `number'"
+  (let ((bytes (ceiling (integer-length number)
+			 8)))
+    (if (= bytes 0)
+	1
+	;; For the case number=0, it should return 1
+	bytes)))
+
+
+
 
 
 ;; (defun print-byte-region (from-address to-address &optional pid)
