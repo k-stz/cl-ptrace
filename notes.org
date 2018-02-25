@@ -5,7 +5,7 @@
 #                     https://software.intel.com/en-us/articles/introduction-to-x64-assembly
 #                     https://en.wikipedia.org/wiki/X86_assembly_language#Syntax
 #                     http://duartes.org/gustavo/blog/post/anatomy-of-a-program-in-memory/
-
+#                     ptrace man page entry (Linux Programmer's manual) 
 
 
 * =ptrace()= prototype:
@@ -38,7 +38,7 @@
 
 ** =PTRACE_ATTACH=
    This is pretty handy, you can make the current process the tracer of the target
-   process, "become the parent of that process by attach yourself to it". But =getpid()=
+   process, "become the parent of that process by attaching yourself to it". But =getpid()=
    will return the child's real parent!
    - Note: the *init* process is a big deal - nobody is allowed to trace or control it!  A
      process is also not allowed to trace itself.
@@ -59,13 +59,11 @@
    *addr* is ignored
    *data* arg the parent can send an exit code for the child
    
-
-   
 ** =PTRACE_CONT=
    to continue child execution
 
 ** =PTRACE_SYSCALL=
-   will also continue execution of the child, but will stop every syscall invocation the
+   will also continue execution of the child, but will stop on every syscall invocation the
    child issues. This can be used to implement "strace".
 
 ** =PTRACE_SINGLESTEP=
@@ -87,7 +85,7 @@
    *addr* is the byte offset from which to read the word
    *data* is ignored
 
-*** PTRACE_PEEK*
+*** PTRACE_PEEK* error signaling
    - if PTRACE_PEEK* calls are unsuccessful they return zero!
    - "On error, all request return -1, and _errno_ is set appropriately (...)"
 
@@ -504,8 +502,8 @@ Examples - software interrupt:
 
 [fn:2] on i386 this is the =eax= register - a 32bit register
 
-[fn:3] the size of a word is architecture and OS dependent: on x86_64 Linux it is 64bit
-
+[fn:3] the size of a word is architecture and OS dependent: on x86_64 Linux it is 64bit,
+       on 32Bit Linux OS, the word size is 32 bits
   
 [fn:4] name might be subject to change, this function takes a value like #xabcd and
 searches for it over an address range that is used as index to memory with `peekdata'
