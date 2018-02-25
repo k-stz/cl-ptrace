@@ -5,7 +5,8 @@
   (= (sb-posix:getuid) 0))
 
 (defun hex-print (number &optional (destination t))
-  (format destination "~(~x~)~%" number))
+  (format destination "~(~x~)~%" number)
+  number)
 
 (defun address-list->peekdata-list (address-list &optional (pid *pid*))
   (loop for address in address-list
@@ -121,7 +122,16 @@ Note: Used in conjunction with the snapshot method."
 	bytes)))
 
 
-
+(defun address-range (address &optional (around 500))
+  (let ((from-address (- address around))
+	(to-address (+ address around)))
+    (list
+     (if (< from-address 0)
+	 0
+	 from-address)
+     (if (> to-address (expt 2 64))
+	 (expt 2 64)
+	 to-address))))
 
 
 ;; (defun print-byte-region (from-address to-address &optional pid)

@@ -162,11 +162,28 @@ current value under `address'"
       byte)))
 
 ;; TODO: make it return the value as decimal, like READ-PROC-MEM-BYTE
-(defun read-proc-mem-word (address &optional (pid *pid*))
-  (loop for i from (+ address 7) downto address :do
-       (format t "~(~2,'0x~)"
-	       (read-proc-mem-byte i :pid pid :hex-print? nil)))
-  (terpri))
+(defun read-proc-mem-word (address &optional (offset 0) (hex-print? t) (pid *pid*))
+  (let* ((address (+ address offset))
+	 (byte-word-list
+	  (reverse
+	   (loop for i from (+ address 7) downto address :collect
+	      ;; (format t "~(~2,'0x~)"
+	      ;; 	 (read-proc-mem-byte i :pid pid :hex-print? nil))
+		(read-proc-mem-byte i :pid pid :hex-print? nil))))
+	 (integer-word
+	  (byte-list-word->integer byte-word-list)))
+    (when hex-print?
+      (hex-print integer-word))
+    integer-word))
+
+(defun byte-list-word->integer (byte-list-word)
+  "Converts a list of 8 bytes like (255 255 40 77 46 41 0 96), to
+an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
+  (apply #'+
+	 (loop for index from 0 upto 7
+	    for byte in byte-list-word 
+	    :collect
+	      (ash byte (* 8 index)))))
 
 
 (defun write-proc-mem-byte (address new-byte &key (pid *pid*))
@@ -179,7 +196,8 @@ SIGSTOP it."
     (file-position str address)
     (write-byte new-byte str)))
 
-(defun write-proc-mem-word (address new-word &key (pid *pid*) (write-full-word? nil))
+(defun write-proc-mem-word (address new-word &key (pid *pid*) (write-full-word? nil)
+					       (hex-print? t))
   "Writes the `new-word' to address, use `write-full-word?' to always write 8 bytes
 regardless of leading zeros. Such that an new-word=#xabcd will write #x0000000000abcd,
 instead of just #abcd and leaving the leading bytes as they where."
@@ -199,7 +217,8 @@ instead of just #abcd and leaving the leading bytes as they where."
 			:end (if write-full-word?
 				 8
 				 bytes-to-write)))))
-    (read-proc-mem-word address pid))
+  (when hex-print?
+    (read-proc-mem-word address 0 pid)))
 
 
 (defun print-proc-mem-table (&key address-list address-range (number-of-rows 30) (spacing 1) (pid *pid*))
