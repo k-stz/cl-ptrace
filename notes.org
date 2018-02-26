@@ -6,7 +6,7 @@
 #                     https://en.wikipedia.org/wiki/X86_assembly_language#Syntax
 #                     http://duartes.org/gustavo/blog/post/anatomy-of-a-program-in-memory/
 #                     ptrace man page entry (Linux Programmer's manual) 
-
+#                     http://ref.x86asm.net/coder64.html
 
 * =ptrace()= prototype:
   #+BEGIN_SRC c
@@ -297,9 +297,6 @@
     occurs once the process is created since we always will try to ptrace it once
     its created.
 
-
-  
-
 *** Getting the memory segment addresses (Linux)
     So apparently /proc is the user space interface to process information,
     and should be used to read out process information. Functions like
@@ -520,7 +517,7 @@ searches for it over an address range that is used as index to memory with `peek
    Though since we can read out the instruction pointer we can pass that address to gdb
    and get the assembly pointed at !
    For example:
-   =(gdb) disassembly 0x400500= 
+   =(gdb) disassemble 0x400500= 
    
 * Disable Address Space Layout Randomization (ASLR)
   On Linux:
@@ -929,6 +926,38 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    interpreted by the CPU? Finally how to tell in which operating mode a process
    is, and do I have to perhaps change it?
 
+** Machine Code Disassembly by hand
+   Given the spam.c, which generates an endless loop, peekdata of a particular
+   instructions from the instruction pointer is:
+
+   =8be4740000abcd3d=
+
+   From what I gather instructions are of the form: opcode 1.Operand 2.operande ...
+
+   Reading the above word, byte-wise, from right to left (ascending addresses), the
+   opcode byte is =3d=.
+
+   Now we can look it up, by using a resource such as:
+   http://ref.x86asm.net/coder64.html#x3D
+
+   Which tells us its a CMP (compare) instructions. Whose first opearand is rAX and
+   the 2nd operand is "imm16/32". Which might just mean immediate.
+
+   Makes sense given the 0xABCD value! So we compare the contents of rAX with the
+   immediate value ABCD. Now lets look at the next intruction, it might be a condition
+   branch:
+
+   =2009cf058be474=
+
+   First of, we see that is just a few bytes past the first instruction:
+           8be4740000abcd3d
+   2009cf058be474
+   Such that our CMP instruction is 5 bytes in size: "0000abcd3d", or rather
+   3D ABCD 0000
+
+   NEXT TODO: continue
+
+   
 * Instruction Set Reference
   This is quite helpful
   http://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf

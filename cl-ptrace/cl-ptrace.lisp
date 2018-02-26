@@ -299,18 +299,17 @@ Program."
     (getregs pid regs)
     (foreign-slot-value regs '(:struct user-regs-struct) 'rip)))
 
-(defun singlestep (&optional (pid *pid*) (print-instruction-pointer? t)
-		                         (peekdata-from-rip-address? t))
+(defun singlestep (&optional (pid *pid*) (print-instruction-pointer? t))
   (ptrace +ptrace-singlestep+ pid +null+ +null+)
   (waitpid pid +null+ 0)
-  (when print-instruction-pointer?
+  (let ((rip-address (rip-address)))
+    (when print-instruction-pointer?
       (with-foreign-object (regs '(:struct user-regs-struct))
 	(getregs pid regs) ;; regs gets set here pass-by-reference style
 	(format t "rip: ~x" 
-		(foreign-slot-value regs '(:struct user-regs-struct) 'rip))))
-  ;; (when peekdata-from-rip-address?
-  ;;   (print-n-peekdata-instructions 1))
-  )
+		rip-address)
+	(terpri)))
+    rip-address))
 
 (defun singlestep-peek-from-rip (n-instructions &optional (pid *pid*))
   (let* ((rip-peekdata (peekdata (rip-address) pid t nil))
@@ -321,7 +320,7 @@ Program."
 	       rip-peekdata (peekdata rip-address pid nil nil))
 	 (setf (aref instructions-array nth-instruction)
 	       (list rip-address rip-peekdata))
-	 (singlestep pid nil nil))
+	 (singlestep pid nil))
     instructions-array))
 
 (defun allocate-user-regs ()
@@ -433,7 +432,7 @@ of addresses when encountering a loop."
        (format t "rip: ~x ~16,x~%"
 	       rip
 	       (peekdata rip pid nil nil))
-       (singlestep pid nil nil)))
+       (singlestep pid nil)))
 
 
 (defun ends-with-bits? (target-number match-number &optional (bits (integer-length match-number)))
