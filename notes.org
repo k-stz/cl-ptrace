@@ -941,21 +941,62 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    http://ref.x86asm.net/coder64.html#x3D
 
    Which tells us its a CMP (compare) instructions. Whose first opearand is rAX and
-   the 2nd operand is "imm16/32". Which might just mean immediate.
+   the 2nd operand is "imm16/32". Which means a comparison with an immediate value.
 
-   Makes sense given the 0xABCD value! So we compare the contents of rAX with the
-   immediate value ABCD. Now lets look at the next intruction, it might be a condition
-   branch:
+   Looking at the text-data of the small loop we get:
 
-   =2009cf058be474=
+   #x55F6B5BF765B   0 L=6     002009f3058b   MOV   r16/32/64   r/m16/32/64
+   #x55F6B5BF7661 + 6 L=3           01c083   ADD   r/m16/32/64 imm8         (RAX=0xc5dec3ba -> 0xc5dec3bb)
+   #x55F6B5BF7664 + 3 L=6     002009ea0589   MOV   r/m16/32/64 r/m16/32/64                      
+   #x55F6B5BF766A + 6 L=6     002009dc058b   MOV   r16/32/64   r/m16/32/64
+   #x55F6B5BF7670 + 6 L=5       0000abcd3d   CMP   rAX         imm16/32      
+   #x55F6B5BF7675 + 5 L=?   2009cf058be474   JZ/JE re18             
 
-   First of, we see that is just a few bytes past the first instruction:
-           8be4740000abcd3d
-   2009cf058be474
-   Such that our CMP instruction is 5 bytes in size: "0000abcd3d", or rather
-   3D ABCD 0000
+   With the help of (gdb) disassembly, we get the assembly instructions:
 
-   NEXT TODO: continue
+   0x000000000000065b <+17>:	mov    0x2009f3(%rip),%eax        # 0x201054 <x>
+   0x0000000000000661 <+23>:	add    $0x1,%eax
+   0x0000000000000664 <+26>:	mov    %eax,0x2009ea(%rip)        # 0x201054 <x>
+   0x000000000000066a <+32>:	mov    0x2009dc(%rip),%eax        # 0x20104c <flag>
+   0x0000000000000670 <+38>:	cmp    $0xabcd,%eax
+   0x0000000000000675 <+43>:	je     0x65b <main+17>
+   
+***   Geek Code notes:
+   In the 'geek' table Instruction (http://ref.x86asm.net/geek64.html#x3D) like '3D' has
+   an operand code which is understood as follows: 
+   'Ivds' I=Immediate, v= ord or double word (imm16/32), ds=doubeword sign-extended
+
+
+***   Register state throughout (Only RAX, RIP, and EFLAGS changed!):
+   
+   R15     :                   0   general purpose registers
+   R14     :                   0    
+   R13     :        7ffd309ea930    
+   R12     :        55f6b5bf7540    
+   RBP     :        7ffd309ea850    
+   RBX     :                   0    
+   R11     :                   7    
+   R10     :                   2    
+   R9      :        7faea692d930   6.
+   R8      :        55f6b5bf7720   5.
+   RAX     :                abcd    
+   RCX     :                   0   4.; used for LOOPing in assembly..
+   RDX     :        7ffd309ea948   3.
+   RSI     :        7ffd309ea938   2.
+   RDI     :                   1   1. function/syscall argument
+   ORIG_RAX:    ffffffffffffffff    
+   RIP     :        55f6b5bf7675   instruction pointer
+   CS      :                  33    
+   EFLAGS  :                 246   flags used for results of operations and CPU control
+   RSP     :        7ffd309ea840   Stack Pointer to last item pushed on stack; grows to lower addresses
+   SS      :                  2b    
+   FS_BASE :        7faea6b024c0    
+   GS_BASE :                   0    
+   DS      :                   0    
+   ES      :                   0    
+   FS      :                   0    
+   GS      :                   0    
+
 
    
 * Instruction Set Reference
