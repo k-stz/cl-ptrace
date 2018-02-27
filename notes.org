@@ -945,21 +945,24 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
    Looking at the text-data of the small loop we get:
 
-   #x55F6B5BF765B   0 L=6     002009f3058b   MOV   r16/32/64   r/m16/32/64
+   #x55F6B5BF765B   0 L=6     002009f3058b   MOV   r16/32/64   r/m16/32/64 
    #x55F6B5BF7661 + 6 L=3           01c083   ADD   r/m16/32/64 imm8         (RAX=0xc5dec3ba -> 0xc5dec3bb)
    #x55F6B5BF7664 + 3 L=6     002009ea0589   MOV   r/m16/32/64 r/m16/32/64                      
    #x55F6B5BF766A + 6 L=6     002009dc058b   MOV   r16/32/64   r/m16/32/64
    #x55F6B5BF7670 + 6 L=5       0000abcd3d   CMP   rAX         imm16/32      
    #x55F6B5BF7675 + 5 L=?   2009cf058be474   JZ/JE re18             
 
-   With the help of (gdb) disassembly, we get the assembly instructions:
+   With the help of (gdb) disassembly, we get the assembly instructions. Very useful: you
+   can change the assembly style to intel with =(gdb) set disassembly-favor intel= !
 
-   0x000000000000065b <+17>:	mov    0x2009f3(%rip),%eax        # 0x201054 <x>
-   0x0000000000000661 <+23>:	add    $0x1,%eax
-   0x0000000000000664 <+26>:	mov    %eax,0x2009ea(%rip)        # 0x201054 <x>
-   0x000000000000066a <+32>:	mov    0x2009dc(%rip),%eax        # 0x20104c <flag>
-   0x0000000000000670 <+38>:	cmp    $0xabcd,%eax
+   0x000000000000065b <+17>:	mov    eax,DWORD PTR [rip+0x2009f3]        # 0x201054 <x>
+   0x0000000000000661 <+23>:	add    eax,0x1
+   0x0000000000000664 <+26>:	mov    DWORD PTR [rip+0x2009ea],eax        # 0x201054 <x>
+   0x000000000000066a <+32>:	mov    eax,DWORD PTR [rip+0x2009dc]        # 0x20104c <flag>
+   0x0000000000000670 <+38>:	cmp    eax,0xabcd
    0x0000000000000675 <+43>:	je     0x65b <main+17>
+
+   *As we can see 'x' and 'flag' are addressed relative to RIP!*
    
 ***   Geek Code notes:
    In the 'geek' table Instruction (http://ref.x86asm.net/geek64.html#x3D) like '3D' has
