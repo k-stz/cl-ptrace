@@ -788,7 +788,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    0x00000000004004fa <+13>:	8b 05 64 0b 20 00	mov    0x200b64(%rip),%eax        # 0x601064 <x>
    0x0000000000400500 <+19>:	83 e8 01	sub    $0x1,%eax
    0x0000000000400503 <+22>:	89 05 5b 0b 20 00	mov    %eax,0x200b5b(%rip)        # 0x601064 <x>
-   0x0000000000400509 <+28>:	8b 05 4d 0b 20 00	mov    0x200b4d(%rip),%eax        # 0x60105c <flagg>
+   0x0000000000400509 <+28>:	8b 05 4d 0b 20 00	mov    0x200b4d(%rip),%eax        # 0x60105c <flag>
    0x000000000040050f <+34>:	3d cd ab 00 00	cmp    $0xabcd,%eax
    0x0000000000400514 <+39>:	74 e4	je     0x4004fa <main+13>
    0x0000000000400516 <+41>:	8b 05 48 0b 20 00	mov    0x200b48(%rip),%eax        # 0x601064 <x>
@@ -811,15 +811,15 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    Consider the output:
    
    0x0000000000400558 <+43>:	74 e4	je     0x40053e <main+17>
-   0x000000000040055a <+45>:	8b 05 fc 0a 20 00	mov    0x200afc(%rip),%eax  # 0x60105c <flagg>
+   0x000000000040055a <+45>:	8b 05 fc 0a 20 00	mov    0x200afc(%rip),%eax  # 0x60105c <flag>
    0x0000000000400560 <+51>:	89 c6	mov    %eax,%esi
 
-   If we want to change the value of the variable flagg, gdb's disas output helpfully puts
+   If we want to change the value of the variable flag, gdb's disas output helpfully puts
    it there in clear text. Referring to it is a bit tricky. It is moved to EAX in line
    <+45>. It is referred to with the disp(base,index,scale) address notation. Since it is
    just disp(base) though it is a simply:
 
-   0x200afc+%rip = &flagg
+   0x200afc+%rip = &flag
 
    But, then, what value is %rip? The obvious answer is wrong, it is not 0x40055a like the
    address of the current instruction beginning. But rather _rip points to the next_
@@ -829,11 +829,11 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
    (TODO, test this again! isn't rip refering to next instruction and as such it the
    <next-instruction-offset> should be subtracted from the current rip-address?):
-   so to refer to flagg in this example
+   so to refer to flag in this example
    (peekdata (+ #x200afc (+ (rip-address) <next-instruction-offset>))) 
    and to change it, call POKEDATA accordingly
 
-   This changes `flagg' for every subsequent instruction! As we change it directly
+   This changes `flag' for every subsequent instruction! As we change it directly
    in its memory location!
 
    The location of a variable in memory depends whether it's content are created at
@@ -950,7 +950,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    #x55F6B5BF7664 + 3 L=6     002009ea0589   MOV   r/m16/32/64 r/m16/32/64                      
    #x55F6B5BF766A + 6 L=6     002009dc058b   MOV   r16/32/64   r/m16/32/64
    #x55F6B5BF7670 + 6 L=5       0000abcd3d   CMP   rAX         imm16/32      
-   #x55F6B5BF7675 + 5 L=?   2009cf058be474   JZ/JE re18             
+   #x55F6B5BF7675 + 5 L=2   2009cf058be474   JZ/JE re18             
 
    With the help of (gdb) disassembly, we get the assembly instructions. Very useful: you
    can change the assembly style to intel with =(gdb) set disassembly-favor intel= !
@@ -962,6 +962,15 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    0x0000000000000670 <+38>:	cmp    eax,0xabcd
    0x0000000000000675 <+43>:	je     0x65b <main+17>
 
+   opcode 74 = JE with operand type 'Jbs'
+   'J' means the instruction contains a relative offset _to be added to rip_!
+   'bs' byte sign extended, to the size of the destination operand. In this case
+   the destination operand is probably an address so 64 bit. Such that
+   the operand 'e4' trasnlates to: 0xffffffffffffffe4
+   The many 0xff...s because 0xe4 has a leading 1 ==> #b11100100 
+  
+
+   
    *As we can see 'x' and 'flag' are addressed relative to RIP!*
    
 ***   Geek Code notes:

@@ -200,3 +200,24 @@ Return mismatching inputs, or true if all's right"
         ((atom structure) (list structure))
         (t (mapcan #'flatten structure))))
 
+
+;; (defun sign-extended-value (number &optional (output-bytes 8))
+;;   "Bit extends number and returns value as decimal."
+;;   (let ((bits (integer-length number))
+;; 	(bytes-of-number (integer-byte-length number)))
+;;     (assert (>= output-bytes bytes-of-number))
+;;     ;; meaning last 1 bit is first in last byte -> negative number
+;;     (if (and (= (mod bits 8) 0)
+;; 	    (/= number 0))
+;;         (+ (- (1- (expt 2 (* 8 output-bytes)))
+;; 	      (1- (expt 2 (* 8 bytes-of-number))))
+;; 	   number)
+;; 	number)))
+
+;; TODO continue
+;; (defun twos-complement (number &optional (bytes 8))
+;;   (let ((bits (integer-length number)))
+;;     (if (= (mod bits 8) 0)))
+;;       number
+;;       ;;   ;; TODO
+;;       )
