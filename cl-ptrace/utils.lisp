@@ -200,6 +200,7 @@ Return mismatching inputs, or true if all's right"
         ((atom structure) (list structure))
         (t (mapcan #'flatten structure))))
 
+
 ;; from rosetta code
 (defun shl (x width bits)
   "Compute bitwise left shift of x by 'bits' bits, represented on 'width' bits"
@@ -232,7 +233,8 @@ sign-bit is set"
   "Bit extends numbers binary representation and returns value as decimal.
 
 Used in disassembly when a byte like #xe4 gets binary extended to a quadword,
-due to the instruction, to be used as a jump offset of -26. 
+due to the instruction, to be used as a jump offset of -28. (twos complement
+of #xe4 as a 1 Byte size value.) 
  (See JE, with opcode #x74)"
   (let ((bits (integer-length number)) ;; or most significant set bit+1
 	 (bytes-of-number (integer-byte-length number))
@@ -247,9 +249,12 @@ due to the instruction, to be used as a jump offset of -26.
 	;; and return number
 	number)))
 
-;; TODO
-;; (defun twos-complement (number &optional (bytes 8))
-;;   "Provide decimal number, "
-;;   (if (bit-set? number (1- (* bytes 8)))
-;;       (- (ldb (byte (* 8 bytes) 0) (lognot (1+ number))))
-;;       number))
+
+(defun twos-complement (unsigned-value &optional (bytes 8))
+  "Translate the `unsigned-value' given as an integer to its twos complement
+representation.  Such that if the most significant bit is set, the negative value, of the
+twos complement binary representation, is returned.
+Example: (twos-complement #xff 1) ==> -1"
+  (if (bit-set? unsigned-value (1- (* bytes 8)))
+      (- (ldb (byte (* 8 bytes) 0) (lognot (1- unsigned-value))))
+      unsigned-value))
