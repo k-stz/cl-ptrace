@@ -200,24 +200,56 @@ Return mismatching inputs, or true if all's right"
         ((atom structure) (list structure))
         (t (mapcan #'flatten structure))))
 
+;; from rosetta code
+(defun shl (x width bits)
+  "Compute bitwise left shift of x by 'bits' bits, represented on 'width' bits"
+  (logand (ash x bits)
+          (1- (ash 1 width))))
 
-;; (defun sign-extended-value (number &optional (output-bytes 8))
-;;   "Bit extends number and returns value as decimal."
-;;   (let ((bits (integer-length number))
-;; 	(bytes-of-number (integer-byte-length number)))
-;;     (assert (>= output-bytes bytes-of-number))
-;;     ;; meaning last 1 bit is first in last byte -> negative number
-;;     (if (and (= (mod bits 8) 0)
-;; 	    (/= number 0))
-;;         (+ (- (1- (expt 2 (* 8 output-bytes)))
-;; 	      (1- (expt 2 (* 8 bytes-of-number))))
-;; 	   number)
-;; 	number)))
+(defun shr (x width bits)
+  "Compute bitwise right shift of x by 'bits' bits, represented on 'width' bits"
+  (logand (ash x (- bits))
+          (1- (ash 1 width))))
 
-;; TODO continue
+(defun extended-sign-mask (number-bits &optional (output-bits 64))
+  "Creates a bit mask of '1's, the size `output-bits', where the last `number-bits' bits are zeros
+Can be used to make sign-extended values, see `sign-extended-value'."
+  ;; -1 = #xffffff.....ff (twos complement), so we use as bit-mask with shl, shift
+  ;; -left. This leaves place to put the bits to be sign extended
+  (shl (ldb (byte output-bits 0) -1) 
+       output-bits number-bits))
+
+(defun bit-set? (number &optional (nth-bit 7))
+ "Test if the `nth-bit' in `number' is set. Can be used to test if the
+sign-bit is set"
+  (if (= 1
+	 (ldb (byte 1 nth-bit) number))
+      t
+      nil))
+
+;; TODO might need more tests
+(defun sign-extended-value (number &optional (output-bytes 8))
+  "Bit extends numbers binary representation and returns value as decimal.
+
+Used in disassembly when a byte like #xe4 gets binary extended to a quadword,
+due to the instruction, to be used as a jump offset of -26. 
+ (See JE, with opcode #x74)"
+  (let ((bits (integer-length number)) ;; or most significant set bit+1
+	 (bytes-of-number (integer-byte-length number))
+	 (output-bits (* output-bytes 8)))
+    (assert (>= output-bytes bytes-of-number))
+    ;; test if last '1' bit is first in last byte -> negative number
+    (if (bit-set? number (1- bits))
+	;; negative number: sign extend with '1's
+	(+ (extended-sign-mask bits output-bits)
+	   number)
+	;; positive number: sign-extend with '0's, i.e. do nothing,
+	;; and return number
+	number)))
+
+;; TODO
 ;; (defun twos-complement (number &optional (bytes 8))
-;;   (let ((bits (integer-length number)))
-;;     (if (= (mod bits 8) 0)))
-;;       number
-;;       ;;   ;; TODO
-;;       )
+;;   "Provide decimal number, "
+;;   (if (bit-set? number (1- (* bytes 8)))
+;;       (- (ldb (byte (* 8 bytes) 0) (lognot (1+ number))))
+;;       number))
