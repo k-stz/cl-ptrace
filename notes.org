@@ -969,9 +969,22 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    the operand 'e4' trasnlates to: 0xffffffffffffffe4
    The many 0xff...s because 0xe4 has a leading 1 ==> #b11100100 
   
-
+*** RIP relative addressing
    
    *As we can see 'x' and 'flag' are addressed relative to RIP!*
+
+   If we have an instruction like:
+
+   8b 05 00200b20   mov eax,DWORD PTR [rip+0x200b20]
+
+   The important thing here is _which value_ is used?
+   Answer, the one of the _next instruction_, that is the address of
+   the first byte after the instruction 8b 05 00200b20 <-- after the '00200b20'.
+
+   As we step through the code we can peek the next instruction with RIP,
+   but to calculate the RIP relative adress we then need to use
+   (+ (rip-address) instruction-size-rip-points-to) = relative rip address
+   used during instruction execution!
    
 ***   Geek Code notes:
    In the 'geek' table Instruction (http://ref.x86asm.net/geek64.html#x3D) like '3D' has

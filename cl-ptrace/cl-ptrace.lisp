@@ -339,7 +339,7 @@ value `nil' means to print all regs."
     (loop 
        :with input :do
        (print-user-regs-struct-from-pid regs-filter-list pid)
-       (format t "PEEKDATA: ")
+       (format t "peek rip:    ")
        (peekdata (rip-address))
        (format t "(s)tep (q)uit ~%")
        (setf input (read))
