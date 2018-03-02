@@ -962,13 +962,45 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    0x0000000000000670 <+38>:	cmp    eax,0xabcd
    0x0000000000000675 <+43>:	je     0x65b <main+17>
 
-   opcode 74 = JE with operand type 'Jbs'
+
+*** Instruction Format
+
+**** ModR/M Byte
+     is the "operand-identifier" byte
+     It can determine what register, or if a memory address is used
+   
+***   Geek64/Coder64 Codes - looking closer at some instructions:
+   In the 'geek' table Instruction (http://ref.x86asm.net/geek64.html#x3D) like '3D' has
+   an operand code which is understood as follows: 
+   'Ivds' I=Immediate, v= ord or double word (imm16/32), ds=doubeword sign-extended
+
+**** opcode 89: MOV memory/register, register  (move data from register to memory/register)
+     1. Operand: "r/m16/32/64", geek64: *Evqp* (bold face means operand operand gets
+        modified by instruction.
+
+	'vqp'or '16/32/64' means word or dw depending on
+        operand-size attribute, or qw promoted by "REX.W" in 64 bit mode.
+
+	*E* or 'r/m' means that the ModR/M byte and specifies if the operand
+	is a register or memory address.
+
+	If it is a memory address, then it is calculated using a base register, index
+        register, scalling factor, or a displacment
+
+     2. Operand: , geek64 *Gvqp*
+	TODO
+
+	
+     
+**** opcode 74: JE with operand type 'Jbs'
    'J' means the instruction contains a relative offset _to be added to rip_!
    'bs' byte sign extended, to the size of the destination operand. In this case
    the destination operand is probably an address so 64 bit. Such that
-   the operand 'e4' trasnlates to: 0xffffffffffffffe4
-   The many 0xff...s because 0xe4 has a leading 1 ==> #b11100100 
-  
+   the operand 'e4' translates to: 0xffffffffffffffe4
+   The many 0xff...s because 0xe4 has a leading 1 ==> #b11100100, and gets
+   sign extended.
+
+     
 *** RIP relative addressing
    
    *As we can see 'x' and 'flag' are addressed relative to RIP!*
@@ -983,46 +1015,8 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
    As we step through the code we can peek the next instruction with RIP,
    but to calculate the RIP relative adress we then need to use
-   (+ (rip-address) instruction-size-rip-points-to) = relative rip address
-   used during instruction execution!
-   
-***   Geek Code notes:
-   In the 'geek' table Instruction (http://ref.x86asm.net/geek64.html#x3D) like '3D' has
-   an operand code which is understood as follows: 
-   'Ivds' I=Immediate, v= ord or double word (imm16/32), ds=doubeword sign-extended
-
-
-***   Register state throughout (Only RAX, RIP, and EFLAGS changed!):
-   
-   R15     :                   0   general purpose registers
-   R14     :                   0    
-   R13     :        7ffd309ea930    
-   R12     :        55f6b5bf7540    
-   RBP     :        7ffd309ea850    
-   RBX     :                   0    
-   R11     :                   7    
-   R10     :                   2    
-   R9      :        7faea692d930   6.
-   R8      :        55f6b5bf7720   5.
-   RAX     :                abcd    
-   RCX     :                   0   4.; used for LOOPing in assembly..
-   RDX     :        7ffd309ea948   3.
-   RSI     :        7ffd309ea938   2.
-   RDI     :                   1   1. function/syscall argument
-   ORIG_RAX:    ffffffffffffffff    
-   RIP     :        55f6b5bf7675   instruction pointer
-   CS      :                  33    
-   EFLAGS  :                 246   flags used for results of operations and CPU control
-   RSP     :        7ffd309ea840   Stack Pointer to last item pushed on stack; grows to lower addresses
-   SS      :                  2b    
-   FS_BASE :        7faea6b024c0    
-   GS_BASE :                   0    
-   DS      :                   0    
-   ES      :                   0    
-   FS      :                   0    
-   GS      :                   0    
-
-
+   (+ (rip-address) (instruction-size-rip-points-to)) = relative rip address
+   used during said instruction execution!
    
 * Instruction Set Reference
   This is quite helpful
