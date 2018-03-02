@@ -248,7 +248,10 @@ Program."
 (defun setregs (regs &optional (pid *pid*))
   (ptrace +ptrace-setregs+ pid +null+ regs))
 
-(defun print-user-regs-struct (regs &optional (show-description-p t))
+(defun print-user-regs-struct (regs &optional (regs-filter-list nil)
+				      (show-description-p t))
+  "Use the `regs-filter-list' to only print the regs therein, the default
+value `nil' means to print all regs."
                         ;;(<register> <optional description>)
   (loop for register in '((r15 "general purpose registers")
 			  (r14)
@@ -280,17 +283,19 @@ Program."
 			  (gs))
      :do
      ;; ~( x ~) <- down case hex numbers directive!, #xFF -> #xff
-       (format t "~8a:~(~20x~)   ~a~%" 
-	       (car register)
-	       (foreign-slot-value regs '(:struct user-regs-struct) (car register))
-	       (if (or (null (second register)) (not show-description-p))
-		   #\Space 
-		   (second register)))))
+       (if (or (null regs-filter-list) ;; if empty, don't filter any (default)
+	       (find (car register) regs-filter-list))
+	 (format t "~8a:~(~20x~)   ~a~%" 
+		 (car register)
+		 (foreign-slot-value regs '(:struct user-regs-struct) (car register))
+		 (if (or (null (second register)) (not show-description-p))
+		     #\Space 
+		     (second register))))))
 
-(defun print-user-regs-struct-from-pid (&optional (pid *pid*))
+(defun print-user-regs-struct-from-pid (&optional regs-filter-list (pid *pid*))
   (with-foreign-object (regs '(:struct user-regs-struct))
     (getregs pid regs) ;; this implicitly sets `regs'
-    (print-user-regs-struct regs)))
+    (print-user-regs-struct regs regs-filter-list)))
 
 (defun rip-address (&optional (pid *pid*))
   ;; btw (let ((regs *regs*)) ) doesn't work, modifying `regs' will modify `*regs*'
@@ -329,12 +334,14 @@ Program."
 
 (defvar *regs* (allocate-user-regs)) ;; don't run multiple times!
 
-(defun step-loop (&optional (pid *pid*))
+(defun step-loop (&optional (regs-filter-list nil) (pid *pid*))
   (let ((print-regs t))
     (loop 
        :with input :do
-       (print-user-regs-struct-from-pid pid)
-       (format t "(s)tep (q)uit r(i)p-peekdata ~%")
+       (print-user-regs-struct-from-pid regs-filter-list pid)
+       (format t "PEEKDATA: ")
+       (peekdata (rip-address))
+       (format t "(s)tep (q)uit ~%")
        (setf input (read))
        (case input
 	 (s (singlestep pid)
