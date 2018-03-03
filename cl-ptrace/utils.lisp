@@ -228,7 +228,6 @@ sign-bit is set"
       t
       nil))
 
-;; TODO might need more tests
 (defun sign-extended-value (number &optional (output-bytes 8))
   "Bit extends numbers binary representation and returns value as decimal.
 
@@ -241,7 +240,7 @@ of #xe4 as a 1 Byte size value.)
 	 (output-bits (* output-bytes 8)))
     (assert (>= output-bytes bytes-of-number))
     ;; test if last '1' bit is first in last byte -> negative number
-    (if (bit-set? number (1- bits))
+    (if (bit-set? number (1- output-bits))
 	;; negative number: sign extend with '1's
 	(+ (extended-sign-mask bits output-bits)
 	   number)
@@ -256,5 +255,8 @@ representation.  Such that if the most significant bit is set, the negative valu
 twos complement binary representation, is returned.
 Example: (twos-complement #xff 1) ==> -1"
   (if (bit-set? unsigned-value (1- (* bytes 8)))
-      (- (ldb (byte (* 8 bytes) 0) (lognot (1- unsigned-value))))
+      (- (ldb (byte (* 8 bytes) 0)
+	      (lognot (1- unsigned-value))))
       unsigned-value))
+
+
