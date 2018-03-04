@@ -7,6 +7,11 @@
 #                     http://duartes.org/gustavo/blog/post/anatomy-of-a-program-in-memory/
 #                     ptrace man page entry (Linux Programmer's manual) 
 #                     http://ref.x86asm.net/coder64.html
+#                     Intel's instruciton set manual, December 2017 ("Intel® 64 and IA-32 Architectures
+#                     Software Developer’s Manual Volume 2 (2A, 2B, 2C & 2D): Instruction
+#                     Set Reference, A-Z")
+
+
 
 * =ptrace()= prototype:
   #+BEGIN_SRC c
@@ -725,13 +730,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   | Technology      | Register size/type | items in parallel |
   | MMX             | 64 MMX             | 8, 4, 2, 1        |
   | SSE2/SSE3/SSSE3 | 64 MMX             | 8, 4, 2, 1        |
-  These are not all, nor fixed. For excel just "SSE" may operate on 64 MMX and 128 XXM!
-
-  Tools and caveats,
-  _Some assemblers reverse source and destination_ (remember how peekdata order of
-  args didn't match with the output _sequence of args to opcodes_ from gdb disas!)
-
-
+  These are not all, nor fixed. For example just "SSE" may operate on 64 MMX and 128 XXM!
 
 ** Instructions
 
@@ -772,7 +771,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
 
    
-* disassembly hacking
+** Some disassembly example
   =(gdb) disas /r main= Shows not only the mnemonics but also the associated process data!!
   returns the disassembly of the main function. The striking observation is the way it
   is formatted regarding the spacing of addresses. It is important to note that different
@@ -795,7 +794,9 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    0x000000000040051c <+47>:	5d	pop    %rbp
    0x000000000040051d <+48>:	c3	retq   
 
-   The addresses are thus aligned variably! The PUSH operation only needs a single byte!
+   The instruction size is thus variable, from a minium of 1 byte upto 15 byte according
+   to Intel's Instruction set Reference.
+   
 
    As you might notice the first 3 MOV instruction don't seem to have the same
    opcode. Well first of all there ARE different opcode for MOV instructions (see
@@ -817,7 +818,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    If we want to change the value of the variable flag, gdb's disas output helpfully puts
    it there in clear text. Referring to it is a bit tricky. It is moved to EAX in line
    <+45>. It is referred to with the disp(base,index,scale) address notation. Since it is
-   just disp(base) though it is a simply:
+   just disp(base) though it is simply:
 
    0x200afc+%rip = &flag
 
@@ -827,22 +828,8 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    you need to remember that it refers to the next instruction, after the one it is
    referred to.
 
-   (TODO, test this again! isn't rip refering to next instruction and as such it the
-   <next-instruction-offset> should be subtracted from the current rip-address?):
-   so to refer to flag in this example
-   (peekdata (+ #x200afc (+ (rip-address) <next-instruction-offset>))) 
-   and to change it, call POKEDATA accordingly
-
    This changes `flag' for every subsequent instruction! As we change it directly
    in its memory location!
-
-   The location of a variable in memory depends whether it's content are created at
-   runtime (heap, mmap), it is static (BSS) or known at compile time (data, text) finally
-   some languages, like Lisp, make the location of a variable difficult to figure out
-   TODO: test if changing it in a register will write the changed value back
-         to memory? This might be an issue of modifying the register, like
-	 rip where changes change effect only on the next instruction... Think
-	 register and their value in assembly program-flow-charts!
    
 ** disassembly doing it all again, a few months after hiatus..
   if (peekdata #x400500) is 200B5B058901C083 and the next instruction is #x400503, then
@@ -864,7 +851,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   
   lets compare the two
         200B5B058901C083
-   58B00200B5B0589    !!!oooooh, hooohooo
+   58B00200B5B0589     <- overlap!
 
   Oh! they overlap in a different way I imagined they would..
   Now even more surprising is:
@@ -888,11 +875,9 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   And because we use :little-endian, it is in fact
   83 C0 01
   Now which instruction is this??
-  Well after rediscovering that I already did a lot of good progress on this same
-  issue some months ago before my hiatus on this project, calling
-  gdb bin/spam and then (gdb) disas /r main
-  lets us see an output of the process data that directly is translated to assembly
-  for us!!!
+  Using (gdb) bin/spam
+  and   (gdb) disas /r main
+  we get:
   83 C0 01  add $01, %eax
   
   Feeding the above into another disassembler online reveals that
@@ -917,6 +902,8 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 	   bits)  [00:48]
   <anon2> and you need to start from the instruction pointer of course	   
   <k-stz> anon: thanks
+
+  *TODO: look into intel operating mode (16/32/64)*
   
 ** udis86
    https://github.com/jonwil/unlinker/tree/master/udis86
@@ -1179,13 +1166,15 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
 * Little Endian
   Way of laying out a datum that needs more than one byte to be represented.
-  Consider the C integer 33, which needs 32 bits/4 bytes to be represented
+  Consider the C integer 33, which needs 32 bits or 4 bytes to be represented
 
-  0000 0000 0010 0001 
-  1    2    3    4 bytes!
+  Big Endian example:
+  
+  0000 0000 0010 0001     
+  1st  2nd  3rd  4th  byte (in ascending _address_ order, from left to right)
 
   In what order can we write these 4 bytes in memory? Well there are two schemes
-  the above is big-endian because the most significant byte (big) is the first
+  the _above is big-endian_ because the most significant byte (big) is the first
   and the least significant the last.
 
   With little endian we put the least significant byte first, so the above
@@ -1197,10 +1186,9 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
   each byte has an own address and here 0001 has the first(smaller) address than
   0010.
 
-** Finally what does it matter to this project?
+** Big Endian or Little Endian: What does it matter to this project?
    (peekdata hex-value) => 0x200B17058901C083
-   than in what way is the above laid out in memory,
-   out of the following
+   in what way is the above laid out in memory, out of the following:
 
    (1) 200B 1705 8901 C083
    (2) 20 0b 17 05 89 01 c0 83
@@ -1214,7 +1202,8 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    (peekdata...) if you look at bin/spam with a hex-editor. If the
    peeked address is #400500 then you will find the byte order in question
    at byte 500 and the following!
-   
+
+   From experience so far the code block is usually the first entry in /proc/pid/maps
 
 * Cheat Engine
   cl-ptrace can be used to hack games just like a cheat engine. There are some methods
@@ -1384,7 +1373,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
     # so after we write to the file with the SAP and then change the file with
     # another process (for example a text editor) the mmap-region becomes "dirty"
     # and is _no longer in sync_ with the _memory-mapping_ _and_ _the file_ on the disk.
-    
+
 
 
 * Performance: PEEKDATA, READ-PROC-MEM-BYTE, readv-c-array
