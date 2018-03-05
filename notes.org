@@ -942,40 +942,47 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    With the help of (gdb) disassembly, we get the assembly instructions. Very useful: you
    can change the assembly style to intel with =(gdb) set disassembly-favor intel= !
 
-   0x000000000000065b <+17>:	mov    eax,DWORD PTR [rip+0x2009f3]        # 0x201054 <x>
-   0x0000000000000661 <+23>:	add    eax,0x1
-   0x0000000000000664 <+26>:	mov    DWORD PTR [rip+0x2009ea],eax        # 0x201054 <x>
-   0x000000000000066a <+32>:	mov    eax,DWORD PTR [rip+0x2009dc]        # 0x20104c <flag>
-   0x0000000000000670 <+38>:	cmp    eax,0xabcd
-   0x0000000000000675 <+43>:	je     0x65b <main+17>
+   0x000000000000065b <+17>:	mov    eax,DWORD PTR [rip+0x2009f3]        # 0x201054 <x>           002009f3058b
+   0x0000000000000661 <+23>:	add    eax,0x1							          01c083
+   0x0000000000000664 <+26>:	mov    DWORD PTR [rip+0x2009ea],eax        # 0x201054 <x>	    002009ea0589
+   0x000000000000066a <+32>:	mov    eax,DWORD PTR [rip+0x2009dc]        # 0x20104c <flag>	    002009dc058b
+   0x0000000000000670 <+38>:	cmp    eax,0xabcd						      0000abcd3d
+   0x0000000000000675 <+43>:	je     0x65b <main+17>						  2009cf058be474
 
 
 *** Instruction Format
 
 **** ModR/M Byte
-     is the "operand-identifier" byte
-     It can determine what register, or if a memory address is used
-   
+     is the "operand-identifier" byte It can determine what register, or if a memory
+     address is used, in the byte from left to right the consequtive bits form the three
+     values:
+
+     Mod:        Bits 7 to 6
+     Reg/Opcode: Bits 5 to 3
+     R/M:        Bits 2 to 0
+
+     
+     
 ***   Geek64/Coder64 Codes - looking closer at some instructions:
    In the 'geek' table Instruction (http://ref.x86asm.net/geek64.html#x3D) like '3D' has
    an operand code which is understood as follows: 
    'Ivds' I=Immediate, v= ord or double word (imm16/32), ds=doubeword sign-extended
 
 **** opcode 89: MOV memory/register, register  (move data from register to memory/register)
-     1. Operand: "r/m16/32/64", geek64: *Evqp* (bold face means operand operand gets
-        modified by instruction.
+     1. Operand: "r/m16/32/64", geek64: *Evqp* (bold face means operand gets modified by
+        instruction.
 
-	'vqp'or '16/32/64' means word or dw depending on
-        operand-size attribute, or qw promoted by "REX.W" in 64 bit mode.
+	'vqp'or '16/32/64' means word or dw depending on operand-size attribute, or qw
+        promoted by "REX.W" in 64 bit mode.
 
-	*E* or 'r/m' means that the ModR/M byte and specifies if the operand
-	is a register or memory address.
+	*E* or 'r/m' means that the ModR/M byte follows the opcode, and specifies if the
+        operand is a register or memory address.
 
-	If it is a memory address, then it is calculated using a base register, index
-        register, scalling factor, or a displacment
+	If it is a memory address, then it is calculated from a segment register and any
+        of the following: base register, index register, scalling factor, or a displacment
 
-     2. Operand: , geek64 *Gvqp*
-	TODO
+     2. Operand:  geek64 *Gvqp*
+	The r/m field of a ModR/M byte selects a general register for exaple #b000=Ax
 
 	
      

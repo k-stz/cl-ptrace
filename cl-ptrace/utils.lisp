@@ -8,6 +8,10 @@
   (format destination "~(~x~)~%" number)
   number)
 
+(defun binary-print (number &optional (destination t))
+  (format destination "~b~%" number)
+  number)
+
 (defun address-list->peekdata-list (address-list &optional (pid *pid*))
   (loop for address in address-list
        :collect (peekdata address pid nil nil)))
@@ -260,3 +264,25 @@ Example: (twos-complement #xff 1) ==> -1"
       unsigned-value))
 
 
+;; TODO: eventully move some functions to a new file, e.g.: "disas.lisp"
+
+;; ModR/M Byte
+
+(defun get-bits (number from to &optional (binary-print? t))
+  (assert (>= to from))
+  (let ((bits (ldb
+	       (byte (- (1+ to) from) from)
+	       number)))
+    (when binary-print?
+      (binary-print bits))
+    bits))
+
+(defun modr/m-fields (modr/m-byte)
+  "Returns the three fields of a ModR/M Byte, as values."
+  (values
+   ;; Mod
+   (get-bits modr/m-byte 6 7 t)
+   ;; Reg/Opcode 
+   (get-bits modr/m-byte 3 5 t)
+   ;; R/M
+   (get-bits modr/m-byte 0 2 t)))
