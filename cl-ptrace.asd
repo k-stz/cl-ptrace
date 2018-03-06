@@ -13,6 +13,7 @@ process hacking through value injection"
   :components
   ((:file "cl-ptrace/package")
    (:file "cl-ptrace/cl-ptrace")
+   (:file "cl-ptrace/disassembly")
    (:file "cl-ptrace/proc-pid-dir")
    (:file "cl-ptrace/snapshot")
    (:file "cl-ptrace/utils")))

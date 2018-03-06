@@ -38,7 +38,7 @@ The logior of permission is needed by the syscalls like sb-posix:MMAP."
 
 #+sbcl
 (defun permission-string->flag-private/shared (permission-string)
-  "Expects a permission-strig of the form \"rwxp\", and returns
+  "Expects a permission-string of the form \"rwxp\", and returns
 the shared or private flag accordingly."
   (assert (= (length permission-string) 4))
   (let ((permission-flag-character (aref permission-string 3) ))
@@ -216,13 +216,6 @@ Return mismatching inputs, or true if all's right"
   (logand (ash x (- bits))
           (1- (ash 1 width))))
 
-(defun extended-sign-mask (number-bits &optional (output-bits 64))
-  "Creates a bit mask of '1's, the size `output-bits', where the last `number-bits' bits are zeros
-Can be used to make sign-extended values, see `sign-extended-value'."
-  ;; -1 = #xffffff.....ff (twos complement), so we use as bit-mask with shl, shift
-  ;; -left. This leaves place to put the bits to be sign extended
-  (shl (ldb (byte output-bits 0) -1) 
-       output-bits number-bits))
 
 (defun bit-set? (number &optional (nth-bit 7))
  "Test if the `nth-bit' in `number' is set. Can be used to test if the
@@ -231,6 +224,17 @@ sign-bit is set"
 	 (ldb (byte 1 nth-bit) number))
       t
       nil))
+
+;; for disassembly
+
+(defun extended-sign-mask (number-bits &optional (output-bits 64))
+  "Creates a bit mask of '1's, the size `output-bits', where the last `number-bits' bits are zeros
+Can be used to make sign-extended values, see `sign-extended-value'."
+  ;; -1 = #xffffff.....ff (twos complement), so we use as bit-mask with shl, shift
+  ;; -left. This leaves place to put the bits to be sign extended
+  (shl (ldb (byte output-bits 0) -1) 
+       output-bits number-bits))
+
 
 (defun sign-extended-value (number &optional (output-bytes 8))
   "Bit extends numbers binary representation and returns value as decimal.
@@ -262,27 +266,3 @@ Example: (twos-complement #xff 1) ==> -1"
       (- (ldb (byte (* 8 bytes) 0)
 	      (lognot (1- unsigned-value))))
       unsigned-value))
-
-
-;; TODO: eventully move some functions to a new file, e.g.: "disas.lisp"
-
-;; ModR/M Byte
-
-(defun get-bits (number from to &optional (binary-print? t))
-  (assert (>= to from))
-  (let ((bits (ldb
-	       (byte (- (1+ to) from) from)
-	       number)))
-    (when binary-print?
-      (binary-print bits))
-    bits))
-
-(defun modr/m-fields (modr/m-byte)
-  "Returns the three fields of a ModR/M Byte, as values."
-  (values
-   ;; Mod
-   (get-bits modr/m-byte 6 7 t)
-   ;; Reg/Opcode 
-   (get-bits modr/m-byte 3 5 t)
-   ;; R/M
-   (get-bits modr/m-byte 0 2 t)))
