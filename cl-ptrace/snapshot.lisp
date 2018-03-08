@@ -30,7 +30,7 @@
   (flags :unsigned-long))  ; currently unused, must be set to 0
 
 ;; for debug reasons, it is filled whenever `%alloc-iovec-struct' is called
-;; possibly add more information and use it with (free-snapshot-iovec ..)
+;; used with (free-snapshot-iovec ..)
 (defvar *all-allocated-iovs* '())
 
 (defun %alloc-iovec-struct (iov-base-count iov-len)
@@ -97,10 +97,6 @@ For the two uses see the signature of the syscall."
 Either the Pointer is not part of `*all-allocated-iovs*', that means that it wasn't
 allocated with the function `%alloc-iovec-struct', Or it was already freed." iovec-struct)))))
 
-;; TODO: build snapshot start-address = 0 index abstraction on top of it
-;;            see that you provide means to free the pointer, also
-;;            since currently the base-len of the iovec is returned, which is
-;;            just a field in the iovec struct next to the iov-length!
 (defun process-vm-readv-into-iovec (tracee-address-range &key (pid *pid*))
   "Copy the bytes in tracee-address-range into the tracer process, and return a SAP,
 system area pointer, to it.
@@ -147,9 +143,10 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 
 ;;Snapshot----------------------------------------------------------------------
 
-;; This will store the values of a memory range at a the time. That's what is implied
-;; by "snapshot" this won't be used to retrieve up-to-date values or to even set
-;; any value. This should be treated as a read-only object after the slots have been set
+;; This will store the values of a memory range at time of object creation time. That's
+;; what is implied by "snapshot". This won't be used to retrieve up-to-date values or to
+;; even set any value. This should be treated as a read-only object after the slots have
+;; been set
 (defclass memory-range-snapshot ()
   ((start-memory-address :initarg :start-memory-address)
    (end-memory-address :initarg :end-memory-address)
@@ -185,7 +182,7 @@ the original memory region the snapshot copied (from that remote process address
 (defun make-snapshot-memory-range (address-range &optional (pid *pid*))
   (let ((from-address (first address-range))
 	(to-address (second address-range)))
-    (labels ;; don't call directly, use `snapshot-memory-range' instead!
+    (labels
 	((make-snapshot-instance
 	     (snapshot-memory-iovec start-address end-address &optional (pid *pid*))
 	   (make-instance 'memory-range-snapshot
@@ -295,6 +292,7 @@ then builds a new snapshot-alist from them."
 (defun find-snapshot-alist-matches (snapshot-alist &optional (pid *pid*))
   (find-snapshot-alist-mismatches snapshot-alist pid t))
 
+
 (defun find-snapshot-alist-value (value snapshot-alist)
   "Return snapshot-alist of elements whose process-byte value pair matches with `value'."
   (remove-if-not #'(lambda (key)
@@ -303,7 +301,8 @@ then builds a new snapshot-alist from them."
 		 :key #'cdr))
 
 (defun remove-snapshot-alist-value (value snapshot-alist)
-  "Return snapshot-alist of elements whose process-byte value pair matches with `value'."
+  "Return snapshot-alist of elements whose process-byte value pair doesn't match with
+`value'."
   (remove-if #'(lambda (key)
 		 (= key value))
 	     snapshot-alist

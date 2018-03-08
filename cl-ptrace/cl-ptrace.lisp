@@ -169,35 +169,35 @@ Program."
 ;; from /usr/include/x86_64-linux-gnu/sys/ptrace.h (sao)
 ;; struct user_regs_struct  // x86_64 specific registers  !
 ;; {
-;;   __extension__ unsigned long long int r15;
-;;   __extension__ unsigned long long int r14;
-;;   __extension__ unsigned long long int r13;
-;;   __extension__ unsigned long long int r12;
-;;   __extension__ unsigned long long int rbp;
-;;   __extension__ unsigned long long int rbx;
-;;   __extension__ unsigned long long int r11;
-;;   __extension__ unsigned long long int r10;
-;;   __extension__ unsigned long long int r9;
-;;   __extension__ unsigned long long int r8;
-;;   __extension__ unsigned long long int rax;
-;;   __extension__ unsigned long long int rcx;
-;;   __extension__ unsigned long long int rdx;
-;;   __extension__ unsigned long long int rsi;
-;;   __extension__ unsigned long long int rdi;
+;;   __extension__ unsigned long long int r15; 	
+;;   __extension__ unsigned long long int r14;	   
+;;   __extension__ unsigned long long int r13;	   
+;;   __extension__ unsigned long long int r12;	   
+;;   __extension__ unsigned long long int rbp;	   
+;;   __extension__ unsigned long long int rbx;	   
+;;   __extension__ unsigned long long int r11;	   
+;;   __extension__ unsigned long long int r10;	   
+;;   __extension__ unsigned long long int r9;	   
+;;   __extension__ unsigned long long int r8;	   
+;;   __extension__ unsigned long long int rax;	   
+;;   __extension__ unsigned long long int rcx;	   
+;;   __extension__ unsigned long long int rdx;	   
+;;   __extension__ unsigned long long int rsi;	   
+;;   __extension__ unsigned long long int rdi;	   
 ;;   __extension__ unsigned long long int orig_rax;
-;;   __extension__ unsigned long long int rip;
-;;   __extension__ unsigned long long int cs;
-;;   __extension__ unsigned long long int eflags;
-;;   __extension__ unsigned long long int rsp;
-;;   __extension__ unsigned long long int ss;
-;;   __extension__ unsigned long long int fs_base;
-;;   __extension__ unsigned long long int gs_base;
-;;   __extension__ unsigned long long int ds;
-;;   __extension__ unsigned long long int es;
-;;   __extension__ unsigned long long int fs;
-;;   __extension__ unsigned long long int gs;
+;;   __extension__ unsigned long long int rip;	   
+;;   __extension__ unsigned long long int cs;	   
+;;   __extension__ unsigned long long int eflags;  
+;;   __extension__ unsigned long long int rsp;	   
+;;   __extension__ unsigned long long int ss;	   
+;;   __extension__ unsigned long long int fs_base; 
+;;   __extension__ unsigned long long int gs_base; 
+;;   __extension__ unsigned long long int ds;	   
+;;   __extension__ unsigned long long int es;	   
+;;   __extension__ unsigned long long int fs;	   
+;;   __extension__ unsigned long long int gs;      
 ;; };
-
+    
 (defcstruct user-regs-struct
   (r15 :unsigned-long-long)
   (r14 :unsigned-long-long)
@@ -237,7 +237,16 @@ Program."
   "Pass by reference, fills `regs' with the current register map of the traced process `pid'."
   (ptrace +ptrace-getregs+ pid +null+ regs)
   regs)
-
+       				     
+       				     
+;; NEXT TODO: use with continue-singlestep; assoc list good idea? 
+(defun regs-c-struct->lisp-regs (user-reg-struct)
+  (let ((register-list '(r15 r14 r13 r12 rbp rbx r11 r10 r9 r8 rax rcx rdx rsi rdi
+       			 orig_rax rip cs eflags rsp ss fs_base gs_base ds es fs gs)))
+    (loop for register in register-list collect
+	 (cons register
+	       (foreign-slot-value user-reg-struct '(:struct user-regs-struct)
+				   register)))))
 
 ;; You might want to extend SETF to replace this
 (defun set-user-register (user-regs-struct register new-value)
@@ -281,7 +290,7 @@ value `nil' means to print all regs."
 			  (es)
 			  (fs)     
 			  (gs))
-     :do
+     :do		   
      ;; ~( x ~) <- down case hex numbers directive!, #xFF -> #xff
        (if (or (null regs-filter-list) ;; if empty, don't filter any (default)
 	       (find (car register) regs-filter-list))
