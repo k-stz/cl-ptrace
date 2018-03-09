@@ -23,20 +23,25 @@
    ;; R/M
    (get-bits modr/m-byte 0 2 t)))
 
-;; TODO more tests, fairly slow might have to filter already
-;; while collecting
-(defun collect-singlesteps (n-instructions &optional (pid *pid*))
+
+(defun collect-singlesteps-context (n-instructions &optional (pid *pid*))
+  "Singlesteps for a given number of instructions and collects the instruction and its
+  register state, at execution time, into a list of the form:
+  (<instruction> <instruction-length> <register-context>)
+  NOTE: Instruction length, and instruction isn't always right, see code comment!"
   (loop for n from 0 below n-instructions
      for rip-address = (rip-address)
-     for address-length = (abs (- rip-address
-				   ;; returns new rip-address!
-				   (singlestep pid nil)))
+     ;; TODO rewrite this
+     ;; instruction is wrong, among possibly other situation, when: (1) instruction
+     ;; is bigger than 8 bytes (because peekdata only fetched 8 bytes) and when (2) when a
+     ;; jmp occured, as length calculation is a hack: current instruction address minus RIP
+     ;; address.
+     for instruction-length = (abs (- rip-address
+				      ;; returns new rip-address!
+				      (singlestep pid nil)))
+     for instruction = (ldb (byte (* 8 instruction-length) 0)
+			    (peekdata rip-address *pid* t nil))
      :collect
-     ;; format: (<instruction-addr> <register-state-at-time-of-instruction>)
-       (list rip-address address-length (get-registers)))))
-
-;; ;; TODO continue
-;; 
-;; (loop for x in (collect-singlesteps 10) collect
-;; 		(ldb (byte (* 8 (second x)) 0)
-;; 		     (peekdata (first x) *pid* nil t)))
+     ;; format: (<instruction> <length> <register-context>)
+       (list 
+	instruction instruction-length (get-registers)))))
