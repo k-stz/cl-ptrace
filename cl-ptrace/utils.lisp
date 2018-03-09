@@ -108,6 +108,7 @@ Note: Used in conjunction with the snapshot method."
 
 (defun stop (&optional (pid *pid*))
   (stop-time)
+  (sleep 1)
   (attach-to pid))
 
 (defun cont-time (&optional (pid *pid*))

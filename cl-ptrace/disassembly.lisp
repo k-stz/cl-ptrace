@@ -25,23 +25,30 @@
 
 
 (defun collect-singlesteps-context (n-instructions &optional (pid *pid*))
-  "Singlesteps for a given number of instructions and collects the instruction and its
+  "Singlesteps for `n-instructions' and collects the instruction and its
   register state, at execution time, into a list of the form:
   (<instruction> <instruction-length> <register-context>)
   NOTE: Instruction length, and instruction isn't always right, see code comment!"
   (loop for n from 0 below n-instructions
      for rip-address = (rip-address)
      ;; TODO rewrite this
-     ;; instruction is wrong, among possibly other situation, when: (1) instruction
-     ;; is bigger than 8 bytes (because peekdata only fetched 8 bytes) and when (2) when a
-     ;; jmp occured, as length calculation is a hack: current instruction address minus RIP
+     ;; among possibly other situation, instruction data is wrong when instruction
+     ;; is bigger than 8 bytes (because peekdata only fetched 8 bytes), and when a jump
+     ;; occured, the calculated length is also wrong calculation is a hack: current instruction address minus RIP
      ;; address.
-     for instruction-length = (abs (- rip-address
-				      ;; returns new rip-address!
-				      (singlestep pid nil)))
+     for address-distance = (abs (- rip-address
+				    ;; returns new rip-address!
+				    (singlestep pid nil)))
+     ;; clamp max length to 8, when address-distance is to large this occurs
+     ;; when a jmp instruction is issued.  
+     for instruction-length = (if (<= address-distance 15)
+				  address-distance
+				  8)
      for instruction = (ldb (byte (* 8 instruction-length) 0)
 			    (peekdata rip-address *pid* t nil))
      :collect
      ;; format: (<instruction> <length> <register-context>)
        (list 
-	instruction instruction-length (get-registers)))))
+ 	instruction
+	instruction-length
+	(get-registers))))
