@@ -112,7 +112,7 @@ Note: Used in conjunction with the snapshot method."
 
 (defun cont-time (&optional (pid *pid*))
   "Sends a SIGCONT to all the threads of a process."
-  (kill pid +sigcont+)))
+  (kill pid +sigcont+))
 
 (defun cont (&optional (pid *pid*))
   (detach-from pid)

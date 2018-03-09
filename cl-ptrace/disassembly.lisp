@@ -23,17 +23,20 @@
    ;; R/M
    (get-bits modr/m-byte 0 2 t)))
 
-
-;; Will return a list whose elements represent consequtive instructions
-;; with address and register-state
-;; TODO continue
+;; TODO more tests, fairly slow might have to filter already
+;; while collecting
 (defun collect-singlesteps (n-instructions &optional (pid *pid*))
-  (let ((first-instruction-address (rip-address pid)))
-    ;; do one step because we don't know the address
-    ;; of the instruction we start at. After this `singlestep' we know
-    ;; the next and current instruction and can infer the instruction size
-    ;; for non jump instructions
-    (singlestep pid nil) 
-    (loop for n from 0 upto n-instructions
-       :collect
-	 (singlestep pid nil))))
+  (loop for n from 0 below n-instructions
+     for rip-address = (rip-address)
+     for address-length = (abs (- rip-address
+				   ;; returns new rip-address!
+				   (singlestep pid nil)))
+     :collect
+     ;; format: (<instruction-addr> <register-state-at-time-of-instruction>)
+       (list rip-address address-length (get-registers)))))
+
+;; ;; TODO continue
+;; 
+;; (loop for x in (collect-singlesteps 10) collect
+;; 		(ldb (byte (* 8 (second x)) 0)
+;; 		     (peekdata (first x) *pid* nil t)))

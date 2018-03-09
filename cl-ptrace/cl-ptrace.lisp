@@ -233,14 +233,14 @@ Program."
 ;;  (foreign-slot-value *regs* '(:struct user-regs-struct) 'rax))
 ;; 42)
 
-(defun getregs (pid regs)
+(defun %getregs (pid regs)
   "Pass by reference, fills `regs' with the current register map of the traced process `pid'."
   (ptrace +ptrace-getregs+ pid +null+ regs)
   regs)
        				     
-       				     
+
 ;; NEXT TODO: use with continue-singlestep; assoc list good idea? 
-(defun regs-c-struct->lisp-regs (user-reg-struct)
+(defun %regs-c-struct->lisp-regs (user-reg-struct)
   (let ((register-list '(r15 r14 r13 r12 rbp rbx r11 r10 r9 r8 rax rcx rdx rsi rdi
        			 orig_rax rip cs eflags rsp ss fs_base gs_base ds es fs gs)))
     (loop for register in register-list collect
@@ -308,14 +308,14 @@ value `nil' means to print all regs."
 
 (defun print-user-regs-struct-from-pid (&optional regs-filter-list (pid *pid*))
   (with-foreign-object (regs '(:struct user-regs-struct))
-    (getregs pid regs) ;; this implicitly sets `regs'
+    (%getregs pid regs) ;; this implicitly sets `regs'
     (print-user-regs-struct regs regs-filter-list)))
 
 (defun rip-address (&optional (pid *pid*))
   ;; btw (let ((regs *regs*)) ) doesn't work, modifying `regs' will modify `*regs*'
   ;; beyond the lexical scope of `regs'
   (with-foreign-object (regs '(:struct user-regs-struct))
-    (getregs pid regs)
+    (%getregs pid regs)
     (foreign-slot-value regs '(:struct user-regs-struct) 'rip)))
 
 (defun singlestep (&optional (pid *pid*) (print-instruction-pointer? t))
@@ -324,7 +324,7 @@ value `nil' means to print all regs."
   (let ((rip-address (rip-address)))
     (when print-instruction-pointer?
       (with-foreign-object (regs '(:struct user-regs-struct))
-	(getregs pid regs) ;; regs gets set here pass-by-reference style
+	(%getregs pid regs) ;; regs gets set to `regs' here pass-by-reference style
 	(format t "rip: ~x" 
 		rip-address)
 	(terpri)))
