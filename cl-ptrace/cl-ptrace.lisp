@@ -248,6 +248,11 @@ Program."
 	       (foreign-slot-value user-reg-struct '(:struct user-regs-struct)
 				   register)))))
 
+(defun get-registers (&optional (pid *pid*))
+  (with-foreign-object (regs '(:struct user-regs-struct))
+    (%getregs pid regs) ;; this implicitly sets `regs'
+    (%regs-c-struct->lisp-regs regs)))
+
 ;; You might want to extend SETF to replace this
 (defun set-user-register (user-regs-struct register new-value)
   (setf  (foreign-slot-value user-regs-struct '(:struct user-regs-struct) register)
