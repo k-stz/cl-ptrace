@@ -143,10 +143,9 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 
 ;;Snapshot----------------------------------------------------------------------
 
-;; This will store the values of a memory range at time of object creation time. That's
-;; what is implied by "snapshot". This won't be used to retrieve up-to-date values or to
-;; even set any value. This should be treated as a read-only object after the slots have
-;; been set
+;; This will store the values of a memory range at time of object creation. That's what is
+;; implied by "snapshot". This won't be used to retrieve up-to-date values or to even set
+;; any value. This should be treated as a read-only object after the slots have been set
 (defclass memory-range-snapshot ()
   ((start-memory-address :initarg :start-memory-address)
    (end-memory-address :initarg :end-memory-address)
