@@ -527,6 +527,11 @@ nearby each other in memory."
 		    to-address))))
     (find-value-address value :address-range address-range :pid pid)))
 
+;; quick hack, rewrite for (read-proc-mem-word ..) usage for interactive use
+(defun find-nearby-addr-list (value address-list &optional (search-distance 1000) (pid *pid*))
+  (mapcar #'(lambda (address)
+	      (find-nearby value address search-distance pid))
+	  address-list))
 
 ;; some test heuristic searches
 

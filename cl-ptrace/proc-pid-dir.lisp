@@ -173,7 +173,7 @@ current value under `address'"
 	 (integer-word
 	  (byte-list-word->integer byte-word-list)))
     (when hex-print?
-      (hex-print integer-word))
+      (hex-print integer-word t t))
     integer-word))
 
 (defun byte-list-word->integer (byte-list-word)
@@ -196,6 +196,10 @@ SIGSTOP it."
     (file-position str address)
     (write-byte new-byte str)))
 
+;; TODO still doesn't write #x00ab <- leading zeros, because of (integer-byte-length ..)
+;; use. Given that we pass it a hex representation like #x00ab, either this is solved
+;; via macro, another option word, another input type (string?) or get in the habit
+;; of writing some non zero byte before it.
 (defun write-proc-mem-word (address new-word &key (pid *pid*) (write-full-word? nil)
 					       (hex-print? t))
   "Writes the `new-word' to address, use `write-full-word?' to always write 8 bytes

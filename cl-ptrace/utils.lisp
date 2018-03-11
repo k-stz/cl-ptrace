@@ -4,8 +4,10 @@
 (defun am-i-root? ()
   (= (sb-posix:getuid) 0))
 
-(defun hex-print (number &optional (destination t))
-  (format destination "~(~x~)~%" number)
+(defun hex-print (number &optional (destination t) (padding nil))
+  (if padding
+      (format destination "~(~16x~)~%" number)
+      (format destination "~(~x~)~%" number))
   number)
 
 (defun binary-print (number &optional (destination t))
@@ -103,6 +105,7 @@ Note: Used in conjunction with the snapshot method."
   (with-foreign-object (status :int)
     (kill pid +sigstop+)
     ;; WUNTRACED only continues when process is stopped
+    ;; TODO: this also blocks when issued twice?
     #+sbcl
     (waitpid pid status sb-posix:wuntraced)))
 
@@ -270,3 +273,22 @@ Example: (twos-complement #xff 1) ==> -1"
       (- (ldb (byte (* 8 bytes) 0)
 	      (lognot (1- unsigned-value))))
       unsigned-value))
+
+(defun mem-table (rows-delta &rest addresses)
+  "Print Table with columns of `addresses' next to each other.
+Used to find datastructures in memory by comparing different memory
+regions from addresses that point to values that influence similar things.
+
+`rows-delt' is the amount of bytes to print offset from the address.
+If provided as a list: '(-32 64) then a variable offsets can be used."
+  (let (start end)
+    (if (listp rows-delta)
+	(progn (setf start (first rows-delta))
+	       (setf end (second rows-delta)))
+	(progn (setf start (- rows-delta))
+	       (setf end rows-delta)))
+    (loop for i from start below end by 8 do
+	 (loop for address in addresses do
+	      (format t "~(~16x~)  "
+		      (read-proc-mem-word (+ address i) 0 nil *pid*)))
+	 (terpri))))
