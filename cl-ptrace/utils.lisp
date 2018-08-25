@@ -281,6 +281,7 @@ regions from addresses that point to values that influence similar things.
 
 `rows-delt' is the amount of bytes to print offset from the address.
 If provided as a list: '(-32 64) then a variable offsets can be used."
+  (assert (not (null addresses)))
   (let (start end)
     (if (listp rows-delta)
 	(progn (setf start (first rows-delta))
