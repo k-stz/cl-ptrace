@@ -942,12 +942,13 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    With the help of (gdb) disassembly, we get the assembly instructions. Very useful: you
    can change the assembly style to intel with =(gdb) set disassembly-favor intel= !
 
-   0x000000000000065b <+17>:	mov    eax,DWORD PTR [rip+0x2009f3]        # 0x201054 <x>           002009f3058b
-   0x0000000000000661 <+23>:	add    eax,0x1							          01c083
-   0x0000000000000664 <+26>:	mov    DWORD PTR [rip+0x2009ea],eax        # 0x201054 <x>	    002009ea0589
-   0x000000000000066a <+32>:	mov    eax,DWORD PTR [rip+0x2009dc]        # 0x20104c <flag>	    002009dc058b
-   0x0000000000000670 <+38>:	cmp    eax,0xabcd						      0000abcd3d
-   0x0000000000000675 <+43>:	je     0x65b <main+17>						  2009cf058be474
+   Address                  OpC Mne    Operands
+   0x000000000000065b <+17>: 8b	mov    eax,DWORD PTR [rip+0x2009f3]  # 0x201054 <x>    002009f3058b
+   0x0000000000000661 <+23>: 83	add    eax,0x1                                           01c083
+   0x0000000000000664 <+26>: 89	mov    DWORD PTR [rip+0x2009ea],eax  # 0x201054 <x>    002009ea0589
+   0x000000000000066a <+32>: 8b	mov    eax,DWORD PTR [rip+0x2009dc]  # 0x20104c <flag> 002009dc058b
+   0x0000000000000670 <+38>: 3d	cmp    eax,0xabcd				         0000abcd3d
+   0x0000000000000675 <+43>: 74	je     0x65b <main+17>				     2009cf058be474
 
 
 *** Instruction Format
