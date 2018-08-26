@@ -260,10 +260,9 @@ in the `memory-range-snapshot'"
 	       (read-proc-mem-byte address :pid pid :hex-print? nil))))
 
 ;; TODO make more useful
-(defun print-live (snapshot-alist)
+(defun print-live-snapshot (snapshot-alist)
   (loop (sleep 1)
      (print-proc-mem-from-snapshot-alist snapshot-alist)))
-
 
 (defun filter-snapshot-alist (snapshot-alist &optional (filter-fn #'=) (pid *pid*))
   "Build a new snapshot-alist that satisfies the `filter-function'.
