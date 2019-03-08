@@ -281,6 +281,7 @@ regions from addresses that point to values that influence similar things.
 
 `rows-delt' is the amount of bytes to print offset from the address.
 If provided as a list: '(-32 64) then a variable offsets can be used."
+  (assert (not (null addresses)))
   (let (start end)
     (if (listp rows-delta)
 	(progn (setf start (first rows-delta))
@@ -292,3 +293,21 @@ If provided as a list: '(-32 64) then a variable offsets can be used."
 	      (format t "~(~16x~)  "
 		      (read-proc-mem-word (+ address i) 0 nil *pid*)))
 	 (terpri))))
+
+(defun print-live (address &optional (offset 64) (columns 1) (sleep-seconds 1))
+  (loop
+     (sleep sleep-seconds)
+     (terpri)
+     (format t "-----------------~%")
+     (loop for loop-address from (- address offset) to (+ address offset) by 8
+	with loop-col = columns do
+	  ;; special marker for address given
+	  (if (= loop-address address)
+	      (format t ">")
+	      (format t " "))
+	  (format t "~(~16x: ~16x~)  " loop-address (read-proc-mem-word loop-address 0 nil))
+	  ;; table column logic:
+	  (decf loop-col)
+	  (when (<= loop-col 0)
+	    (setf loop-col columns)
+	    (terpri)))))

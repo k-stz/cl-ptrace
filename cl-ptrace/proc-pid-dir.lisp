@@ -82,11 +82,16 @@
 
 ;; Takes the output from `parse-proc-pid-maps' and creates a
 ;; list of memory regions that are all readable
-(defun get-readable-memory-regions (proc-pid-maps-string-list)
+(defun get-readable-memory-regions (proc-pid-maps-string-list &optional (without-heap? nil))
   "Return a list of all readable address ranges from a parsed /proc/pid/maps
 file. `proc-pid-maps-string-list' should be the output of `parse-proc-pid-maps'"
   (loop for line in proc-pid-maps-string-list
-     when (permission-readable? line)
+     when (and (permission-readable? line)
+	       (if without-heap?
+		   (if (string= "[heap]" (getf line :pathname))
+		       nil
+		       t)
+		   t))
      collect (address-range-list line)))
 
 (defun get-readable-non-pathname-list (proc-pid-maps-string-list)
@@ -200,6 +205,7 @@ SIGSTOP it."
 ;; use. Given that we pass it a hex representation like #x00ab, either this is solved
 ;; via macro, another option word, another input type (string?) or get in the habit
 ;; of writing some non zero byte before it.
+;; TODO write byte-wise, so you cant change the first halfbyte without supplying the other
 (defun write-proc-mem-word (address new-word &key (pid *pid*) (write-full-word? nil)
 					       (hex-print? t))
   "Writes the `new-word' to address, use `write-full-word?' to always write 8 bytes
