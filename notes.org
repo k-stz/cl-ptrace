@@ -625,7 +625,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    | print &<var> | print address of var! useful for verifying with peekdata |
    |              |                                                         |
 
-* assembly
+* assembly x64
 
 ** syntax
    x86 assembly has two main syntax branches:
@@ -653,8 +653,24 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
    
 
-* x64 Assembly - general notes
-  
+** Hello World example
+
+#+BEGIN_SRC shell
+  # assemble, link and execute:
+  nasm -f elf64 -o hello.o hello.asm && ld hello.o -o hello && ./hello
+#+END_SRC
+   
+** disassemble it
+
+   use gdb's =disas /r _start= to disassemble at the assembly label "_start"!
+   #+BEGIN_SRC shell
+     gdb ./hello
+     (gdb) set disassembly-flavor intel
+     (gdb) disas /r _start
+   #+END_SRC
+
+   
+** byte sizes - names
   | byte             | 8bit     |
   | word             | 16 bit   |
   | double word      | 32 bit   |
@@ -940,7 +956,7 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
    #x55F6B5BF7675 + 5 L=2   2009cf058be474   JZ/JE re18             
 
    With the help of (gdb) disassembly, we get the assembly instructions. Very useful: you
-   can change the assembly style to intel with =(gdb) set disassembly-favor intel= !
+   can change the assembly style to intel with =(gdb) set disassembly-flavor intel= !
 
    Address                  OpC Mne    Operands
    0x000000000000065b <+17>: 8b	mov    eax,DWORD PTR [rip+0x2009f3]  # 0x201054 <x>    002009f3058b
@@ -1101,10 +1117,10 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
    #+END_SRC
 
+   For example "T" in the 2nd column means that the particular symbol is in the text/code section
+ 
    There might be some useful info in there pertaining address offset of particular
    functions. (And where to find functions of interest in the process' memory via ptrace!)
- 
-   For example "T" in the 2nd column means that the particular symbol is in the text/code section
 
 ** Pointer and Memory allocation
 

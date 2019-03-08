@@ -52,3 +52,44 @@
  	instruction
 	instruction-length
 	(get-registers))))
+
+
+
+(defun ml/push (register)
+  "Return the machine code for the PUSH `register' operation"
+  ;; PUSH machine code is: '0x5x'
+  (case register
+    (rax #x50)
+    (rbp #x55)
+    (rsi #x56)
+    (rdi #x57)
+    (t (progn
+	 (error "Register not implemented. Can't generate machine code!")
+	 #x50))))
+
+(defun ml/pop (register)
+  (case register
+    (rax #x58)
+    (rdi #x5f)
+    (rsi #x5e)
+    (rdx #x5a)
+    (t (error "Register not implemented. Can't generate machine code!"))))
+
+;; 48 b9 ff ff ff ff 01 00 00 00	movabs rcx,0x1ffffffff
+
+(defun ml/movabs-rcx-0x1ffffffff (value)
+  ;; #x48 b9 00 e4 0b 54 02 00 00 00
+  ;; 0x2540be400
+  ;; UPDATE: the instruction is laid out in memory as follows
+  ;; (when viewed with (read-proc-mem-word...)
+  ;; 0x00 00 00 01 ff ff ff ff b9 48
+  ;; TODO we need to ensure the leading '00' are returned!
+  ;; so hexabyte return value is wrong, we might have to use string..?
+  "00 00 00 01 ff ff ff ff b9 48"
+  )
+
+(defun ml/mov-eax-0 ()
+  "mov eax,0x0"
+  #x00000000b8)
+
+(defun ml/cmp (register ))
