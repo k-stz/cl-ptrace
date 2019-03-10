@@ -14,23 +14,15 @@ _start:
 	push rsi
 	push rdx
 	;; 
-
 ;;; 
 	push cx
 	mov rax, 0
-	mov rcx, 0x1ffffffff 	;looping this already takes 4 seconds!
+	mov rcx, 0x1 	;looping this already takes 4 seconds!
 loop:
-	jmp loop
 	inc rax
-	;; push cx
-	;; mov rax, 1     		; sys_write syscall
-	;; mov rdi, 1
-	;; mov rsi, text		;TODO how to find string?
-	;; mov rdx, 14
-	;; syscall
-	;; pop cx
 	dec rcx
 	jnz loop
+	call test
 done:	
 ;;; RESTORE registers
 	pop rax
@@ -43,6 +35,14 @@ done:
 	mov rdi, 0
 	syscall
 
-_TEST: 				; endless loop works
-	;; jmp _TEST
+
+blah:
+	mov rax, rax
+	
+test:	
+	mov rax, 1     		; sys_write syscall
+	mov rdi, 1
+	mov rsi, text		;TODO how to find string?
+	mov rdx, 14
+	syscall
 	ret

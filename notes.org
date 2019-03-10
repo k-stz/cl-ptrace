@@ -657,7 +657,11 @@ double word 64bit and consequently a halfword is 16bit. Alas in ptrace()'s man p
 
 #+BEGIN_SRC shell
   # assemble, link and execute:
-  nasm -f elf64 -o hello.o hello.asm && ld hello.o -o hello && ./hello
+  # Important: the option -O0 disables all optimzations! And the assembly gets
+  # translated 1:1, such that
+  # mov rax, 0x01 ; doesn't turn into
+  # mov eax, 0x01 ; !!
+  nasm -O0 -f elf64 -o hello.o hello.asm && ld hello.o -o hello && ./hello
 #+END_SRC
    
 ** disassemble it
