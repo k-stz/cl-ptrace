@@ -294,20 +294,23 @@ If provided as a list: '(-32 64) then a variable offsets can be used."
 		      (read-proc-mem-word (+ address i) 0 nil *pid*)))
 	 (terpri))))
 
+(defun print-around (address &optional (offset 64) (columns 1))
+  (terpri)
+  (format t "-----------------~%")
+  (loop for loop-address from (- address offset) to (+ address offset) by 8
+     with loop-col = columns do
+     ;; special marker for address given
+       (if (= loop-address address)
+	   (format t ">")
+	   (format t " "))
+       (format t "~(~16x: ~16x~)  " loop-address (read-proc-mem-word loop-address 0 nil))
+     ;; table column logic:
+       (decf loop-col)
+       (when (<= loop-col 0)
+	 (setf loop-col columns)
+	 (terpri))))
+
 (defun print-live (address &optional (offset 64) (columns 1) (sleep-seconds 1))
   (loop
      (sleep sleep-seconds)
-     (terpri)
-     (format t "-----------------~%")
-     (loop for loop-address from (- address offset) to (+ address offset) by 8
-	with loop-col = columns do
-	  ;; special marker for address given
-	  (if (= loop-address address)
-	      (format t ">")
-	      (format t " "))
-	  (format t "~(~16x: ~16x~)  " loop-address (read-proc-mem-word loop-address 0 nil))
-	  ;; table column logic:
-	  (decf loop-col)
-	  (when (<= loop-col 0)
-	    (setf loop-col columns)
-	    (terpri)))))
+     (print-around address offset columns)))

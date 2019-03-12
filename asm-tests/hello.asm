@@ -35,10 +35,6 @@ done:
 	mov rdi, 0
 	syscall
 
-
-blah:
-	mov rax, rax
-	
 test:	
 	mov rax, 1     		; sys_write syscall
 	mov rdi, 1
