@@ -4,6 +4,7 @@
 #include <Zycore/LibC.h>
 
 
+<<<<<<< Updated upstream
 //Test x;
 #include <stdint.h>
 uint64_t x = 22;
@@ -18,8 +19,17 @@ uint64_t x = 22;
 // zydis already includes: Zycore/Defines.h, Zycore/Types.h
 /* #include <Zydis/Zydis.h>  //<- /usr/local/include/Zydis/Zydis.h */
 /* #include "/usr/local/include/Zydis/Zydis.h" */
+=======
+#include <stdio.h>
+#include <stdlib.h>
+#include <inttypes.h>
+// zydis already includes: Zycore/Defines.h, Zycore/Types.h
+//
+#include <Zydis/Zydis.h>  //<- /usr/local/include/Zydis/Zydis.h
+#include "/usr/local/include/Zydis/Zydis.h"
+>>>>>>> Stashed changes
 /* #include <Zycore/Format.h> */
-/* #include <Zycore/LibC.h> */
+#include <Zycore/LibC.h> // for ZYAN_STDERR
 /* #include <Zydis/Decoder.h> */
 
 /* #include <Zydis/Decoder.h> */
@@ -40,7 +50,9 @@ uint64_t x = 22;
 
 
 
+
 int main() {
+<<<<<<< Updated upstream
   ZydisGetVersion(); // is defined as,
   // in the file: "zydis/include/Zydis/Zydis.h"
   //  ZYDIS_EXPORT ZyanU64 ZydisGetVersion(void);
@@ -51,6 +63,17 @@ int main() {
   printf("Zydis_version: %d\n", (int) ZydisGetVersion());
 
   if (ZydisGetVersion() != ZYDIS_VERSION)
+=======
+  printf("Hello world");
+
+  ZydisGetVersion();
+  if (ZydisGetVersion() != ZYDIS_VERSION)
+    {
+        fputs("Invalid zydis version\n", ZYAN_STDERR);
+        return EXIT_FAILURE;
+    }
+    ZyanU8 data[] =
+>>>>>>> Stashed changes
     {
         fputs("Invalid zydis version\n", ZYAN_STDERR);
         return EXIT_FAILURE;
@@ -63,7 +86,15 @@ int main() {
     /* }; */
 
     /* // Initialize decoder context */
+<<<<<<< Updated upstream
     /* ZydisDecoder decoder; */
     /* ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64); */
    
+=======
+    ZydisDecoder decoder;
+    ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
+
+
+    
+>>>>>>> Stashed changes
 }
