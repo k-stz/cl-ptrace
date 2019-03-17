@@ -1,9 +1,16 @@
-#include <stdio.h>
 #include <inttypes.h>
+#include <Zycore/Format.h>
+#include <Zycore/LibC.h>
 #include <Zydis/Zydis.h>
 int main()
 {
-    uint8_t data[] =
+    if (ZydisGetVersion() != ZYDIS_VERSION)
+    {
+        fputs("Invalid zydis version\n", ZYAN_STDERR);
+        return EXIT_FAILURE;
+    }
+
+    uint_t data[] =
     {
         0x51, 0x8D, 0x45, 0xFF, 0x50, 0xFF, 0x75, 0x0C, 0xFF, 0x75,
         0x08, 0xFF, 0x15, 0xA0, 0xA5, 0x48, 0x76, 0x85, 0xC0, 0x0F,

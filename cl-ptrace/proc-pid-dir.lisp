@@ -166,7 +166,6 @@ current value under `address'"
       	(hex-print byte))
       byte)))
 
-;; TODO: make it return the value as decimal, like READ-PROC-MEM-BYTE
 (defun read-proc-mem-word (address &optional (offset 0) (hex-print? t) (pid *pid*))
   (let* ((address (+ address offset))
 	 (byte-word-list
@@ -181,6 +180,7 @@ current value under `address'"
       (hex-print integer-word t t))
     integer-word))
 
+;; use this with Disassembly!
 (defun byte-list-word->integer (byte-list-word)
   "Converts a list of 8 bytes like (255 255 40 77 46 41 0 96), to
 an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
@@ -229,6 +229,19 @@ instead of just #abcd and leaving the leading bytes as they where."
 				 bytes-to-write)))))
   (when hex-print?
     (read-proc-mem-word address 0 pid)))
+
+(defun rw-proc-mem-word (address &optional (offset 0) (rw-mode :r) new-word (pid *pid*))
+  "Read or write word to memory. Using the `rw-mode' keyword switches :r = read, :w = write, and :wf = write the full word. 
+
+Used to read through the memory interactively with the offset using the :r keyword, and then when the memory address of interest was found, overwrite it by simply switching to :w (write just the provided bytes) or :wf (always write the full word, with leading zeros if needed) and provide the `new-word' to overwrite it."
+  (if (or (eq rw-mode :w) (eq rw-mode :wf))
+      (when (null new-word)
+	(error "rw-mode is :w or :wf but no new-word to write
+	provided. `new-word' is: ~a" new-word)))
+  (case rw-mode
+    (:r (read-proc-mem-word address offset t pid))
+    (:w (write-proc-mem-word (+ address offset) new-word :pid pid))
+    (:wf (write-proc-mem-word (+ address offset) new-word :write-full-word? t :pid pid))))
 
 
 (defun print-proc-mem-table (&key address-list address-range (number-of-rows 30) (spacing 1) (pid *pid*))
