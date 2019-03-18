@@ -14,9 +14,10 @@
   (format destination "~b~%" number)
   number)
 
+
 (defun address-list->peekdata-list (address-list &optional (pid *pid*))
   (loop for address in address-list
-       :collect (peekdata address pid nil nil)))
+     :collect (peekdata address pid nil nil)))
 
 #+sbcl
 (defun permission-string->posix-permission-logior (permission-string)

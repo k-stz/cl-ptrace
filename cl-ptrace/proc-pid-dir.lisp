@@ -180,7 +180,15 @@ current value under `address'"
       (hex-print integer-word t t))
     integer-word))
 
+(defun byte-list->number (byte-list)
+  (apply #'+
+	 (loop for index from 0 below (length byte-list)
+	    for byte in byte-list
+	    :collect
+	      (ash byte (* 8 index)))))
+
 ;; use this with Disassembly!
+;; behaves same as above... TODO
 (defun byte-list-word->integer (byte-list-word)
   "Converts a list of 8 bytes like (255 255 40 77 46 41 0 96), to
 an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
@@ -190,6 +198,12 @@ an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
 	    :collect
 	      (ash byte (* 8 index)))))
 
+#+sbcl
+(defun asci-string->integer (string)
+  (let ((byte-list
+	 (loop for char across string
+	    :collect (char-code char))))
+    (byte-list->number byte-list)))
 
 (defun write-proc-mem-byte (address new-byte &key (pid *pid*))
   "Careful, this writes a `new-byte' to the process memory address of the process
