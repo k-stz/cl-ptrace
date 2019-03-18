@@ -205,6 +205,16 @@ an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
 	    :collect (char-code char))))
     (byte-list->number byte-list)))
 
+;; TODO use flexi-streams
+#+sbcl
+(defun integer->asci-string (integer)
+  (let* ((byte-length (integer-byte-length integer))
+	 (string (make-array byte-length :element-type 'character)))
+    (loop for i from 0 below byte-length :do
+	 (setf (aref string i)
+	       (code-char (ldb (byte 8 (* i 8)) integer))))
+    string))
+
 (defun write-proc-mem-byte (address new-byte &key (pid *pid*))
   "Careful, this writes a `new-byte' to the process memory address of the process
 designated by `pid'.
