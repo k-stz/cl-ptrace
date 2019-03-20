@@ -199,7 +199,7 @@ an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
 	      (ash byte (* 8 index)))))
 
 #+sbcl
-(defun asci-string->integer (string)
+(defun ascii-string->integer (string)
   (let ((byte-list
 	 (loop for char across string
 	    :collect (char-code char))))
@@ -207,7 +207,7 @@ an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
 
 ;; TODO use flexi-streams
 #+sbcl
-(defun integer->asci-string (integer)
+(defun integer->ascii-string (integer)
   (let* ((byte-length (integer-byte-length integer))
 	 (string (make-array byte-length :element-type 'character)))
     (loop for i from 0 below byte-length :do
