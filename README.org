@@ -3,15 +3,39 @@
   process' memory.
 
   Should just work on 64bit CPUs!
-  
+
+   
 * Videos
-  The following Youtube video series shows the code in action, all the while covering the
+  The following YouTube video series shows the code in action, all the while covering the
   What, Why and How of Process Hacking and related concepts.
 
   Hopefully not cutting short on entertainment! ;)
 
   Link:
-  https://www.youtube.com/watch?v=PuGgCOyBMyc&index=1&list=PLBgJcoaU2hl-JnoVOzjYB5qk_PfYjPm-I
+  [[https://www.youtube.com/watch?v=PuGgCOyBMyc&index=1&list=PLBgJcoaU2hl-JnoVOzjYB5qk_PfYjPm-I][YouTube Process Hacking Series]]
+
+* How to use it?
+  You can get the latest version via Ultralisp (fetches new commits in a 5min cycle from
+  this GitHub page). Simply add the Software distribution to Quicklisp's distribution pool:
+
+  #+BEGIN_SRC lisp
+    (ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)
+  #+END_SRC
+
+  Now Quicklisp will also search for systems in the Ultralisp software distribution! You
+  can download and load the cl-ptrace system with Quicklisp:
+
+  #+BEGIN_SRC lisp
+    (ql:quickload "cl-ptrace")
+  #+END_SRC
+   
+
+* How to remove it?
+  You can remove the Software distribution folders and the downloaded systems with:
+   #+BEGIN_SRC lisp
+     (ql-dist:uninstall (ql-dist:find-dist "ultralisp"))
+   #+END_SRC
+
 
 * Common Lisp Implementation 
   cl-ptrace was tested on sbcl and ccl, but should only work on 64bit CPUs as of now
