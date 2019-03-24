@@ -300,16 +300,20 @@ If provided as a list: '(-32 64) then a variable offsets can be used."
 		      (read-proc-mem-word (+ address i) 0 nil *pid*)))
 	 (terpri))))
 
-(defun print-around (address &optional (offset 64) (columns 1))
+(defun print-around (address &optional (offset 64) (columns 1) (as-string nil))
   (terpri)
   (format t "-----------------~%")
   (loop for loop-address from (- address offset) to (+ address offset) by 8
-     with loop-col = columns do
+     with loop-col = columns 
+     for mem-data = (if as-string
+			(integer->ascii-string (read-proc-mem-word loop-address 0 nil))
+			(hex-print (read-proc-mem-word loop-address 0 nil) nil t))
+     :do
      ;; special marker for address given
        (if (= loop-address address)
 	   (format t ">")
 	   (format t " "))
-       (format t "~(~16x: ~16x~)  " loop-address (read-proc-mem-word loop-address 0 nil))
+       (format t "~(~16x: ~16x~)  " loop-address mem-data)
      ;; table column logic:
        (decf loop-col)
        (when (<= loop-col 0)
