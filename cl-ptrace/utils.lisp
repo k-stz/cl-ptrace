@@ -5,10 +5,15 @@
   (= (sb-posix:getuid) 0))
 
 (defun hex-print (number &optional (destination t) (padding nil))
-  (if padding
-      (format destination "~(~16x~)~%" number)
-      (format destination "~(~x~)~%" number))
-  number)
+  (let ((fmt-string "~(~x~)")
+	output)
+    (when padding
+      (setf fmt-string "~(~16x~)"))
+    (setf output
+	  (format destination fmt-string number))
+    (if (null destination)
+	output
+	number)))
 
 (defun binary-print (number &optional (destination t))
   (format destination "~b~%" number)
