@@ -479,6 +479,31 @@ it.
        collect address))
 
 
+(defun find-value-heap (value &key (pid *pid*) (byte-padding t))
+  (find-value-address value
+		      :pid pid
+     		      :address-range (get-heap-address-range)
+		      :byte-padding byte-padding))
+
+
+;; TODO only works with single byte-values for now!
+(defun async-find-value-heap (byte-value &optional (pid *pid*))
+  (let* ((heap-snapshot (make-snapshot-memory-range (get-heap-address-range pid) pid))
+	 (start-address (slot-value heap-snapshot 'start-memory-address))
+	 (end-address (slot-value heap-snapshot 'end-memory-address))
+	 result-list)
+    ;; TODO is "below" here wrong? i.e. is end-memory-address off-by-one?
+    (setf result-list
+	  (loop :for address :from start-address :below end-address
+	     :when
+	     ;; TODO can only read-byte?
+	       (= (snapshot-read-byte heap-snapshot address)
+		  byte-value)
+	     :collect address))
+    ;; free 'lexical' heap-snapshot:
+    (free-snapshot-iovec heap-snapshot)
+    result-list))
+
 (defun find-value-address (value &key (pid *pid*)
 				   (from-address #x0)
 				   (to-address #x0)
