@@ -168,6 +168,8 @@ current value under `address'"
       byte)))
 
 (defun n-read-proc-mem-bytes-list (address &key (bytes 1) (pid *pid*))
+  "Read `bytes' amount under `address' from process memory and return a list in of the
+bytes in a address-ascending order."
   (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :io
 		       :if-exists :append)
     (file-position str address)
@@ -175,6 +177,15 @@ current value under `address'"
        ;; TODO: what happens if we read outside of memory segment, do we want to
        ;; check for that here?	
        :collect (read-byte str t))))
+
+(defun n-write-proc-mem-bytes-list (address byte-list &key (pid *pid*))
+    "Write bytes in the byte-list given to the process memory starting from `address' in
+sequential order."
+  (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :output
+		       :if-exists :append)
+    (file-position str address)
+    (write-sequence byte-list str
+		    :end (length byte-list))))
 
 (defun read-proc-mem-word (address &optional (offset 0) (hex-print? t) (pid *pid*))
   (let* ((integer-word
