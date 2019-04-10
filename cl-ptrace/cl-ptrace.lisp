@@ -504,6 +504,11 @@ it.
     (free-snapshot-iovec heap-snapshot)
     result-list))
 
+(defun async-find-value-address (byte-value address-list &optional (pid *pid*))
+  (let ((snapshot-alist (make-snapshot-alist address-list pid)))
+    (setf snapshot-alist (find-snapshot-alist-value byte-value snapshot-alist))
+    (snapshot-alist->address-list snapshot-alist)))
+
 (defun find-value-address (value &key (pid *pid*)
 				   (from-address #x0)
 				   (to-address #x0)

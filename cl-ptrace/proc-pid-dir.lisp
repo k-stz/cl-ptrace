@@ -150,7 +150,7 @@ file. `proc-pid-maps-string-list' should be the output of `parse-proc-pid-maps'"
 ;; _Don't use this in a loop_, it is by a factor of 50 slower than a PEEKDATA call the only
 ;; advantage left to use this one is that we don't need to attach to a process thread
 ;; prior to using it.
-(defun read-proc-mem-byte (address &key (pid *pid*) (hex-print? t))
+(defun read-proc-mem-byte (address &key (bytes 1) (pid *pid*) (hex-print? t))
   "Reads `address' from pid memory directly from /proc/pid/mem. 
 
 This opens and closes the stream on each invocation, making it useful to inspect actual
@@ -161,42 +161,49 @@ current value under `address'"
   (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :io
 		       :if-exists :append)
     (file-position str address)
-    (let ((byte (read-byte str t)))
+    (let ((byte
+	   (read-byte str t)))
       (when hex-print?
       	(hex-print byte))
       byte)))
 
+(defun n-read-proc-mem-bytes-list (address &key (bytes 1) (pid *pid*))
+  (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :io
+		       :if-exists :append)
+    (file-position str address)
+    (loop for address from address below (+ address bytes)
+       ;; TODO: what happens if we read outside of memory segment, do we want to
+       ;; check for that here?	
+       :collect (read-byte str t))))
+
 (defun read-proc-mem-word (address &optional (offset 0) (hex-print? t) (pid *pid*))
-  (let* ((address (+ address offset))
-	 (byte-word-list
-	  (reverse
-	   (loop for i from (+ address 7) downto address :collect
-	      ;; (format t "~(~2,'0x~)"
-	      ;; 	 (read-proc-mem-byte i :pid pid :hex-print? nil))
-		(read-proc-mem-byte i :pid pid :hex-print? nil))))
-	 (integer-word
-	  (byte-list-word->integer byte-word-list)))
+  (let* ((integer-word
+	  (byte-list->number
+	   (n-read-proc-mem-bytes-list (+ address offset) :bytes 8 :pid pid))))
     (when hex-print?
       (hex-print integer-word t t))
     integer-word))
 
+
+;; use this with Disassembly!
+;; behaves same as above... TODO
 (defun byte-list->number (byte-list)
+  "Converts a list of bytes like (255 255 40 77 46 41 0 96), to
+an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
   (apply #'+
 	 (loop for index from 0 below (length byte-list)
 	    for byte in byte-list
 	    :collect
 	      (ash byte (* 8 index)))))
 
-;; use this with Disassembly!
-;; behaves same as above... TODO
-(defun byte-list-word->integer (byte-list-word)
-  "Converts a list of 8 bytes like (255 255 40 77 46 41 0 96), to
+
+(defun number->byte-list (number)
+  "Converts a list of bytes like (255 255 40 77 46 41 0 96), to
 an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
-  (apply #'+
-	 (loop for index from 0 upto 7
-	    for byte in byte-list-word 
-	    :collect
-	      (ash byte (* 8 index)))))
+  (let ((number-byte-length (integer-byte-length number )))
+    (loop for byte from 0 below number-byte-length
+       :collect
+	 (ldb (byte 8 (* byte 8)) number))))
 
 #+sbcl
 (defun ascii-string->integer (string)

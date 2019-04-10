@@ -264,6 +264,9 @@ in the `memory-range-snapshot'"
   (loop (sleep 1)
      (print-proc-mem-from-snapshot-alist snapshot-alist)))
 
+(defun diff-by-n? (x y &optional (delta 1))
+  (= (abs (- x y)) delta))
+
 (defun filter-snapshot-alist (snapshot-alist &optional (filter-fn #'=) (pid *pid*))
   "Build a new snapshot-alist that satisfies the `filter-function'.
 The `filter-function' takes two inputs:
