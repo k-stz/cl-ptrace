@@ -247,28 +247,21 @@ SIGSTOP it."
 ;; use. Given that we pass it a hex representation like #x00ab, either this is solved
 ;; via macro, another option word, another input type (string?) or get in the habit
 ;; of writing some non zero byte before it.
-;; TODO write byte-wise, so you cant change the first halfbyte without supplying the other
 (defun write-proc-mem-word (address new-word &key (pid *pid*) (write-full-word? nil)
 					       (hex-print? t))
   "Writes the `new-word' to address, use `write-full-word?' to always write 8 bytes
 regardless of leading zeros. Such that an new-word=#xabcd will write #x0000000000abcd,
 instead of just #abcd and leaving the leading bytes as they where."
-  (let ((bytes-to-write (integer-byte-length new-word)))
-    (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :output
-			 :if-exists :append)
-      (file-position str address)
-      (let ((0b (ldb (byte 8 0) new-word))
-	    (1b (ldb (byte 8 8) new-word))
-	    (2b (ldb (byte 8 16) new-word))
-	    (3b (ldb (byte 8 24) new-word))
-	    (4b (ldb (byte 8 32) new-word))
-	    (5b (ldb (byte 8 40) new-word))
-	    (6b (ldb (byte 8 48) new-word))
-	    (7b (ldb (byte 8 56) new-word)))
-	(write-sequence (list 0b 1b 2b 3b 4b 5b 6b 7b) str
-			:end (if write-full-word?
-				 8
-				 bytes-to-write)))))
+  (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :output
+		       :if-exists :append)
+    (file-position str address)
+    (let ((byte-list (number->byte-list new-word)))
+      (when write-full-word?
+	;; fill in byte-list with 0's, to match word-length
+	(setf byte-list
+	      (append byte-list
+		      (make-list (- 8 (length byte-list)) :initial-element 0))))
+      (n-write-proc-mem-bytes-list address byte-list :pid pid)))
   (when hex-print?
     (read-proc-mem-word address 0 pid)))
 
