@@ -324,3 +324,9 @@ If provided as a list: '(-32 64) then a variable offsets can be used."
   (loop
      (sleep sleep-seconds)
      (print-around address offset columns)))
+
+(defun print-address-list (address-list &optional (bytes-to-read 8) (pid *pid*))
+  (loop for address in address-list
+     for proc-mem-at-address = (n-read-proc-mem address  bytes-to-read pid)
+       :do
+       (format t "~16x: ~16x~%" address proc-mem-at-address)))

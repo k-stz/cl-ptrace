@@ -228,6 +228,10 @@ in the `memory-range-snapshot'"
 
 ;;Snapshot list-----------------------------------------------------------------
 
+;; NEXT-TODO: write a class that glues that snapshot-alist to an attribute
+;; of its byte-size used!
+
+
 ;; Notes on alists:
 ;; alist shouldn't be a problem since we usually will loop through them entirely
 ;; when filtering for changes.
@@ -235,19 +239,21 @@ in the `memory-range-snapshot'"
 ;; single key in the list), in a list like ((a . 1) (a . 2) (b .1)) searching for
 ;; the non-unique key 'a' will yield the first occurrence:
 ;; (assoc 'a '((a . 1) (a . 2) (b .1))) ==> (A . 1)
-(defun make-snapshot-alist (address-list &optional (pid *pid*))
+(defun make-snapshot-alist (address-list &key (bytes 1) (pid *pid*))
   "Takes a list of addresses and returns an alist with elements: (<address> . <byte-pointed-to>)"
   (loop for address in address-list
      :collect (cons address
-		    (read-proc-mem-byte address
-					:pid pid
-					:hex-print? nil))))
+		    (byte-list->number
+		     (n-read-proc-mem-bytes-list address
+						 :bytes bytes
+						 :pid pid)))))
 
 (defun snapshot-alist->address-list (snapshot-alist)
-  (loop for address-byte-pair in snapshot-alist
-       :collect (car address-byte-pair)))
+  (loop for address-mem-pair in snapshot-alist
+       :collect (car address-mem-pair)))
 
 ;; TODO: make it interactively more useful
+;; TODO read-n-bytes
 (defun print-proc-mem-from-snapshot-alist (snapshot-alist &optional (pid *pid*))
   (format t "(alist-address alist-byte) : live-proc-mem-byte---~%")
   (loop for address-byte-pair in snapshot-alist
@@ -259,7 +265,7 @@ in the `memory-range-snapshot'"
 	       alist-byte
 	       (read-proc-mem-byte address :pid pid :hex-print? nil))))
 
-;; TODO make more useful
+;; TODO read-n-bytes
 (defun print-live-snapshot (snapshot-alist)
   (loop (sleep 1)
      (print-proc-mem-from-snapshot-alist snapshot-alist)))
@@ -267,6 +273,8 @@ in the `memory-range-snapshot'"
 (defun diff-by-n? (x y &optional (delta 1))
   (= (abs (- x y)) delta))
 
+
+;; TODO read-n-bytes
 (defun filter-snapshot-alist (snapshot-alist &optional (filter-fn #'=) (pid *pid*))
   "Build a new snapshot-alist that satisfies the `filter-function'.
 The `filter-function' takes two inputs:
@@ -324,7 +332,7 @@ process memory referred to by `pid'"
   `(setf ,snapshot-alist
 	 (make-snapshot-alist
 	  (snapshot-alist->address-list ,snapshot-alist)
-	  ,pid)))
+	  :pid ,pid)))
 
 (defmacro keep-mismatches! (snapshot-alist-var)
   "Takes a variable holding a snapshot-alists and filters all addresses out

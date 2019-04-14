@@ -187,10 +187,13 @@ sequential order."
     (write-sequence byte-list str
 		    :end (length byte-list))))
 
+(defun n-read-proc-mem (address &optional (bytes 8) (pid *pid*))
+  (byte-list->number
+   (n-read-proc-mem-bytes-list address :bytes bytes :pid pid)))
+
 (defun read-proc-mem-word (address &optional (offset 0) (hex-print? t) (pid *pid*))
   (let* ((integer-word
-	  (byte-list->number
-	   (n-read-proc-mem-bytes-list (+ address offset) :bytes 8 :pid pid))))
+	  (n-read-proc-mem (+ offset address) 8 pid)))
     (when hex-print?
       (hex-print integer-word t t))
     integer-word))
@@ -266,9 +269,13 @@ instead of just #abcd and leaving the leading bytes as they where."
     (read-proc-mem-word address 0 pid)))
 
 (defun rw-proc-mem-word (address &optional (offset 0) (rw-mode :r) new-word (pid *pid*))
-  "Read or write word to memory. Using the `rw-mode' keyword switches :r = read, :w = write, and :wf = write the full word. 
+  "Read or write word to memory. Using the `rw-mode' keyword switches :r = read, :w =
+write, and :wf = write the full word.
 
-Used to read through the memory interactively with the offset using the :r keyword, and then when the memory address of interest was found, overwrite it by simply switching to :w (write just the provided bytes) or :wf (always write the full word, with leading zeros if needed) and provide the `new-word' to overwrite it."
+Used to read through the memory interactively with the offset using the :r keyword, and
+then when the memory address of interest was found, overwrite it by simply switching to
+:w (write just the provided bytes) or :wf (always write the full word, with leading zeros
+if needed) and provide the `new-word' to overwrite it."
   (if (or (eq rw-mode :w) (eq rw-mode :wf))
       (when (null new-word)
 	(error "rw-mode is :w or :wf but no new-word to write

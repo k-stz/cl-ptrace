@@ -504,9 +504,10 @@ it.
     (free-snapshot-iovec heap-snapshot)
     result-list))
 
-(defun async-find-value-address (byte-value address-list &optional (pid *pid*))
-  (let ((snapshot-alist (make-snapshot-alist address-list pid)))
-    (setf snapshot-alist (find-snapshot-alist-value byte-value snapshot-alist))
+;; TODO make work with values bigger than just one byte
+(defun async-find-value-address (value address-list &optional (pid *pid*))
+  (let ((snapshot-alist (make-snapshot-alist address-list :bytes 1 :pid pid)))
+    (setf snapshot-alist (find-snapshot-alist-value value snapshot-alist))
     (snapshot-alist->address-list snapshot-alist)))
 
 (defun find-value-address (value &key (pid *pid*)
