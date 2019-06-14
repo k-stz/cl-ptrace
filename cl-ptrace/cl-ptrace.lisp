@@ -319,15 +319,15 @@ value `nil' means to print all regs."
     (foreign-slot-value regs '(:struct user-regs-struct) 'rip)))
 
 (defun singlestep (&optional (pid *pid*) (print-instruction-pointer? t))
+  "Perform a singlestep on the currently traced process referred to by
+`*pid*'. Optionally prints the instruction pointer address afterwards."
   (ptrace +ptrace-singlestep+ pid +null+ +null+)
   (waitpid pid +null+ 0)
   (let ((rip-address (rip-address)))
     (when print-instruction-pointer?
-      (with-foreign-object (regs '(:struct user-regs-struct))
-	(%getregs pid regs) ;; regs gets set to `regs' here pass-by-reference style
-	(format t "rip: ~x" 
-		rip-address)
-	(terpri)))
+      (format t "rip: ~x" 
+	      rip-address)
+      (terpri))
     rip-address))
 
 (defun singlestep-peek-from-rip (n-instructions &optional (pid *pid*))
