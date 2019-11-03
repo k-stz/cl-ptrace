@@ -440,10 +440,10 @@ of addresses when encountering a loop."
   (let  ((anchor-rip (rip-address))
 	 (i -1)) 
     (singlestep)
-    (loop while (/= anchor-rip i) do
-         (setf i (rip-address))
-	 (format t "~x~%" i)
-	 (singlestep *pid* nil))))
+    (loop while (/= anchor-rip i)
+       :do (progn (setf i (rip-address))
+		  (singlestep *pid* nil))
+	 :collect (format nil "~x" i))))
 
 
 (defun print-n-peekdata-instructions (n &optional (pid *pid*))

@@ -214,10 +214,19 @@ an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
 (defun number->byte-list (number)
   "Converts a list of bytes like (255 255 40 77 46 41 0 96), to
 an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
-  (let ((number-byte-length (integer-byte-length number )))
+  (let ((number-byte-length (integer-byte-length number)))
     (loop for byte from 0 below number-byte-length
        :collect
 	 (ldb (byte 8 (* byte 8)) number))))
+
+(defun pad-byte-list (byte-list padding-length)
+  (let ((pad-diff (- padding-length (length byte-list))))
+    (if (plusp pad-diff)
+	(append byte-list (make-list pad-diff :initial-element 0))
+	byte-list)))
+
+(defun get-byte (number byte)
+  (ldb (byte 8 (* byte 8)) number))
 
 #+sbcl
 (defun ascii-string->integer (string)
