@@ -487,6 +487,7 @@ it.
 
 
 ;; NEXT-TODO combine with async-find-hex-string-heap dispatching on value input
+;; NEXT-TODO async-find-value-address with multibyte
 (defun async-find-value-heap (byte-value &optional (pid *pid*))
   (let* ((heap-snapshot (make-snapshot-memory-range (get-heap-address-range pid) pid))
 	 (start-address (slot-value heap-snapshot 'start-memory-address))

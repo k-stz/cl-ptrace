@@ -236,19 +236,21 @@ an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
    (2 1 255 0)."
   (unless (stringp hex-string)
     (error "~a is not a string." hex-string))
-  (flet ((sanitze-hex-string (hex-string)
+  (flet ((sanitize-hex-string (hex-string)
 	   (if (>= (length hex-string) 2)
 	       (if (string= "#x" (string-downcase (subseq hex-string 0 2)))
-		    ;; cut own the #x or #X from the beginning of string
+		   ;; cut own the #x or #X from the beginning of string
 		   (subseq hex-string 2)
 		   hex-string)
 	       hex-string)))
     (let*
 	((sanitized-hex-input (sanitze-hex-string hex-string))
 	 (hex-list (split-sequence-backwards-by-n sanitized-hex-input 2)))
-    (mapcar (lambda (hex)
-	      (parse-integer hex :radix 16))
-	    hex-list))))
+      (print sanitized-hex-input)
+      (print hex-list)
+      (mapcar (lambda (hex)
+		(parse-integer hex :radix 16))
+	      hex-list))))
 
 (defun pad-byte-list (byte-list padding-length)
   (let ((pad-diff (- padding-length (length byte-list))))

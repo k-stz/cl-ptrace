@@ -167,7 +167,7 @@ Doesn't require ptrace attachment, or stopping the tracee process."
     (print-unreadable-object (obj stream :identity t)
       (format stream "MS:[~(~x~)-~(~x~)]"
       	    (first memory-range)
-      	    (second memory-range))))
+      	    (second memory-range)))))
 
 (defgeneric snapshot-read-byte (memory-range-snapshot address))
 (defmethod snapshot-read-byte ((obj memory-range-snapshot) address)

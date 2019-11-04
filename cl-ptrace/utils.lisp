@@ -334,5 +334,5 @@ If provided as a list: '(-32 64) then a variable offsets can be used."
 (defun split-sequence-backwards-by-n (sequence n)
   (loop 
      :with length := (length sequence)
-     :for start from length :by n downto 0
+     :for start from length :by n downto 1
      :collecting (subseq sequence (max 0 (- start n)) start)))
