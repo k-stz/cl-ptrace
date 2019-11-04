@@ -154,7 +154,8 @@ Doesn't require ptrace attachment, or stopping the tracee process."
    (snapshot-memory-iovec :initarg :snapshot-memory-iovec :accessor get-snapshot-iovec)
    (snapshot-memory-c-array :initarg :snapshot-memory-c-array :accessor snapshot-c-array)
    ;; from old implementation:
-   (snapshot-memory-array :initarg :snapshot-memory-array :accessor snapshot-memory-array)))
+   ;; (snapshot-memory-array :initarg :snapshot-memory-array :accessor snapshot-memory-array)
+   ))
 
 (defgeneric get-memory-range (memory-range-snapshot))
 (defmethod get-memory-range ((obj memory-range-snapshot))
@@ -168,12 +169,21 @@ Doesn't require ptrace attachment, or stopping the tracee process."
       	    (first memory-range)
       	    (second memory-range))))
 
-(defgeneric snapshot-read-byte (memory-range-snapshot address)))
+(defgeneric snapshot-read-byte (memory-range-snapshot address))
 (defmethod snapshot-read-byte ((obj memory-range-snapshot) address)
   "Return the byte in the memory-snapshot using the address that was referring to it in
 the original memory region the snapshot copied (from that remote process address space)"
   (with-slots (snapshot-memory-c-array start-memory-address) obj
     (mem-ref snapshot-memory-c-array :unsigned-char (- address start-memory-address))))
+
+(defgeneric snapshot-n-read-bytes-list (memory-range-snapshot address &optional n-bytes))
+(defmethod snapshot-n-read-bytes-list ((obj memory-range-snapshot) address &optional (n-bytes 1))
+  "Return the byte in the memory-snapshot using the address that was referring to it in
+the original memory region the snapshot copied (from that remote process address space)"
+  (with-slots (snapshot-memory-c-array start-memory-address) obj
+    (loop for offset from address below (+ address n-bytes)
+	 :collect
+	 (mem-ref snapshot-memory-c-array :unsigned-char (- offset start-memory-address)))))
 
 
 ;; since process-vm-readv is very fast, it makes sense to always take a snapshot

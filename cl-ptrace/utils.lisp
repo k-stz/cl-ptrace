@@ -330,3 +330,9 @@ If provided as a list: '(-32 64) then a variable offsets can be used."
      for proc-mem-at-address = (n-read-proc-mem address  bytes-to-read pid)
        :do
        (format t "~16x: ~16x~%" address proc-mem-at-address)))
+
+(defun split-sequence-backwards-by-n (sequence n)
+  (loop 
+     :with length := (length sequence)
+     :for start from length :by n downto 0
+     :collecting (subseq sequence (max 0 (- start n)) start)))

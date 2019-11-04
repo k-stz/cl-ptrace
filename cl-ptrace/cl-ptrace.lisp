@@ -486,19 +486,38 @@ it.
 		      :byte-padding byte-padding))
 
 
-;; TODO only works with single byte-values for now!
+;; NEXT-TODO combine with async-find-hex-string-heap dispatching on value input
 (defun async-find-value-heap (byte-value &optional (pid *pid*))
   (let* ((heap-snapshot (make-snapshot-memory-range (get-heap-address-range pid) pid))
 	 (start-address (slot-value heap-snapshot 'start-memory-address))
 	 (end-address (slot-value heap-snapshot 'end-memory-address))
 	 result-list)
-    ;; TODO is "below" here wrong? i.e. is end-memory-address off-by-one?
+    ;; "below" here is correct, i.e. is end-memory-address is _exclusive_!
     (setf result-list
 	  (loop :for address :from start-address :below end-address
 	     :when
 	     ;; TODO can only read-byte?
 	       (= (snapshot-read-byte heap-snapshot address)
 		  byte-value)
+	     :collect address))
+    ;; free 'lexical' heap-snapshot:
+    (free-snapshot-iovec heap-snapshot)
+    result-list))
+
+(defun async-find-hex-string-heap (hex-string &optional (pid *pid*))
+  (let* ((heap-snapshot (make-snapshot-memory-range (get-heap-address-range pid) pid))
+	 (start-address (slot-value heap-snapshot 'start-memory-address))
+	 (end-address (slot-value heap-snapshot 'end-memory-address))
+	 (hex-byte-list (hex-string->byte-list hex-string))
+	 result-list)
+    ;; "below" here is correct, i.e. is end-memory-address is _exclusive_!
+    (setf result-list
+	  (loop :for address :from start-address :below end-address
+	     :when
+	       (byte-list=
+		(snapshot-n-read-bytes-list
+		 heap-snapshot address (length hex-byte-list))
+		hex-byte-list)
 	     :collect address))
     ;; free 'lexical' heap-snapshot:
     (free-snapshot-iovec heap-snapshot)

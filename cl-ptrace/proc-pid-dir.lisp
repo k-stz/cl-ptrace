@@ -70,6 +70,8 @@
 
 
 (defun get-heap-address-range (&optional (pid *pid*))
+  "Get the limits of the heap for the process referred to by `*pid*'. The end address is NOT inclusive,
+and should not be read from."
   (loop for line in (parse-proc-pid-maps pid) :do
        (when
 	   (string= "[heap]"
@@ -101,6 +103,8 @@ file. `proc-pid-maps-string-list' should be the output of `parse-proc-pid-maps'"
      collect line))
 
 (defun address-range-list (proc-pid-maps-line)
+  "Returns an address-range object representing the /proc/<pid>/maps/ entry, the seconds
+address is NOT inclusive and should not be read from."
   (let ((address-range (getf proc-pid-maps-line :address-range))
 	start-address
 	end-address)
@@ -211,6 +215,14 @@ an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
 	      (ash byte (* 8 index)))))
 
 
+(defun byte-list= (byte-list1 byte-list2)
+  (unless (= (length byte-list1) (length byte-list2))
+    (error "Byte lists don't have same length: ~a ~a" byte-list1 byte-list2))
+  (loop
+     :for byte1 in byte-list1
+     :for byte2 in byte-list2
+     :always (= byte1 byte2)))
+
 (defun number->byte-list (number)
   "Converts a list of bytes like (255 255 40 77 46 41 0 96), to
 an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
@@ -218,6 +230,25 @@ an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
     (loop for byte from 0 below number-byte-length
        :collect
 	 (ldb (byte 8 (* byte 8)) number))))
+
+(defun hex-string->byte-list (hex-string)
+  "Translates a string like \"0001ff02\" or \"#x0001ff02\" to the byte-list
+   (2 1 255 0)."
+  (unless (stringp hex-string)
+    (error "~a is not a string." hex-string))
+  (flet ((sanitze-hex-string (hex-string)
+	   (if (>= (length hex-string) 2)
+	       (if (string= "#x" (string-downcase (subseq hex-string 0 2)))
+		    ;; cut own the #x or #X from the beginning of string
+		   (subseq hex-string 2)
+		   hex-string)
+	       hex-string)))
+    (let*
+	((sanitized-hex-input (sanitze-hex-string hex-string))
+	 (hex-list (split-sequence-backwards-by-n sanitized-hex-input 2)))
+    (mapcar (lambda (hex)
+	      (parse-integer hex :radix 16))
+	    hex-list))))
 
 (defun pad-byte-list (byte-list padding-length)
   (let ((pad-diff (- padding-length (length byte-list))))
