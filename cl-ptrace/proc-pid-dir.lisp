@@ -182,8 +182,19 @@ bytes in a address-ascending order."
        ;; check for that here?	
        :collect (read-byte str t))))
 
+;; once this works, replace other read-proc-* functions
+(defun read-mem (address &key (bytes 1) (pid *pid*))
+  "Read `bytes' amount under `address' from process memory and return a `memory-array'
+representation."
+  (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :io
+		       :if-exists :append)
+    (file-position str address)
+    (loop for address from address below (+ address bytes)
+	 ;; TODO implement
+       :collect (read-byte str t))))
+
 (defun n-write-proc-mem-bytes-list (address byte-list &key (pid *pid*))
-    "Write bytes in the byte-list given to the process memory starting from `address' in
+  "Write bytes in the byte-list given to the process memory starting from `address' in
 sequential order."
   (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :output
 		       :if-exists :append)
@@ -244,10 +255,8 @@ an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
 		   hex-string)
 	       hex-string)))
     (let*
-	((sanitized-hex-input (sanitze-hex-string hex-string))
+	((sanitized-hex-input (sanitize-hex-string hex-string))
 	 (hex-list (split-sequence-backwards-by-n sanitized-hex-input 2)))
-      (print sanitized-hex-input)
-      (print hex-list)
       (mapcar (lambda (hex)
 		(parse-integer hex :radix 16))
 	      hex-list))))

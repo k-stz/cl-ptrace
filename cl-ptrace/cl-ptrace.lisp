@@ -525,10 +525,20 @@ it.
     result-list))
 
 ;; TODO make work with values bigger than just one byte
-(defun async-find-value-address (value address-list &optional (pid *pid*))
-  (let ((snapshot-alist (make-snapshot-alist address-list :bytes 1 :pid pid)))
-    (setf snapshot-alist (find-snapshot-alist-value value snapshot-alist))
-    (snapshot-alist->address-list snapshot-alist)))
+;; (defun async-find-value-address (value address-list &optional (pid *pid*))
+;;   (let ((snapshot-alist (make-snapshot-alist address-list :bytes 1 :pid pid)))
+;;     (setf snapshot-alist (find-snapshot-alist-value value snapshot-alist))
+;;     (snapshot-alist->address-list snapshot-alist)))
+
+(defun async-find-hex-string-address (hex-string address-list &optional (pid *pid*))
+  (let* ((value-byte-list (hex-string->byte-list hex-string))
+	 (snapshot-alist-bl (make-snapshot-alist-bl address-list
+						 :bytes (length value-byte-list)
+						 :pid pid)))
+    snapshot-alist-bl
+    ;; (setf snapshot-alist-bl (find-snapshot-alist-value value-byte-list snapshot-alist-bl))
+    ;; (snapshot-alist->address-list snapshot-alist-bl)
+    ))
 
 (defun find-value-address (value &key (pid *pid*)
 				   (from-address #x0)

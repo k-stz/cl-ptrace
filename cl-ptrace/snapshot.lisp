@@ -258,6 +258,14 @@ in the `memory-range-snapshot'"
 						 :bytes bytes
 						 :pid pid)))))
 
+(defun make-snapshot-alist-bl (address-list &key (bytes 1) (pid *pid*))
+  "Takes a list of addresses and returns an alist with elements: (<address> <byte-list-pointed-to>)"
+  (loop for address in address-list
+	:collect (cons address
+		       (n-read-proc-mem-bytes-list address
+						   :bytes bytes
+						   :pid pid))))
+
 (defun snapshot-alist->address-list (snapshot-alist)
   (loop for address-mem-pair in snapshot-alist
        :collect (car address-mem-pair)))
@@ -400,3 +408,38 @@ binds the result immediately to the snapshot-alist variable given."
 		     (filter-snapshot-alist ,snapshot-alist-var (function ,filter-fn)))
 	       (format t "~a -> new length: ~a~%" ',snapshot-alist-var
 		       (length ,snapshot-alist-var))))))
+
+
+;;Memory Array------------------------------------------------------------------
+
+;; Ideas: "mask" attribute, to allow search with wildcard bytes
+(defclass memory-array ()
+  ((address :initarg :address
+	    :reader get-mem-array-address
+	    :initform nil
+	    :type :fixnum)
+   (byte-array :initarg :byte-array :reader get-byte-array)))
+
+(defun byte-array->hex-string (byte-array)
+  (format nil "#x~{~a~}"
+	  (loop for byte across (reverse byte-array)
+	     :collect
+	       (format nil "~(~2,'0x~)" byte))))
+
+(defmethod print-object ((obj memory-array) stream)
+  (let ((address (get-mem-array-address obj))
+	(byte-array (get-byte-array obj)))
+    (print-unreadable-object (obj stream)
+      (format stream "A:[~(~x~):~a]"
+	      address
+	      (byte-array->hex-string byte-array)))))
+
+
+(defun make-mem-array (byte-list)
+  (make-instance 'memory-array
+		 :byte-array (make-array (length byte-list)
+					 :element-type '(unsigned-byte 8)
+					 :initial-contents byte-list)))
+
+(defun print-mem-array (mem-array)
+  )
