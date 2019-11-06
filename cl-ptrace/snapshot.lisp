@@ -453,4 +453,16 @@ binds the result immediately to the snapshot-alist variable given."
 					 :element-type '(unsigned-byte 8)
 					 :initial-contents byte-list)))
 
-
+(defgeneric *array-equalp (array1 array2))
+(defmethod *array-equalp ((array1 memory-array) (array2 memory-array))
+  ;; from hyperspec on equalp: "Returns true if x and y are equal, or if they have
+  ;; components that are of the same type as each other and if those components are
+  ;; equalp"
+  (equalp (get-byte-array array1)
+	  (get-byte-array array2)))
+(defmethod *array-equalp ((array1 memory-array) (array2 simple-array))
+  (equalp (get-byte-array array1)
+	  array2))
+(defmethod *array-equalp ((array1 simple-array) (array2 memory-array))
+  (equalp array1
+	  (get-byte-array array2)))

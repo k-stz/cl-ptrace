@@ -487,7 +487,6 @@ it.
 
 
 ;; NEXT-TODO combine with async-find-hex-string-heap dispatching on value input
-;; NEXT-TODO async-find-value-address with multibyte
 (defun async-find-value-heap (byte-value &optional (pid *pid*))
   (let* ((heap-snapshot (make-snapshot-memory-range (get-heap-address-range pid) pid))
 	 (start-address (slot-value heap-snapshot 'start-memory-address))
@@ -524,12 +523,6 @@ it.
     (free-snapshot-iovec heap-snapshot)
     result-list))
 
-;; TODO make work with values bigger than just one byte
-;; (defun async-find-value-address (value address-list &optional (pid *pid*))
-;;   (let ((snapshot-alist (make-snapshot-alist address-list :bytes 1 :pid pid)))
-;;     (setf snapshot-alist (find-snapshot-alist-value value snapshot-alist))
-;;     (snapshot-alist->address-list snapshot-alist)))
-
 (defun async-find-hex-string-address (hex-string address-list &optional (pid *pid*))
   (let* ((value-byte-list (hex-string->byte-list hex-string))
 	 (snapshot-alist-bl (make-snapshot-alist-bl address-list
@@ -539,6 +532,22 @@ it.
     ;; (setf snapshot-alist-bl (find-snapshot-alist-value value-byte-list snapshot-alist-bl))
     ;; (snapshot-alist->address-list snapshot-alist-bl)
     ))
+
+;; TODO: implement "padding" (see find-value-address) probably through masking the
+;; memory-array; implement address-list search
+(defun async-find-value-address (value &key (pid *pid*)
+					 (address-list nil))
+  (let* ((value-byte-array (get-byte-array (make-mem-array value)))
+	 (length-value-byte-array (length value-byte-array)))
+    (when address-list
+      (loop for address in address-list
+	 ;; TODO: efficientcy can be improved: open file once and search it, the read bytes
+	 ;; might be read into a byte-buffer rather then a list? (see read-mem implementation)
+	 :when (equalp
+		value-byte-array
+		(get-byte-array
+		 (read-mem address length-value-byte-array pid)))
+	 collect address))))
 
 (defun find-value-address (value &key (pid *pid*)
 				   (from-address #x0)
@@ -566,6 +575,7 @@ already filtered, addresses provided from `:address-list'"
 	  (when address-range
 	    (setf from-address (first address-range)
 		  to-address (second address-range)))
+	  ;; TODO: should be ":below to-address"? as address-range second value is not inclusive
 	  (loop for address from from-address to to-address
 	     :when (ends-with-bits? ;; (peekdata address pid nil nil)
 		    (ptrace +ptrace-peekdata+ pid (make-pointer address) +null+)
@@ -590,8 +600,8 @@ Careful, can be fairly time consuming and memory intensive."
 
 (defun find-nearby (value address &optional (search-distance 1000) (pid *pid*))
   "Search for `value' around the `address' by `search-distance' addresses.
-This can be used search using the heuristic of related data being next to, or
-nearby each other in memory."
+In this way using the search heuristic of related data being next to, or nearby, each
+other in memory."
   (let* ((from-address (- address search-distance))
 	 (to-address (+ address search-distance))
 	 (address-range

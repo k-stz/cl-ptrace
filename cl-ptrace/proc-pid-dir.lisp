@@ -205,7 +205,9 @@ sequential order.
 `value' will be internally treated as input to a `memory-array' (make-mem-array ..) such that:
 
 `value' can be represented as an integer (write only the bytes needed to represent it),
-hex-string (allows for leading zeros) or a byte-sequence like #(32 172) and '(255 312)."
+hex-string (allows for leading zeros) or a byte-sequence like #(32 172) and '(255 312).
+
+Returns a `memory-array' representing the newly changed memory."
   (let ((value-byte-array
 	 (get-byte-array
 	  (make-mem-array value nil))))
