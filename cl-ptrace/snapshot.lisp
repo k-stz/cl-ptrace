@@ -430,16 +430,25 @@ binds the result immediately to the snapshot-alist variable given."
   (let ((address (get-mem-array-address obj))
 	(byte-array (get-byte-array obj)))
     (print-unreadable-object (obj stream)
-      (format stream "A:[~(~x~):~a]"
+      (format stream "MA{~(~x~)}[~a]"
 	      address
 	      (byte-array->hex-string byte-array)))))
 
+(defgeneric make-mem-array (obj))
+(defmethod make-mem-array ((byte-sequence sequence))
+  (%make-mem-array byte-sequence))
 
-(defun make-mem-array (byte-list)
+(defmethod make-mem-array ((hex-string string))
+  (%make-mem-array (hex-string->byte-list hex-string)))
+
+;; integer is supertype of fixnum and bignum
+(defmethod make-mem-array ((integer integer))
+  (%make-mem-array (integer->byte-list integer)))
+
+(defun %make-mem-array (byte-list)
   (make-instance 'memory-array
 		 :byte-array (make-array (length byte-list)
 					 :element-type '(unsigned-byte 8)
 					 :initial-contents byte-list)))
 
-(defun print-mem-array (mem-array)
-  )
+

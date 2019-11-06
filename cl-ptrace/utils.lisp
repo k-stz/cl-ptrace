@@ -128,10 +128,9 @@ Note: Used in conjunction with the snapshot method."
   (detach-from pid)
   (cont-time))
 
-;; move to util.lisp ?
-(defun integer-byte-length (number)
-  "How many bytes are needed to represent the number `number'"
-  (let ((bytes (ceiling (integer-length number)
+(defun integer-byte-length (integer)
+  "How many bytes are needed to represent the `integer' given"
+  (let ((bytes (ceiling (integer-length integer)
 			 8)))
     (if (= bytes 0)
 	1

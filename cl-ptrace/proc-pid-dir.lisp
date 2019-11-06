@@ -234,13 +234,13 @@ an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
      :for byte2 in byte-list2
      :always (= byte1 byte2)))
 
-(defun number->byte-list (number)
-  "Converts a list of bytes like (255 255 40 77 46 41 0 96), to
-an integer of those 8 bytes, in this example: #x6000292e4d28ffff"
-  (let ((number-byte-length (integer-byte-length number)))
+(defun integer->byte-list (integer)
+  "Converts a integer into a list of bytes, in this case: Example #x6000292e4d28ffff
+  => (255 255 40 77 46 41 0 96)\""
+  (let ((number-byte-length (integer-byte-length integer)))
     (loop for byte from 0 below number-byte-length
        :collect
-	 (ldb (byte 8 (* byte 8)) number))))
+	 (ldb (byte 8 (* byte 8)) integer))))
 
 (defun hex-string->byte-list (hex-string)
   "Translates a string like \"0001ff02\" or \"#x0001ff02\" to the byte-list
@@ -309,7 +309,7 @@ instead of just #abcd and leaving the leading bytes as they where."
   (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :output
 		       :if-exists :append)
     (file-position str address)
-    (let ((byte-list (number->byte-list new-word)))
+    (let ((byte-list (integer->byte-list new-word)))
       (when write-full-word?
 	;; fill in byte-list with 0's, to match word-length
 	(setf byte-list
