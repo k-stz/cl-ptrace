@@ -412,7 +412,8 @@ binds the result immediately to the snapshot-alist variable given."
 
 ;;Memory Array------------------------------------------------------------------
 
-;; Ideas: "mask" attribute, to allow search with wildcard bytes
+;; Ideas:
+;; - "mask" attribute, to allow search with wildcard bytes
 (defclass memory-array ()
   ((address :initarg :address
 	    :reader get-mem-array-address
@@ -430,23 +431,24 @@ binds the result immediately to the snapshot-alist variable given."
   (let ((address (get-mem-array-address obj))
 	(byte-array (get-byte-array obj)))
     (print-unreadable-object (obj stream)
-      (format stream "MA{~(~x~)}[~a]"
+      (format stream "MA {~(~x~)} [~a]"
 	      address
 	      (byte-array->hex-string byte-array)))))
 
-(defgeneric make-mem-array (obj))
-(defmethod make-mem-array ((byte-sequence sequence))
-  (%make-mem-array byte-sequence))
+(defgeneric make-mem-array (obj &optional address))
+(defmethod make-mem-array ((byte-sequence sequence) &optional address)
+  (%make-mem-array byte-sequence address))
 
-(defmethod make-mem-array ((hex-string string))
-  (%make-mem-array (hex-string->byte-list hex-string)))
+(defmethod make-mem-array ((hex-string string) &optional address)
+  (%make-mem-array (hex-string->byte-list hex-string) address))
 
 ;; integer is supertype of fixnum and bignum
-(defmethod make-mem-array ((integer integer))
-  (%make-mem-array (integer->byte-list integer)))
+(defmethod make-mem-array ((integer integer) &optional address)
+  (%make-mem-array (integer->byte-list integer) address))
 
-(defun %make-mem-array (byte-list)
+(defun %make-mem-array (byte-list address)
   (make-instance 'memory-array
+		 :address address
 		 :byte-array (make-array (length byte-list)
 					 :element-type '(unsigned-byte 8)
 					 :initial-contents byte-list)))

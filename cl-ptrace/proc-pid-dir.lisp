@@ -183,15 +183,38 @@ bytes in a address-ascending order."
        :collect (read-byte str t))))
 
 ;; once this works, replace other read-proc-* functions
-(defun read-mem (address &key (bytes 1) (pid *pid*))
+(defun read-mem (address &optional (bytes 1) (pid *pid*))
   "Read `bytes' amount under `address' from process memory and return a `memory-array'
-representation."
+representation.  Can be used without attaching or stopping the target process referred to
+by `pid'."
   (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :io
 		       :if-exists :append)
     (file-position str address)
-    (loop for address from address below (+ address bytes)
-	 ;; TODO implement
-       :collect (read-byte str t))))
+    (make-mem-array
+     (loop for address from address below (+ address bytes)
+	:collect (read-byte str t))
+     address)))
+
+;; TODO: allow writing half-bytes as well?
+;; currently writing "f" will write => "0f" to memory!
+;; could be done by using already a mask?
+(defun write-mem (address value &key (pid *pid*))
+  "Write the `value' given to the process memory starting from `address' in
+sequential order.
+
+`value' will be internally treated as input to a `memory-array' (make-mem-array ..) such that:
+
+`value' can be represented as an integer (write only the bytes needed to represent it),
+hex-string (allows for leading zeros) or a byte-sequence like #(32 172) and '(255 312)."
+  (let ((value-byte-array
+	 (get-byte-array
+	  (make-mem-array value nil))))
+    (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :output
+			 :if-exists :append)
+      (file-position str address)
+      (write-sequence value-byte-array str
+		      :end (length value-byte-array)))
+    (read-mem address (max (length value-byte-array) 8))))
 
 (defun n-write-proc-mem-bytes-list (address byte-list &key (pid *pid*))
   "Write bytes in the byte-list given to the process memory starting from `address' in
