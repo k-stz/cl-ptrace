@@ -486,39 +486,31 @@ it.
 		      :byte-padding byte-padding))
 
 
-;; NEXT-TODO combine with async-find-hex-string-heap dispatching on value input
-(defun async-find-value-heap (byte-value &optional (pid *pid*))
+(defun async-find-value-heap (value &optional (pid *pid*))
   (let* ((heap-snapshot (make-snapshot-memory-range (get-heap-address-range pid) pid))
 	 (start-address (slot-value heap-snapshot 'start-memory-address))
 	 (end-address (slot-value heap-snapshot 'end-memory-address))
+	 (value-byte-array (get-byte-array (make-mem-array value)))
+	 (value-byte-size (length value-byte-array))
+	 (first-value-byte (aref value-byte-array 0))
 	 result-list)
-    ;; "below" here is correct, i.e. is end-memory-address is _exclusive_!
     (setf result-list
-	  (loop :for address :from start-address :below end-address
-	     :when
-	     ;; TODO can only read-byte?
-	       (= (snapshot-read-byte heap-snapshot address)
-		  byte-value)
-	     :collect address))
-    ;; free 'lexical' heap-snapshot:
-    (free-snapshot-iovec heap-snapshot)
-    result-list))
-
-(defun async-find-hex-string-heap (hex-string &optional (pid *pid*))
-  (let* ((heap-snapshot (make-snapshot-memory-range (get-heap-address-range pid) pid))
-	 (start-address (slot-value heap-snapshot 'start-memory-address))
-	 (end-address (slot-value heap-snapshot 'end-memory-address))
-	 (hex-byte-list (hex-string->byte-list hex-string))
-	 result-list)
-    ;; "below" here is correct, i.e. is end-memory-address is _exclusive_!
-    (setf result-list
-	  (loop :for address :from start-address :below end-address
-	     :when
-	       (byte-list=
-		(snapshot-n-read-bytes-list
-		 heap-snapshot address (length hex-byte-list))
-		hex-byte-list)
-	     :collect address))
+	  ;; for efficency: in case the value is just one byte big don't do the full
+	  ;; byte-array comparison
+	  (if (= value-byte-size 1)
+	      (loop :for address :from start-address :below end-address
+		 :when
+		   (=
+		    (snapshot-read-byte heap-snapshot address)
+		    first-value-byte)
+		 :collect address)
+	      ;; "below" here is correct, i.e. end-memory-address is _exclusive_!
+	      (loop :for address :from start-address :below end-address
+		 :when
+		   (%snapshot-mem-equalp heap-snapshot address
+					 value-byte-array
+					 value-byte-size)
+		 :collect address)))
     ;; free 'lexical' heap-snapshot:
     (free-snapshot-iovec heap-snapshot)
     result-list))
@@ -526,8 +518,8 @@ it.
 (defun async-find-hex-string-address (hex-string address-list &optional (pid *pid*))
   (let* ((value-byte-list (hex-string->byte-list hex-string))
 	 (snapshot-alist-bl (make-snapshot-alist-bl address-list
-						 :bytes (length value-byte-list)
-						 :pid pid)))
+						    :bytes (length value-byte-list)
+						    :pid pid)))
     snapshot-alist-bl
     ;; (setf snapshot-alist-bl (find-snapshot-alist-value value-byte-list snapshot-alist-bl))
     ;; (snapshot-alist->address-list snapshot-alist-bl)

@@ -183,7 +183,7 @@ bytes in a address-ascending order."
        :collect (read-byte str t))))
 
 ;; once this works, replace other read-proc-* functions
-(defun read-mem (address &optional (bytes 1) (pid *pid*))
+(defun read-mem (address &optional (bytes 8) (pid *pid*))
   "Read `bytes' amount under `address' from process memory and return a `memory-array'
 representation.  Can be used without attaching or stopping the target process referred to
 by `pid'."

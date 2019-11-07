@@ -185,6 +185,32 @@ the original memory region the snapshot copied (from that remote process address
 	 :collect
 	 (mem-ref snapshot-memory-c-array :unsigned-char (- offset start-memory-address)))))
 
+(defun %make-byte-array (n-bytes)
+  (make-array n-bytes
+	      :element-type '(unsigned-byte 8)))
+
+(defun byte-array-equalp (byte-array1 byte-array2)
+  (equalp byte-array1 byte-array2))
+
+
+(defun snapshot-read-mem (memory-range-snapshot address &optional (n-bytes 8))
+  (with-slots (snapshot-memory-c-array start-memory-address) memory-range-snapshot
+    (make-mem-array
+     (loop for offset from address below (+ address n-bytes)
+	:collect
+	  (mem-ref snapshot-memory-c-array :unsigned-char (- offset start-memory-address))))))
+
+
+;; for efficency only, don't use directly
+;; maybe use "declares" here?
+(defun %snapshot-mem-equalp (memory-range-snapshot address value-byte-array &optional (n-bytes 1))
+  (with-slots (snapshot-memory-c-array start-memory-address) memory-range-snapshot
+    (loop for offset from address below (+ address n-bytes)
+       for index from 0 :always
+	 (=
+	  (aref value-byte-array index)
+	  (mem-ref snapshot-memory-c-array :unsigned-char (- offset start-memory-address))))))
+
 
 ;; since process-vm-readv is very fast, it makes sense to always take a snapshot
 ;; instead of scanning the memory with peekdata!!
