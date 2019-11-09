@@ -230,6 +230,14 @@ the original memory region the snapshot copied (from that remote process address
 	     (process-vm-readv-into-iovec (list from-address to-address))))
 	(make-snapshot-instance local-iovec from-address to-address pid)))))
 
+(defmacro with-snapshot ((snapshot-var address-range) &body body)
+  "Makes a snapshot of given `address-range' and provides access to it via `snapshot-var' for the lexical scope of this macro. Afterwards frees it automatically."
+  `(let ((,snapshot-var (make-snapshot-memory-range ,address-range)))
+     (let ((body-result (progn ,@body)))
+       (free-snapshot-iovec ,snapshot-var)
+       body-result)))
+
+
 (defun free-snapshot-iovec (memory-range-snapshot)
   "Frees the iovec struct stored in the `memory-range-snapshot' given"
   (%free-iovec-struct

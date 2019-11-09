@@ -487,43 +487,31 @@ it.
 
 
 (defun async-find-value-heap (value &optional (pid *pid*))
-  (let* ((heap-snapshot (make-snapshot-memory-range (get-heap-address-range pid) pid))
-	 (start-address (slot-value heap-snapshot 'start-memory-address))
-	 (end-address (slot-value heap-snapshot 'end-memory-address))
-	 (value-byte-array (get-byte-array (make-mem-array value)))
-	 (value-byte-size (length value-byte-array))
-	 (first-value-byte (aref value-byte-array 0))
-	 result-list)
-    (setf result-list
-	  ;; for efficency: in case the value is just one byte big don't do the full
-	  ;; byte-array comparison
-	  (if (= value-byte-size 1)
-	      (loop :for address :from start-address :below end-address
-		 :when
-		   (=
-		    (snapshot-read-byte heap-snapshot address)
-		    first-value-byte)
-		 :collect address)
-	      ;; "below" here is correct, i.e. end-memory-address is _exclusive_!
-	      (loop :for address :from start-address :below end-address
-		 :when
-		   (%snapshot-mem-equalp heap-snapshot address
-					 value-byte-array
-					 value-byte-size)
-		 :collect address)))
-    ;; free 'lexical' heap-snapshot:
-    (free-snapshot-iovec heap-snapshot)
-    result-list))
-
-(defun async-find-hex-string-address (hex-string address-list &optional (pid *pid*))
-  (let* ((value-byte-list (hex-string->byte-list hex-string))
-	 (snapshot-alist-bl (make-snapshot-alist-bl address-list
-						    :bytes (length value-byte-list)
-						    :pid pid)))
-    snapshot-alist-bl
-    ;; (setf snapshot-alist-bl (find-snapshot-alist-value value-byte-list snapshot-alist-bl))
-    ;; (snapshot-alist->address-list snapshot-alist-bl)
-    ))
+  (with-snapshot (heap-snapshot (get-heap-address-range pid))
+    (let* ((start-address (slot-value heap-snapshot 'start-memory-address))
+	   (end-address (slot-value heap-snapshot 'end-memory-address))
+	   (value-byte-array (get-byte-array (make-mem-array value)))
+	   (value-byte-size (length value-byte-array))
+	   (first-value-byte (aref value-byte-array 0))
+	   result-list)
+      (setf result-list
+	    ;; for efficency: in case the value is just one byte big don't do the full
+	    ;; byte-array comparison
+	    (if (= value-byte-size 1)
+		(loop :for address :from start-address :below end-address
+		   :when
+		     (=
+		      (snapshot-read-byte heap-snapshot address)
+		      first-value-byte)
+		   :collect address)
+		;; "below" here is correct, i.e. end-memory-address is _exclusive_!
+		(loop :for address :from start-address :below end-address
+		   :when
+		     (%snapshot-mem-equalp heap-snapshot address
+					   value-byte-array
+					   value-byte-size)
+		   :collect address)))
+      result-list)))
 
 ;; TODO: implement "padding" (see find-value-address) probably through masking the
 ;; memory-array; implement address-list search
@@ -535,7 +523,7 @@ it.
       (loop for address in address-list
 	 ;; TODO: efficientcy can be improved: open file once and search it, the read bytes
 	 ;; might be read into a byte-buffer rather then a list? (see read-mem implementation)
-	 :when (equalp
+	 :when (equalp  ;; test byte-equalp again
 		value-byte-array
 		(get-byte-array
 		 (read-mem address length-value-byte-array pid)))
