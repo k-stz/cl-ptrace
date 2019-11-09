@@ -16,4 +16,5 @@ process hacking through value injection"
    (:file "cl-ptrace/disassembly")
    (:file "cl-ptrace/proc-pid-dir")
    (:file "cl-ptrace/snapshot")
-   (:file "cl-ptrace/utils")))
+   (:file "cl-ptrace/utils")
+   (:file "cl-ptrace/async-functions")))

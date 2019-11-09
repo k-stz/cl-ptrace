@@ -1,6 +1,8 @@
 (in-package :cl-ptrace)
 
-;;; /proc/<pid>/maps operations:
+;;; /proc/<pid>/maps and
+;;; /proc/<pid>/mem operations
+
 
 ;; well this is useless, it corresponds with /proc/<pid>/maps but just
 (defun find-readable-memory (from-num to-num &optional (pid *pid*))
