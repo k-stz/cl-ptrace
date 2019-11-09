@@ -2,3 +2,5 @@ c-tests/bin/*
 *~
 \#*
 *.fasl
+# disas stuff
+asm-tests/disas
