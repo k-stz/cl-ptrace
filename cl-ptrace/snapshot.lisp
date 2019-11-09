@@ -136,7 +136,7 @@ Doesn't require ptrace attachment, or stopping the tracee process."
 			      0))
       (if (= -1 number-of-read-bytes) ;; syscall returning -1, means error occurred:
 	  (format t "~a~%"(strerror))
-	  (format t "process-vm-readv syscall, number of read bytes: ~a" number-of-read-bytes))
+	  (format t "process-vm-readv syscall, number of read bytes: ~a~%" number-of-read-bytes))
       ;; return pointer to freshly transferred memory:
       local-iovec)))
 
