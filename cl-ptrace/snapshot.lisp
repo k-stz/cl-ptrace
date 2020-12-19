@@ -306,21 +306,21 @@ in the `memory-range-snapshot'"
 
 ;; TODO: make it interactively more useful
 ;; TODO read-n-bytes
-(defun print-proc-mem-from-snapshot-alist (snapshot-alist &optional (pid *pid*))
-  (format t "(alist-address alist-byte) : live-proc-mem-byte---~%")
+(defun print-proc-mem-from-snapshot-alist (snapshot-alist &optional n-bytes (pid *pid*))
+  (format t "(alist-address alist-bytes) : live-proc-mem-bytes---~%")
   (loop for address-byte-pair in snapshot-alist
      for address = (car address-byte-pair)
      for alist-byte = (cdr address-byte-pair)
      :do
-       (format t "(~(~x~) ~(~2x~)) - ~(~2x~)~%"
+       (format t "(~(~x~) ~(~16x~)) - ~(~2x~)~%"
 	       address
 	       alist-byte
-	       (read-proc-mem-byte address :pid pid :hex-print? nil))))
+	       (byte-array->hex-string (get-byte-array (read-mem address n-bytes pid))))))
 
 ;; TODO read-n-bytes
-(defun print-live-snapshot (snapshot-alist)
+(defun print-live-snapshot (snapshot-alist &optional (n-bytes 1) (pid *pid*))
   (loop (sleep 1)
-     (print-proc-mem-from-snapshot-alist snapshot-alist)))
+     (print-proc-mem-from-snapshot-alist snapshot-alist n-bytes pid)))
 
 (defun diff-by-n? (x y &optional (delta 1))
   (= (abs (- x y)) delta))
@@ -376,7 +376,7 @@ then builds a new snapshot-alist from them."
      for address = (car address-byte-pair)
        for snapshot-byte = (cdr address-byte-pair) :do
 	 (write-proc-mem-byte address snapshot-byte :pid pid))
-    (print-proc-mem-from-snapshot-alist snapshot-alist))
+    (print-proc-mem-from-snapshot-alist snapshot-alist 1 *pid*))
 
 (defmacro refresh-snapshot-alist! (snapshot-alist &optional (pid *pid*))
   "Replaces all the snapshot-alist bytes, with the one currently in the
