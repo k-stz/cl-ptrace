@@ -479,6 +479,9 @@ it.
        collect address))
 
 
+;; A LOOOOT slower than async-find-value-heap ! As it performs a syscall
+;; to query every single address in the heap with ptrace peekdata
+;; TODO: well then you should remove it?
 (defun find-value-heap (value &key (pid *pid*) (byte-padding t))
   (find-value-address value
 		      :pid pid

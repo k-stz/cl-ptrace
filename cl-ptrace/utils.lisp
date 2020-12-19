@@ -19,6 +19,9 @@
   (format destination "~b~%" number)
   number)
 
+;; use (ieee-floats:encode-float32 13.89)
+;; or (ieee-floats:encode-float64 13.89)
+;; to get binary representation of float values
 
 (defun address-list->peekdata-list (address-list &optional (pid *pid*))
   (loop for address in address-list
