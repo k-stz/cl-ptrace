@@ -522,7 +522,7 @@ already filtered, addresses provided from `:address-list'"
 		    search-bits)
 	     collect address)))))
 
-(defun find-mem-regions (value &optional (without-heap? nil) (pid *pid*)) 
+(defun find-value-in-mem-regions (value &optional (without-pathname? nil) (without-heap? nil) (pid *pid*)) 
   "Like `find-value-address' but operates on all the readable-memory-regions of a process.
 Careful, can be fairly time consuming and memory intensive."
   ;; 4. combine all the matches to a single super list
@@ -535,7 +535,9 @@ Careful, can be fairly time consuming and memory intensive."
 					       :pid pid
 					       :address-range memory-region))
 			 ;; 1. get all readable-memory-regions of traced process
-			 (get-readable-memory-regions (parse-proc-pid-maps pid) without-heap?)))))
+			 (get-readable-memory-regions (parse-proc-pid-maps pid)
+						      without-pathname?
+						      without-heap?)))))
 
 (defun find-nearby (value address &optional (search-distance 1000) (pid *pid*))
   "Search for `value' around the `address' by `search-distance' addresses.

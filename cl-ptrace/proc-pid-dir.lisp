@@ -3,28 +3,6 @@
 ;;; /proc/<pid>/maps and
 ;;; /proc/<pid>/mem operations
 
-
-;; well this is useless, it corresponds with /proc/<pid>/maps but just
-(defun find-readable-memory (from-num to-num &optional (pid *pid*))
-  (let ((first-readable nil)
-	(last-readable from-num)
-	(start-set? nil))
-    (loop for address from from-num to to-num  
-       for peeked-data = (peekdata address pid nil nil) do
-	 (if (ptrace-successful? peeked-data nil)
-	     ;; success
-	     (when (not start-set?)
-	       (setf first-readable address) 
-	       (setf start-set? t))
-	     ;; not readable
-	     (when start-set?
-	       (setf start-set? nil)
-	       (setf last-readable address)
-	       (format t "Hex:     readable: ~(~10,x~) - ~(~10,x~)~%" first-readable last-readable))))
-    ;; left the loop, now either no readable found, or no unreadable found yet
-    (when start-set?
-      (format t "Hex:     readable: ~(~10,x~) - ~(~10,x~)~%" first-readable to-num))))
-
 (defun get-maps-path (&optional (pid *pid*))
   (concatenate 'string
 	       "/proc/"
@@ -66,6 +44,12 @@
   (let ((permission-string (getf proc-pid-maps-line :permission)))
     (char= #\r (aref permission-string 0))))
 
+(defun permission-private? (proc-pid-maps-line)
+  "Takes a string like 'rw-p' and returns true if 'r' is set "
+  (let ((permission-string (getf proc-pid-maps-line :permission)))
+    (char= #\p (aref permission-string 3))))
+
+
 (defun has-pathname? (proc-pid-maps-line)
   "Returns the pathname of the parsed pid-maps-line, or if there is none, NIL."
   (getf proc-pid-maps-line :pathname))
@@ -86,11 +70,20 @@ and should not be read from."
 
 ;; Takes the output from `parse-proc-pid-maps' and creates a
 ;; list of memory regions that are all readable
-(defun get-readable-memory-regions (proc-pid-maps-string-list &optional (without-heap? nil))
+;; TODO find more criteria for 'useless' memory regions, it seems that when
+;; they have a :dev entry or :pathname they're probably loaded from somewhere other than
+;; the binary for example (just a some driver or static library)
+(defun get-readable-memory-regions (proc-pid-maps-string-list &optional (without-pathname? nil) (without-heap? nil))
   "Return a list of all readable address ranges from a parsed /proc/pid/maps
 file. `proc-pid-maps-string-list' should be the output of `parse-proc-pid-maps'"
   (loop for line in proc-pid-maps-string-list
      when (and (permission-readable? line)
+	       (permission-private? line)
+	       (if without-pathname?
+		   (if (stringp (getf line :pathname))
+		       nil
+		       t)
+		   t)
 	       (if without-heap?
 		   (if (string= "[heap]" (getf line :pathname))
 		       nil

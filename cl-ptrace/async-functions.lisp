@@ -48,7 +48,7 @@
 
 (defun async-find-value-heap (value &optional (result-string nil) (pid *pid*))
   "Search the heap for `value' (can be number, hex-string or byte sequence), and
-save the result in uniquely named variable that whose name contains `result-string', if none is provided save result in `*sieve*'."
+save the result in uniquely named variable whose name contains `result-string', if none is provided save result in `*sieve*'."
   (let ((result (%async-find-value-heap value pid)))
     (format t "found: ~a" (length result))
     (if (null result-string)
@@ -63,7 +63,7 @@ save the result in uniquely named variable that whose name contains `result-stri
 	 (length-value-byte-array (length value-byte-array)))
     (when address-list
       (loop for address in address-list
-	 ;; TODO: efficientcy can be improved: open file once and search it, the read bytes
+	 ;; TODO: efficiency can be improved: open file once and search it, the read bytes
 	 ;; might be read into a byte-buffer rather then a list? (see read-mem implementation)
 	 :when (equalp ;; test byte-equalp again
 		value-byte-array
