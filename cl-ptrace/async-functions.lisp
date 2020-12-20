@@ -58,6 +58,7 @@ save the result in uniquely named variable whose name contains `result-string', 
 
 ;; TODO: implement "padding" (see find-value-address) probably through masking the
 ;; memory-array; implement address-list search
+;; TODO: execute in parallel
 (defun %async-find-value (value &key (pid *pid*) (address-list nil))
   (let* ((value-byte-array (get-byte-array (make-mem-array value)))
 	 (length-value-byte-array (length value-byte-array)))
@@ -71,6 +72,27 @@ save the result in uniquely named variable whose name contains `result-string', 
 		 (read-mem address length-value-byte-array pid)))
 	 collect address))))
 
+#+lparallel
+;; mini Benchmark with 1 million addresses
+;; %async-find-value:
+;; (/ (+ 20.327 21.598 21.664) 3.0) 21.196333 avg sec
+;;
+;; %lparallel-async-find-value:
+;; (/ (+ 5.931 6.090 6.11)  3.0) 6.043667 avg sec => WORKS!
+(setf lparallel:*kernel* (lparallel:make-kernel 4))
+(defun %lparallel-async-find-value (value &key (pid *pid*) (address-list nil))
+  ;; first we rewrite the LOOP to find cause `find' has a lparallel version
+  (let* ((value-byte-array (get-byte-array (make-mem-array value)))
+	 (length-value-byte-array (length value-byte-array)))
+    (when address-list
+      (lparallel:premove value-byte-array address-list :test
+			 (lambda (value-byte-array address)
+			   ;; TODO: test this, might just work now!!!!
+			   (not (equalp ;; test byte-equalp again
+				 value-byte-array
+				 (get-byte-array
+				  (read-mem address length-value-byte-array pid)))))))))
+
 (defun %async-find-value-in-range (value &key (address-range nil) (pid *pid*))
   (let* ((value-byte-array (get-byte-array (make-mem-array value)))
 	 (length-value-byte-array (length value-byte-array)))
@@ -81,6 +103,8 @@ save the result in uniquely named variable whose name contains `result-string', 
 		(get-byte-array
 		 (read-mem address length-value-byte-array pid)))
 	 collect address))))
+
+
 
 
 ;; TODO: DOESN'T WORK
