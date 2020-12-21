@@ -87,7 +87,6 @@ save the result in uniquely named variable whose name contains `result-string', 
     (when address-list
       (lparallel:premove value-byte-array address-list :test
 			 (lambda (value-byte-array address)
-			   ;; TODO: test this, might just work now!!!!
 			   (not (equalp ;; test byte-equalp again
 				 value-byte-array
 				 (get-byte-array

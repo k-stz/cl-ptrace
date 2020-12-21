@@ -182,6 +182,7 @@ bytes in a address-ascending order."
   "Read `bytes' amount under `address' from process memory and return a `memory-array'
 representation.  Can be used without attaching or stopping the target process referred to
 by `pid'."
+  ;; TODO: if :direction is not only :input will this hinder parallelization?
   (with-open-file (str (get-mem-path pid) :element-type '(unsigned-byte 8) :direction :io
 		       :if-exists :append)
     (file-position str address)

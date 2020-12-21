@@ -522,6 +522,49 @@ already filtered, addresses provided from `:address-list'"
 		    search-bits)
 	     collect address)))))
 
+;; mini benchmark
+;; find-value-address with 10 million addressesJ
+;; (/ (+ 7.660 7.697 7.699) 3.0) => 7.6853333 avg sec
+;; MATCHES: 3707
+;; DOESNT WORK very inefficent, conses heavily.
+;; TODO: profile. Cant use ptrace directly and probably have huge overhead from READ-MEM calls.
+(setf lparallel:*kernel* (lparallel:make-kernel 4))
+(defun lparallel-find-value-address (value &key (pid *pid*)
+					     (from-address #x0)
+					     (to-address #x0)
+					     (address-list nil)
+					     (address-range nil)
+					     ;(byte-padding t)
+					     )
+  "Returns a list of addresses for which (peekdata address ..) will return a number ending
+with the bits representing `value'.
+
+Will either search addresses :from-address to `:to-address', or a list of, for example
+already filtered, addresses provided from `:address-list'"
+  (when address-range
+    (setf from-address (first address-range)
+	  to-address (second address-range)))
+  (let* ((n-bytes (integer-byte-length value))
+	 (search-value-byte-array (get-byte-array (make-mem-array value)))
+         ;; naive approach: if address-range given then just build an address-list from it
+	 (address-list (if address-range
+			   (loop for address from from-address to to-address collect address)
+			   address-list)))
+    (when address-range
+      (setf from-address (first address-range)
+	    to-address (second address-range)))
+
+    ;; ptrace PEEKDATA call DOESNT work, errno either "no such process", "Ressource unavailable" or
+    ;; "temporary unavavailable" so using READ-MEM
+    (lparallel:premove search-value-byte-array address-list :test
+		       (lambda (value-byte-array address)
+			 (not (equalp ;; test byte-equalp again
+				 value-byte-array
+				 (get-byte-array
+				  (read-mem address n-bytes pid))))))))
+
+;;(time (length (lparallel-find-value-address 63 :address-range *test-address-range*)))
+
 (defun find-value-in-mem-regions (value &optional (without-pathname? nil) (without-heap? nil) (pid *pid*)) 
   "Like `find-value-address' but operates on all the readable-memory-regions of a process.
 Careful, can be fairly time consuming and memory intensive."
@@ -530,13 +573,14 @@ Careful, can be fairly time consuming and memory intensive."
 	 ;; 3. remove all memory-regions that don't contain any matches (= nil)
 	 (remove nil 
 		 ;; 2. find all the addresses that point to `value'
+		 ;; TODO: just change this to lparallel:pmapcar?
 		 (mapcar (lambda (memory-region)
 			   (find-value-address value 
 					       :pid pid
 					       :address-range memory-region))
 			 ;; 1. get all readable-memory-regions of traced process
 			 (get-readable-memory-regions (parse-proc-pid-maps pid)
-						      without-pathname?
+ 						      without-pathname?
 						      without-heap?)))))
 
 (defun find-nearby (value address &optional (search-distance 1000) (pid *pid*))
