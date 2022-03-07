@@ -482,7 +482,7 @@ it.
 ;; A LOOOOT slower than async-find-value-heap ! As it performs a syscall
 ;; to query every single address in the heap with ptrace peekdata
 ;; TODO: well then you should remove it?
-(defun find-value-heap (value &key (pid *pid*) (byte-padding t))
+(defun slow-sync-find-value-heap (value &key (pid *pid*) (byte-padding t))
   (find-value-address value
 		      :pid pid
      		      :address-range (get-heap-address-range)
@@ -562,8 +562,6 @@ already filtered, addresses provided from `:address-list'"
 				 value-byte-array
 				 (get-byte-array
 				  (read-mem address n-bytes pid))))))))
-
-;;(time (length (lparallel-find-value-address 63 :address-range *test-address-range*)))
 
 (defun find-value-in-mem-regions (value &optional (without-pathname? nil) (without-heap? nil) (pid *pid*)) 
   "Like `find-value-address' but operates on all the readable-memory-regions of a process.
